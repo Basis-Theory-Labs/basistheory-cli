@@ -72,6 +72,7 @@
     "postpack": "shx rm -f oclif.manifest.json",
     "posttest": "yarn lint",
     "prepack": "yarn build && oclif manifest && oclif readme",
+    "version": "yarn build && oclif readme",
     "test": "mocha --forbid-only \"test/**/*.test.ts\"",
     "release": "semantic-release"
   },
@@ -80,7 +81,10 @@
   },
   "bugs": "https://github.com/Basis-Theory-Labs/basistheory-cli/issues",
   "keywords": [
-    "oclif"
+    "basis",
+    "theory",
+    "cli",
+    "logs"
   ],
   "types": "dist/index.d.ts",
   "prettier": "@basis-theory/eslint-config/prettier",
