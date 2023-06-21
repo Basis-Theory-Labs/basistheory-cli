@@ -3,6 +3,8 @@ Basis Theory CLI
 
 Basis Theory CLI tool
 
+Make sure to either have a `BT_MANAGEMENT_KEY` env var exported or pass a `management-key` flag to the commands.
+
 <!-- toc -->
 * [Usage](#usage)
 * [Commands](#commands)
@@ -10,11 +12,11 @@ Basis Theory CLI tool
 # Usage
 <!-- usage -->
 ```sh-session
-$ npm install -g @basis-theory/cli
+$ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory/cli/0.0.0 darwin-arm64 node-v18.15.0
+@basis-theory-labs/cli/0.0.0 darwin-arm64 node-v18.15.0
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -27,7 +29,7 @@ USAGE
 
 ## `bt logs`
 
-Display live Reactor / Proxy Transform logs output
+Display live Reactor / Proxy Transform logs output. Requires `reactor:read`, `reactor:update`, `proxy:read` and `proxy:update` Management Application permissions
 
 ```
 USAGE
@@ -40,7 +42,8 @@ FLAGS
   --reactor-id=<value>      reactor id to connect to
 
 DESCRIPTION
-  Display live Reactor / Proxy Transform logs output
+  Display live Reactor / Proxy Transform logs output. Requires `reactor:read`, `reactor:update`, `proxy:read` and
+  `proxy:update` Management Application permissions
 
 EXAMPLES
   $ bt logs

@@ -4,7 +4,7 @@ import { createLogServer } from '../logs/server';
 
 export default class Logs extends Command {
   public static description =
-    'Display live Reactor / Proxy Transform logs output';
+    'Display live Reactor / Proxy Transform logs output. Requires `reactor:read`, `reactor:update`, `proxy:read` and `proxy:update` Management Application permissions';
 
   public static examples = [
     '<%= config.bin %> <%= command.id %>',
