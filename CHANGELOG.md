@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.0.0...v1.0.1) (2023-06-21)
+
+
+### Bug Fixes
+
+* set public access ([876b9e3](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/876b9e3381230777ef32cda7a9fc354b12cc5a99))
+
 # 1.0.0 (2023-06-21)
 
 

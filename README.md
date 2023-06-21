@@ -16,7 +16,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.0.0 linux-x64 node-v18.16.0
+@basis-theory-labs/cli/1.0.1 linux-x64 node-v18.16.0
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
