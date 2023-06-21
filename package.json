@@ -84,5 +84,8 @@
     "oclif"
   ],
   "types": "dist/index.d.ts",
-  "prettier": "@basis-theory/eslint-config/prettier"
+  "prettier": "@basis-theory/eslint-config/prettier",
+  "publishConfig": {
+    "access": "public"
+  }
 }
