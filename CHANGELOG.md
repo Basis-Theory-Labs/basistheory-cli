@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.0.2...v1.0.3) (2023-06-21)
+
+
+### Bug Fixes
+
+* build on version ([cf04625](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/cf04625234f318db1508af97457773a3b0c8542e))
+
 ## [1.0.2](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.0.1...v1.0.2) (2023-06-21)
 
 
