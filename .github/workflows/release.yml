@@ -6,21 +6,17 @@ on:
 
 jobs:
   build-release:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        node: [ 'lts' ]
-        os: [ ubuntu-latest ]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.SEMANTIC_RELEASE_PAT }}
 
-      - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v1
+      - name: Use Node LTS
+        uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node }}
+          node-version: lts/*
 
       - name: Install deps (with cache)
         uses: bahmutov/npm-install@v1
