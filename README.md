@@ -16,7 +16,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.1.0 linux-x64 node-v18.16.0
+@basis-theory-labs/cli/1.1.1 linux-x64 node-v18.16.0
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -32,7 +32,7 @@ USAGE
 
 ## `bt proxies`
 
-list proxies
+List Proxies. Requires `proxy:read` Management Application permission
 
 ```
 USAGE
@@ -43,13 +43,13 @@ FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
-  list proxies
+  List Proxies. Requires `proxy:read` Management Application permission
 
 EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.1.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.1.1/dist/commands/proxies/index.ts)_
 
 ## `bt proxies logs ID`
 
@@ -70,14 +70,14 @@ DESCRIPTION
   Display live Proxy Transform logs output. Requires `proxy:read` and `proxy:update` Management Application permissions
 
 EXAMPLES
-  $ bt proxies logs
+  $ bt proxies logs 03858bf5-32d3-4a2e-b74b-daeea0883bca
 
-  $ bt proxies logs -p 3000
+  $ bt proxies logs 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000
 ```
 
 ## `bt reactors`
 
-list reactors
+List Reactors. Requires `reactor:read` Management Application permission
 
 ```
 USAGE
@@ -88,13 +88,13 @@ FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
-  list reactors
+  List Reactors. Requires `reactor:read` Management Application permission
 
 EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.1.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.1.1/dist/commands/reactors/index.ts)_
 
 ## `bt reactors logs ID`
 
@@ -115,8 +115,8 @@ DESCRIPTION
   Display live Reactor logs output. Requires `reactor:read` and `reactor:update` Management Application permissions
 
 EXAMPLES
-  $ bt reactors logs
+  $ bt reactors logs 03858bf5-32d3-4a2e-b74b-daeea0883bca
 
-  $ bt reactors logs -p 3000
+  $ bt reactors logs 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000
 ```
 <!-- commandsstop -->
