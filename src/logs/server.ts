@@ -1,4 +1,3 @@
-import type { Command } from '@oclif/core';
 import { ux } from '@oclif/core';
 import { bin, install, tunnel } from 'cloudflared';
 import * as fs from 'node:fs';
@@ -26,10 +25,7 @@ const runTunnel = async (port: number): Promise<string> => {
 
   return url;
 };
-const createLogServer = async (
-  command: Command,
-  port: number
-): Promise<string> => {
+const createLogServer = async (port: number): Promise<string> => {
   ux.action.start('Starting log server');
 
   const logger = pino({

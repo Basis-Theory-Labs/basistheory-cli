@@ -1,13 +1,5 @@
-import { BasisTheory } from '@basis-theory/basis-theory-js';
 import type { BasisTheory as IBasisTheory } from '@basis-theory/basis-theory-js/types/sdk/sdk';
 import { ux } from '@oclif/core';
-
-interface ConnectParams {
-  managementKey: string;
-  reactorId?: string;
-  proxyId?: string;
-  url: string;
-}
 
 const BT_LOGGING_CONFIGURATION = 'BT_REMOTE_LOGGING';
 
@@ -23,14 +15,14 @@ const createConfiguration = (
 });
 const connectToReactor = async (
   bt: IBasisTheory,
-  reactorId: string,
+  id: string,
   url: string
 ): Promise<void> => {
   ux.action.start('Connecting to Reactor');
 
-  const reactor = await bt.reactors.retrieve(reactorId);
+  const reactor = await bt.reactors.retrieve(id);
 
-  await bt.reactors.update(reactorId, {
+  await bt.reactors.update(id, {
     name: reactor.name,
     configuration: createConfiguration(url, reactor.configuration),
     application: reactor.application,
@@ -41,14 +33,14 @@ const connectToReactor = async (
 
 const connectToProxy = async (
   bt: IBasisTheory,
-  proxyId: string,
+  id: string,
   url: string
 ): Promise<void> => {
-  ux.action.start('Connecting to Proxy');
+  ux.action.start(`Connecting to Proxy (${id})`);
 
-  const proxy = await bt.proxies.retrieve(proxyId);
+  const proxy = await bt.proxies.retrieve(id);
 
-  await bt.proxies.update(proxyId, {
+  await bt.proxies.update(id, {
     ...proxy,
     ...(proxy.applicationId
       ? {
@@ -63,19 +55,4 @@ const connectToProxy = async (
   ux.action.stop('✅\t');
 };
 
-const connectToResource = async ({
-  managementKey,
-  reactorId,
-  proxyId,
-  url,
-}: ConnectParams): Promise<void> => {
-  const bt = await new BasisTheory().init(managementKey);
-
-  if (typeof reactorId === 'string') {
-    return connectToReactor(bt, reactorId, url);
-  }
-
-  return connectToProxy(bt, proxyId as string, url);
-};
-
-export { connectToResource };
+export { connectToProxy, connectToReactor };

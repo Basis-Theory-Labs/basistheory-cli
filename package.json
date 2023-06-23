@@ -18,6 +18,9 @@
   ],
   "dependencies": {
     "@basis-theory/basis-theory-js": "^1.77.0",
+    "@inquirer/input": "^1.2.1",
+    "@inquirer/prompts": "^2.1.1",
+    "@inquirer/select": "^1.2.1",
     "@oclif/core": "^2",
     "@oclif/plugin-help": "^5",
     "@oclif/plugin-plugins": "^2.4.7",
