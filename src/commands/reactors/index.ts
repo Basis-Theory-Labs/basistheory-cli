@@ -9,7 +9,8 @@ import {
 } from '../../utils';
 
 export default class Reactors extends Command {
-  public static description = 'list reactors';
+  public static description =
+    'List Reactors. Requires `reactor:read` Management Application permission';
 
   public static examples = ['<%= config.bin %> <%= command.id %>'];
 

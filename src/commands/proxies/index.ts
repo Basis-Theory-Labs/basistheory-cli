@@ -9,7 +9,8 @@ import {
 } from '../../utils';
 
 export default class Proxies extends Command {
-  public static description = 'list proxies';
+  public static description =
+    'List Proxies. Requires `proxy:read` Management Application permission';
 
   public static examples = ['<%= config.bin %> <%= command.id %>'];
 

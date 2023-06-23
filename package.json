@@ -64,8 +64,11 @@
     "plugins": [],
     "topicSeparator": " ",
     "topics": {
-      "logs": {
-        "description": "See realtime logs from Reactors and Proxies"
+      "proxies": {
+        "description": "Manage Proxies"
+      },
+      "reactors": {
+        "description": "Manage Reactors"
       }
     }
   },

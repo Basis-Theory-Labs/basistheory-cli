@@ -11,8 +11,8 @@ export default class Logs extends Command {
     'Display live Reactor logs output. Requires `reactor:read` and `reactor:update` Management Application permissions';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %>',
-    '<%= config.bin %> <%= command.id %> -p 3000',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000',
   ];
 
   public static args = {

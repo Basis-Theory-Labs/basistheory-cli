@@ -1,7 +1,5 @@
 import { Args, Command, Flags } from '@oclif/core';
 import { showProxyLogs } from '../../logs';
-import { connectToProxy } from '../../logs/management';
-import { createLogServer } from '../../logs/server';
 import {
   createBt,
   DEFAULT_LOGS_SERVER_PORT,
@@ -13,8 +11,8 @@ export default class Logs extends Command {
     'Display live Proxy Transform logs output. Requires `proxy:read` and `proxy:update` Management Application permissions';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %>',
-    '<%= config.bin %> <%= command.id %> -p 3000',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000',
   ];
 
   public static args = {
