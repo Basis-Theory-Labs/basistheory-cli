@@ -17,7 +17,8 @@
     "/oclif.manifest.json"
   ],
   "dependencies": {
-    "@basis-theory/basis-theory-js": "^1.77.0",
+    "@basis-theory/basis-theory-js": "^1.77.1",
+    "@inquirer/confirm": "^2.0.3",
     "@inquirer/input": "^1.2.1",
     "@inquirer/prompts": "^2.1.1",
     "@inquirer/select": "^1.2.1",
@@ -26,6 +27,7 @@
     "@oclif/plugin-plugins": "^2.4.7",
     "cloudflared": "^0.4.0",
     "debug": "^4.3.4",
+    "dotenv": "^16.3.1",
     "pino": "^8.14.1",
     "pino-pretty": "^10.0.0",
     "serialize-error": "^11.0.0",

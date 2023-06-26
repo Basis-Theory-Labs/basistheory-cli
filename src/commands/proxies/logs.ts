@@ -1,5 +1,6 @@
 import { Args, Command, Flags } from '@oclif/core';
 import { showProxyLogs } from '../../logs';
+import { selectProxy } from '../../proxies/management';
 import {
   createBt,
   DEFAULT_LOGS_SERVER_PORT,
@@ -11,13 +12,13 @@ export default class Logs extends Command {
     'Display live Proxy Transform logs output. Requires `proxy:read` and `proxy:update` Management Application permissions';
 
   public static examples = [
+    '<%= config.bin %> <%= command.id %>',
     '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
     '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000',
   ];
 
   public static args = {
     id: Args.string({
-      required: true,
       description: 'Proxy id to connect to',
     }),
   };
@@ -39,6 +40,12 @@ export default class Logs extends Command {
 
     const bt = await createBt(managementKey);
 
-    await showProxyLogs(bt, port, id);
+    if (id) {
+      return showProxyLogs(bt, id, port);
+    }
+
+    const proxy = await selectProxy(bt, 1);
+
+    return showProxyLogs(bt, proxy.id, port);
   }
 }

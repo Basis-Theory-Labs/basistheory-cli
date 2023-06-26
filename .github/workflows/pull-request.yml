@@ -1,0 +1,28 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.SEMANTIC_RELEASE_PAT }}
+
+      - name: Use Node LTS
+        uses: actions/setup-node@v3
+        with:
+          node-version: lts/*
+
+      - name: Install deps (with cache)
+        uses: bahmutov/npm-install@v1
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Build
+        run: yarn build

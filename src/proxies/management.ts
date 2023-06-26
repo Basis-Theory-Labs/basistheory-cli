@@ -45,6 +45,9 @@ const listProxies = async (
       header: 'Response Transform',
       get: (proxy) => (proxy.responseTransform?.code ? 'yes' : 'no'),
     },
+    application_id: {
+      header: 'Application Id',
+    },
     /* eslint-enable camelcase */
   });
 
