@@ -1,12 +1,11 @@
 import { Command, Flags } from '@oclif/core';
-import { parse } from 'dotenv';
+import { createProxy } from '../../proxies/management';
 import {
   createBt,
   FLAG_MANAGEMENT_KEY,
   promptBooleanIfUndefined,
   promptStringIfUndefined,
   promptUrlIfUndefined,
-  readFileContents,
 } from '../../utils';
 
 export default class Create extends Command {
@@ -60,12 +59,11 @@ export default class Create extends Command {
       message: 'What is the Proxy name?',
       validate: (value) => Boolean(value),
     });
-    const destinationUrl = await promptUrlIfUndefined(
-      flags['destination-url'],
-      {
+    const destinationUrl = (
+      await promptUrlIfUndefined(flags['destination-url'], {
         message: 'What is the Proxy destination URL?',
-      }
-    );
+      })
+    ).toString();
     const requestTransformCode = await promptStringIfUndefined(
       flags['request-transform-code'],
       {
@@ -100,27 +98,13 @@ export default class Create extends Command {
 
     const bt = await createBt(flags['management-key']);
 
-    const { id, key } = await bt.proxies.create({
+    const { id, key } = await createProxy(bt, {
       name,
-      destinationUrl: destinationUrl.toString(),
-      requestTransform: requestTransformCode
-        ? {
-            code: readFileContents(requestTransformCode),
-          }
-        : undefined,
-      responseTransform: requestTransformCode
-        ? {
-            code: readFileContents(responseTransformCode),
-          }
-        : undefined,
-      application: applicationId
-        ? {
-            id: applicationId,
-          }
-        : undefined,
-      configuration: configuration
-        ? parse(readFileContents(configuration))
-        : undefined,
+      destinationUrl,
+      requestTransformCode,
+      responseTransformCode,
+      applicationId,
+      configuration,
       requireAuth,
     });
 
