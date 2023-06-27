@@ -1,5 +1,6 @@
 import { Args, Command, Flags } from '@oclif/core';
 import { showReactorLogs } from '../../logs';
+import { selectReactor } from '../../reactors/management';
 import {
   createBt,
   DEFAULT_LOGS_SERVER_PORT,
@@ -11,13 +12,13 @@ export default class Logs extends Command {
     'Display live Reactor logs output. Requires `reactor:read` and `reactor:update` Management Application permissions';
 
   public static examples = [
+    '<%= config.bin %> <%= command.id %>',
     '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
     '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000',
   ];
 
   public static args = {
     id: Args.string({
-      required: true,
       description: 'Reactor id to connect to',
     }),
   };
@@ -39,6 +40,12 @@ export default class Logs extends Command {
 
     const bt = await createBt(managementKey);
 
-    await showReactorLogs(bt, port, id);
+    if (id) {
+      return showReactorLogs(bt, id, port);
+    }
+
+    const reactor = await selectReactor(bt, 1);
+
+    return showReactorLogs(bt, reactor.id, port);
   }
 }

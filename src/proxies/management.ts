@@ -1,10 +1,14 @@
-import type { Proxy } from '@basis-theory/basis-theory-js/types/models';
+import type {
+  CreateProxy,
+  Proxy,
+} from '@basis-theory/basis-theory-js/types/models';
 import type {
   BasisTheory as IBasisTheory,
   PaginatedList,
 } from '@basis-theory/basis-theory-js/types/sdk';
 import { ux } from '@oclif/core';
-import { selectOrNavigate } from '../utils';
+import { parse } from 'dotenv';
+import { readFileContents, selectOrNavigate } from '../utils';
 
 const listProxies = async (
   bt: IBasisTheory,
@@ -45,6 +49,9 @@ const listProxies = async (
       header: 'Response Transform',
       get: (proxy) => (proxy.responseTransform?.code ? 'yes' : 'no'),
     },
+    application_id: {
+      header: 'Application Id',
+    },
     /* eslint-enable camelcase */
   });
 
@@ -70,4 +77,63 @@ const selectProxy = async (bt: IBasisTheory, page: number): Promise<Proxy> => {
   return selection;
 };
 
-export { selectProxy };
+interface CreateProxyModel
+  extends Omit<
+    CreateProxy,
+    'application' | 'configuration' | 'requestTransform' | 'responseTransform'
+  > {
+  /**
+   *
+   */
+  applicationId?: string;
+  /**
+   * Path to code file
+   */
+  requestTransformCode?: string;
+  /**
+   * Path to code file
+   */
+  responseTransformCode?: string;
+  /**
+   * Path to .env file
+   */
+  configuration?: string;
+}
+
+const createProxy = (
+  bt: IBasisTheory,
+  {
+    name,
+    destinationUrl,
+    applicationId,
+    requestTransformCode,
+    responseTransformCode,
+    configuration,
+    requireAuth,
+  }: CreateProxyModel
+): Promise<Proxy> =>
+  bt.proxies.create({
+    name,
+    destinationUrl: destinationUrl.toString(),
+    requestTransform: requestTransformCode
+      ? {
+          code: readFileContents(requestTransformCode),
+        }
+      : undefined,
+    responseTransform: responseTransformCode
+      ? {
+          code: readFileContents(responseTransformCode),
+        }
+      : undefined,
+    application: applicationId
+      ? {
+          id: applicationId,
+        }
+      : undefined,
+    configuration: configuration
+      ? parse(readFileContents(configuration))
+      : undefined,
+    requireAuth,
+  });
+
+export { selectProxy, createProxy };

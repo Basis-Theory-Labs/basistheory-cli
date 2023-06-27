@@ -1,12 +1,8 @@
-import { input, select } from '@inquirer/prompts';
+import { select } from '@inquirer/prompts';
 import { Command, Flags } from '@oclif/core';
 import { showReactorLogs } from '../../logs';
 import { selectReactor } from '../../reactors/management';
-import {
-  createBt,
-  DEFAULT_LOGS_SERVER_PORT,
-  FLAG_MANAGEMENT_KEY,
-} from '../../utils';
+import { createBt, FLAG_MANAGEMENT_KEY } from '../../utils';
 
 export default class Reactors extends Command {
   public static description =
@@ -38,6 +34,10 @@ export default class Reactors extends Command {
       message: 'Select action to perform',
       choices: [
         {
+          name: 'See details',
+          value: 'details',
+        },
+        {
           name: 'Logs',
           value: 'logs',
           description: 'See Reactor real-time logs',
@@ -49,22 +49,16 @@ export default class Reactors extends Command {
       ],
     });
 
-    if (action === 'logs') {
-      const sPort = await input({
-        message: 'Enter port to start Logs Server (1-65535)',
-        default: String(DEFAULT_LOGS_SERVER_PORT),
-        validate: (data) => {
-          const port = Number(data);
+    if (action === 'details') {
+      this.log(JSON.stringify(reactor, undefined, 2));
 
-          if (port >= 1 && port <= 65535) {
-            return true;
-          }
-
-          return 'Please enter a valid port (1-65535)';
-        },
-      });
-
-      await showReactorLogs(bt, Number(sPort), reactor.id);
+      return undefined;
     }
+
+    if (action === 'logs') {
+      return showReactorLogs(bt, reactor.id);
+    }
+
+    return undefined;
   }
 }

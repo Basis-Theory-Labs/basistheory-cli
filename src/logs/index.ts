@@ -1,11 +1,12 @@
 import type { BasisTheory } from '@basis-theory/basis-theory-js/types/sdk';
+import { DEFAULT_LOGS_SERVER_PORT } from '../utils';
 import { connectToProxy, connectToReactor } from './management';
 import { createLogServer } from './server';
 
 const showProxyLogs = async (
   bt: BasisTheory,
-  port: number,
-  id: string
+  id: string,
+  port: number = DEFAULT_LOGS_SERVER_PORT
 ): Promise<void> => {
   const url = await createLogServer(port);
 
@@ -13,8 +14,8 @@ const showProxyLogs = async (
 };
 const showReactorLogs = async (
   bt: BasisTheory,
-  port: number,
-  id: string
+  id: string,
+  port: number = DEFAULT_LOGS_SERVER_PORT
 ): Promise<void> => {
   const url = await createLogServer(port);
 
