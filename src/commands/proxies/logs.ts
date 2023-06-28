@@ -9,7 +9,7 @@ import {
 
 export default class Logs extends Command {
   public static description =
-    'Display live Proxy Transform logs output. Requires `proxy:read` and `proxy:update` Management Application permissions';
+    'Display live Proxy Transform logs output. Requires `proxy:update` Management Application permissions';
 
   public static examples = [
     '<%= config.bin %> <%= command.id %>',

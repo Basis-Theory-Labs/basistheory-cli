@@ -3,11 +3,7 @@ import { ux } from '@oclif/core';
 
 const BT_LOGGING_CONFIGURATION = 'BT_REMOTE_LOGGING';
 
-const createConfiguration = (
-  url: string,
-  current: Record<string, string> = {}
-): Record<string, string> => ({
-  ...current,
+const createConfiguration = (url: string): Record<string, string> => ({
   [BT_LOGGING_CONFIGURATION]: JSON.stringify({
     destination: url,
     date: Date.now(),
@@ -18,14 +14,10 @@ const connectToReactor = async (
   id: string,
   url: string
 ): Promise<void> => {
-  ux.action.start('Connecting to Reactor');
+  ux.action.start(`Connecting to Reactor (${id})`);
 
-  const reactor = await bt.reactors.retrieve(id);
-
-  await bt.reactors.update(id, {
-    name: reactor.name,
-    configuration: createConfiguration(url, reactor.configuration),
-    application: reactor.application,
+  await bt.reactors.patch(id, {
+    configuration: createConfiguration(url),
   });
 
   ux.action.stop('✅\t');
@@ -38,18 +30,8 @@ const connectToProxy = async (
 ): Promise<void> => {
   ux.action.start(`Connecting to Proxy (${id})`);
 
-  const proxy = await bt.proxies.retrieve(id);
-
-  await bt.proxies.update(id, {
-    ...proxy,
-    ...(proxy.applicationId
-      ? {
-          application: {
-            id: proxy.applicationId,
-          },
-        }
-      : {}),
-    configuration: createConfiguration(url, proxy.configuration),
+  await bt.proxies.patch(id, {
+    configuration: createConfiguration(url),
   });
 
   ux.action.stop('✅\t');
