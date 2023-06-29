@@ -9,7 +9,7 @@ import {
 
 export default class Logs extends Command {
   public static description =
-    'Display live Reactor logs output. Requires `reactor:read` and `reactor:update` Management Application permissions';
+    'Display live Reactor logs output. Requires `reactor:update` Management Application permissions';
 
   public static examples = [
     '<%= config.bin %> <%= command.id %>',
