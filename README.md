@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.2.0 linux-x64 node-v18.16.0
+@basis-theory-labs/cli/1.2.1 linux-x64 node-v18.16.1
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -53,7 +53,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.2.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.2.1/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -83,7 +83,7 @@ EXAMPLES
 
 ## `bt proxies logs [ID]`
 
-Display live Proxy Transform logs output. Requires `proxy:read` and `proxy:update` Management Application permissions
+Display live Proxy Transform logs output. Requires `proxy:update` Management Application permissions
 
 ```
 USAGE
@@ -97,7 +97,7 @@ FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
-  Display live Proxy Transform logs output. Requires `proxy:read` and `proxy:update` Management Application permissions
+  Display live Proxy Transform logs output. Requires `proxy:update` Management Application permissions
 
 EXAMPLES
   $ bt proxies logs
@@ -126,11 +126,11 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.2.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.2.1/dist/commands/reactors/index.ts)_
 
 ## `bt reactors logs [ID]`
 
-Display live Reactor logs output. Requires `reactor:read` and `reactor:update` Management Application permissions
+Display live Reactor logs output. Requires `reactor:update` Management Application permissions
 
 ```
 USAGE
@@ -144,7 +144,7 @@ FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
-  Display live Reactor logs output. Requires `reactor:read` and `reactor:update` Management Application permissions
+  Display live Reactor logs output. Requires `reactor:update` Management Application permissions
 
 EXAMPLES
   $ bt reactors logs

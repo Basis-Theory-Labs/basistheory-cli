@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.2.0...v1.2.1) (2023-06-29)
+
+
+### Bug Fixes
+
+* use patch method for connecting to resources ([#2](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/2)) ([812d6c5](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/812d6c54c61911e80f86a7a688b35f572af817e2))
+
 # [1.2.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.1.1...v1.2.0) (2023-06-27)
 
 
