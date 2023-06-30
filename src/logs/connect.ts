@@ -3,7 +3,7 @@ import { ux } from '@oclif/core';
 import { patchProxy } from '../proxies/management';
 import { patchReactor } from '../reactors/management';
 
-const BT_LOGGING_CONFIGURATION = 'BT_REMOTE_LOGGING';
+const BT_LOGGING_CONFIGURATION = 'BT_LOGGING_CONFIGURATION';
 
 const createConfiguration = (url: string): Record<string, string> => ({
   [BT_LOGGING_CONFIGURATION]: JSON.stringify({
