@@ -4,9 +4,8 @@ import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import pino from 'pino';
 import { Server } from 'socket.io';
-import { parseLogEvent } from './parser';
+import { parseLogEvent } from './parse';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const debug = require('debug')('logs:server');
 
 const runTunnel = async (port: number): Promise<string> => {

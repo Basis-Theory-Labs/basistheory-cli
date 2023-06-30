@@ -1,6 +1,6 @@
 import type { BasisTheory } from '@basis-theory/basis-theory-js/types/sdk';
 import { DEFAULT_LOGS_SERVER_PORT } from '../utils';
-import { connectToProxy, connectToReactor } from './management';
+import { connectToProxy, connectToReactor } from './connect';
 import { createLogServer } from './server';
 
 const showProxyLogs = async (
