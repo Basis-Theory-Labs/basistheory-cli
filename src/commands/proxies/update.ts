@@ -1,9 +1,9 @@
-import { Args, Command } from '@oclif/core';
+import { Args } from '@oclif/core';
+import { BaseCommand } from '../../base';
 import { patchProxy } from '../../proxies/management';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
-import { createBt } from '../../utils';
 
-export default class Update extends Command {
+export default class Update extends BaseCommand {
   public static description =
     'Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission';
 
@@ -27,6 +27,7 @@ export default class Update extends Command {
 
   public async run(): Promise<void> {
     const {
+      bt,
       args: { id },
       flags: {
         name,
@@ -36,12 +37,9 @@ export default class Update extends Command {
         'application-id': applicationId,
         configuration,
         'require-auth': requireAuth,
-        ...flags
       },
       metadata,
     } = await this.parse(Update);
-
-    const bt = await createBt(flags['management-key']);
 
     const model = createModelFromFlags({
       name,

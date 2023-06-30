@@ -4,10 +4,9 @@ import {
 } from '@basis-theory/basis-theory-js/types/models/proxies';
 import { Flags } from '@oclif/core';
 import { parse } from 'dotenv';
-import { FLAG_MANAGEMENT_KEY, readFileContents } from '../utils';
+import { readFileContents } from '../utils';
 
 const PROXY_FLAGS = {
-  ...FLAG_MANAGEMENT_KEY,
   name: Flags.string({
     char: 'n',
     description: 'name of the Proxy',

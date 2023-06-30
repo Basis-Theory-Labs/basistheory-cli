@@ -1,14 +1,13 @@
-import { Command } from '@oclif/core';
+import { BaseCommand } from '../../base';
 import { createProxy } from '../../proxies/management';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
 import {
-  createBt,
   promptBooleanIfUndefined,
   promptStringIfUndefined,
   promptUrlIfUndefined,
 } from '../../utils';
 
-export default class Create extends Command {
+export default class Create extends BaseCommand {
   public static description =
     'Creates a new Pre-Configured Proxy. Requires `proxy:create` Management Application permission';
 
@@ -19,7 +18,7 @@ export default class Create extends Command {
   };
 
   public async run(): Promise<void> {
-    const { flags, metadata } = await this.parse(Create);
+    const { flags, metadata, bt } = await this.parse(Create);
 
     const name = await promptStringIfUndefined(flags.name, {
       message: 'What is the Proxy name?',
@@ -61,8 +60,6 @@ export default class Create extends Command {
         default: true,
       }
     );
-
-    const bt = await createBt(flags['management-key']);
 
     const model = createModelFromFlags({
       name,

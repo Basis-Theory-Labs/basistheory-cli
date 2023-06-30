@@ -1,13 +1,9 @@
-import { Args, Command, Flags } from '@oclif/core';
-import { showProxyLogs } from '../../logs';
+import { Args, Flags } from '@oclif/core';
+import { BaseCommand } from '../../base';
+import { DEFAULT_LOGS_SERVER_PORT, showProxyLogs } from '../../logs';
 import { selectProxy } from '../../proxies/management';
-import {
-  createBt,
-  DEFAULT_LOGS_SERVER_PORT,
-  FLAG_MANAGEMENT_KEY,
-} from '../../utils';
 
-export default class Logs extends Command {
+export default class Logs extends BaseCommand {
   public static description =
     'Display live Proxy Transform logs output. Requires `proxy:update` Management Application permissions';
 
@@ -24,7 +20,6 @@ export default class Logs extends Command {
   };
 
   public static flags = {
-    ...FLAG_MANAGEMENT_KEY,
     port: Flags.integer({
       char: 'p',
       description: 'port to listen for incoming logs',
@@ -34,11 +29,10 @@ export default class Logs extends Command {
 
   public async run(): Promise<void> {
     const {
-      flags: { port, 'management-key': managementKey },
+      bt,
+      flags: { port },
       args: { id },
     } = await this.parse(Logs);
-
-    const bt = await createBt(managementKey);
 
     if (id) {
       return showProxyLogs(bt, id, port);
