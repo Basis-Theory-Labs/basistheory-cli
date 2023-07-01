@@ -1,4 +1,7 @@
-import type { Reactor } from '@basis-theory/basis-theory-js/types/models';
+import type {
+  Reactor,
+  PatchReactor,
+} from '@basis-theory/basis-theory-js/types/models';
 import type {
   BasisTheory as IBasisTheory,
   PaginatedList,
@@ -6,11 +9,16 @@ import type {
 import { ux } from '@oclif/core';
 import { selectOrNavigate } from '../utils';
 
+const debug = require('debug')('reactors:management');
+
 const listReactors = async (
   bt: IBasisTheory,
   page: number
 ): Promise<PaginatedList<Reactor>> => {
   const size = 5;
+
+  debug('Listing reactors', `page: ${page}`, `size: ${size}`);
+
   const reactors = await bt.reactors.list({
     size,
     page,
@@ -54,4 +62,14 @@ const selectReactor = async (
   return selection;
 };
 
-export { selectReactor };
+const patchReactor = (
+  bt: IBasisTheory,
+  id: string,
+  model: PatchReactor
+): Promise<void> => {
+  debug(`Patching Reactor ${id}`, JSON.stringify(model, undefined, 2));
+
+  return bt.reactors.patch(id, model);
+};
+
+export { selectReactor, patchReactor };

@@ -1,25 +1,9 @@
-import { BasisTheory } from '@basis-theory/basis-theory-js';
-import type { BasisTheory as IBasisTheory } from '@basis-theory/basis-theory-js/types/sdk';
 import { PaginatedList } from '@basis-theory/basis-theory-js/types/sdk';
 import confirm from '@inquirer/confirm';
 import input from '@inquirer/input';
-import { Flags, ux } from '@oclif/core';
+import { ux } from '@oclif/core';
 import * as fs from 'fs';
 import * as path from 'path';
-
-const createBt = (managementKey: string): Promise<IBasisTheory> =>
-  new BasisTheory().init(managementKey);
-
-const FLAG_MANAGEMENT_KEY = {
-  'management-key': Flags.string({
-    char: 'x',
-    env: 'BT_MANAGEMENT_KEY',
-    description: 'management key used for connecting with the reactor / proxy',
-    required: true,
-  }),
-};
-
-const DEFAULT_LOGS_SERVER_PORT = 8220;
 
 const selectOrNavigate = async <T>(
   list: PaginatedList<T>,
@@ -113,9 +97,6 @@ const readFileContents = (filePath: string): string =>
   fs.readFileSync(path.resolve(process.cwd(), filePath)).toString();
 
 export {
-  createBt,
-  FLAG_MANAGEMENT_KEY,
-  DEFAULT_LOGS_SERVER_PORT,
   selectOrNavigate,
   promptStringIfUndefined,
   promptUrlIfUndefined,

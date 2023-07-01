@@ -1,59 +1,24 @@
-import { Command, Flags } from '@oclif/core';
+import { BaseCommand } from '../../base';
 import { createProxy } from '../../proxies/management';
+import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
 import {
-  createBt,
-  FLAG_MANAGEMENT_KEY,
   promptBooleanIfUndefined,
   promptStringIfUndefined,
   promptUrlIfUndefined,
 } from '../../utils';
 
-export default class Create extends Command {
+export default class Create extends BaseCommand {
   public static description =
     'Creates a new Pre-Configured Proxy. Requires `proxy:create` Management Application permission';
 
   public static examples = ['<%= config.bin %> <%= command.id %> '];
 
   public static flags = {
-    ...FLAG_MANAGEMENT_KEY,
-    name: Flags.string({
-      char: 'n',
-      description: 'name of the Proxy',
-    }),
-    'destination-url': Flags.url({
-      char: 'u',
-      description: 'URL to which requests will be proxied',
-    }),
-    'request-transform-code': Flags.file({
-      char: 'q',
-      description:
-        'path to JavaScript file containing a Request Transform code',
-    }),
-    'response-transform-code': Flags.file({
-      char: 's',
-      description:
-        'path to JavaScript file containing a Response Transform code',
-    }),
-    'application-id': Flags.string({
-      char: 'i',
-      description: 'application ID to use in the Proxy',
-    }),
-    configuration: Flags.file({
-      char: 'c',
-      description:
-        'path to configuration file (.env format) to use in the Proxy',
-    }),
-    'require-auth': Flags.boolean({
-      char: 'a',
-      description:
-        'whether the Proxy requires Basis Theory authentication to be invoked. Default: true',
-      allowNo: true,
-      default: true,
-    }),
+    ...PROXY_FLAGS,
   };
 
   public async run(): Promise<void> {
-    const { flags, metadata } = await this.parse(Create);
+    const { flags, metadata, bt } = await this.parse(Create);
 
     const name = await promptStringIfUndefined(flags.name, {
       message: 'What is the Proxy name?',
@@ -96,9 +61,7 @@ export default class Create extends Command {
       }
     );
 
-    const bt = await createBt(flags['management-key']);
-
-    const { id, key } = await createProxy(bt, {
+    const model = createModelFromFlags({
       name,
       destinationUrl,
       requestTransformCode,
@@ -107,6 +70,8 @@ export default class Create extends Command {
       configuration,
       requireAuth,
     });
+
+    const { id, key } = await createProxy(bt, model);
 
     this.log('Proxy created successfully!');
     this.log(`id: ${id}`);

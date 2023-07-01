@@ -1,5 +1,6 @@
 import type {
   CreateProxy,
+  PatchProxy,
   Proxy,
 } from '@basis-theory/basis-theory-js/types/models';
 import type {
@@ -7,14 +8,18 @@ import type {
   PaginatedList,
 } from '@basis-theory/basis-theory-js/types/sdk';
 import { ux } from '@oclif/core';
-import { parse } from 'dotenv';
-import { readFileContents, selectOrNavigate } from '../utils';
+import { selectOrNavigate } from '../utils';
+
+const debug = require('debug')('proxies:management');
 
 const listProxies = async (
   bt: IBasisTheory,
   page: number
 ): Promise<PaginatedList<Proxy>> => {
   const size = 5;
+
+  debug('Listing proxies', `page: ${page}`, `size: ${size}`);
+
   const proxies = await bt.proxies.list({
     size,
     page,
@@ -77,63 +82,20 @@ const selectProxy = async (bt: IBasisTheory, page: number): Promise<Proxy> => {
   return selection;
 };
 
-interface CreateProxyModel
-  extends Omit<
-    CreateProxy,
-    'application' | 'configuration' | 'requestTransform' | 'responseTransform'
-  > {
-  /**
-   *
-   */
-  applicationId?: string;
-  /**
-   * Path to code file
-   */
-  requestTransformCode?: string;
-  /**
-   * Path to code file
-   */
-  responseTransformCode?: string;
-  /**
-   * Path to .env file
-   */
-  configuration?: string;
-}
+const createProxy = (bt: IBasisTheory, model: CreateProxy): Promise<Proxy> => {
+  debug(`Creating Proxy`, JSON.stringify(model, undefined, 2));
 
-const createProxy = (
+  return bt.proxies.create(model);
+};
+
+const patchProxy = (
   bt: IBasisTheory,
-  {
-    name,
-    destinationUrl,
-    applicationId,
-    requestTransformCode,
-    responseTransformCode,
-    configuration,
-    requireAuth,
-  }: CreateProxyModel
-): Promise<Proxy> =>
-  bt.proxies.create({
-    name,
-    destinationUrl: destinationUrl.toString(),
-    requestTransform: requestTransformCode
-      ? {
-          code: readFileContents(requestTransformCode),
-        }
-      : undefined,
-    responseTransform: responseTransformCode
-      ? {
-          code: readFileContents(responseTransformCode),
-        }
-      : undefined,
-    application: applicationId
-      ? {
-          id: applicationId,
-        }
-      : undefined,
-    configuration: configuration
-      ? parse(readFileContents(configuration))
-      : undefined,
-    requireAuth,
-  });
+  id: string,
+  model: PatchProxy
+): Promise<void> => {
+  debug(`Patching Proxy ${id}`, JSON.stringify(model, undefined, 2));
 
-export { selectProxy, createProxy };
+  return bt.proxies.patch(id, model);
+};
+
+export { selectProxy, createProxy, patchProxy };

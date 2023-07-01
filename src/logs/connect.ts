@@ -1,7 +1,9 @@
 import type { BasisTheory as IBasisTheory } from '@basis-theory/basis-theory-js/types/sdk/sdk';
 import { ux } from '@oclif/core';
+import { patchProxy } from '../proxies/management';
+import { patchReactor } from '../reactors/management';
 
-const BT_LOGGING_CONFIGURATION = 'BT_REMOTE_LOGGING';
+const BT_LOGGING_CONFIGURATION = 'BT_LOGGING_CONFIGURATION';
 
 const createConfiguration = (url: string): Record<string, string> => ({
   [BT_LOGGING_CONFIGURATION]: JSON.stringify({
@@ -16,7 +18,7 @@ const connectToReactor = async (
 ): Promise<void> => {
   ux.action.start(`Connecting to Reactor (${id})`);
 
-  await bt.reactors.patch(id, {
+  await patchReactor(bt, id, {
     configuration: createConfiguration(url),
   });
 
@@ -30,7 +32,7 @@ const connectToProxy = async (
 ): Promise<void> => {
   ux.action.start(`Connecting to Proxy (${id})`);
 
-  await bt.proxies.patch(id, {
+  await patchProxy(bt, id, {
     configuration: createConfiguration(url),
   });
 

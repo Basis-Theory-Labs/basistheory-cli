@@ -1,7 +1,8 @@
 import type { BasisTheory } from '@basis-theory/basis-theory-js/types/sdk';
-import { DEFAULT_LOGS_SERVER_PORT } from '../utils';
-import { connectToProxy, connectToReactor } from './management';
+import { connectToProxy, connectToReactor } from './connect';
 import { createLogServer } from './server';
+
+const DEFAULT_LOGS_SERVER_PORT = 8220;
 
 const showProxyLogs = async (
   bt: BasisTheory,
@@ -22,4 +23,4 @@ const showReactorLogs = async (
   await connectToReactor(bt, id, url);
 };
 
-export { showProxyLogs, showReactorLogs };
+export { showProxyLogs, showReactorLogs, DEFAULT_LOGS_SERVER_PORT };

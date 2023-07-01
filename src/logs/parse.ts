@@ -9,8 +9,7 @@ interface LogEvent {
   time: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const debug = require('debug')('logs:parser');
+const debug = require('debug')('logs:parse');
 
 const parseLogEvent =
   (logger: pino.Logger) =>

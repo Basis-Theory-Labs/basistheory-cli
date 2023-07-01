@@ -1,17 +1,16 @@
 import { select } from '@inquirer/prompts';
-import { Command, Flags } from '@oclif/core';
+import { Flags } from '@oclif/core';
+import { BaseCommand } from '../../base';
 import { showReactorLogs } from '../../logs';
 import { selectReactor } from '../../reactors/management';
-import { createBt, FLAG_MANAGEMENT_KEY } from '../../utils';
 
-export default class Reactors extends Command {
+export default class Reactors extends BaseCommand {
   public static description =
     'List Reactors. Requires `reactor:read` Management Application permission';
 
   public static examples = ['<%= config.bin %> <%= command.id %>'];
 
   public static flags = {
-    ...FLAG_MANAGEMENT_KEY,
     page: Flags.integer({
       char: 'p',
       description: 'reactors list page to fetch',
@@ -23,10 +22,9 @@ export default class Reactors extends Command {
 
   public async run(): Promise<void> {
     const {
-      flags: { 'management-key': managementKey, page },
+      bt,
+      flags: { page },
     } = await this.parse(Reactors);
-
-    const bt = await createBt(managementKey);
 
     const reactor = await selectReactor(bt, page);
 

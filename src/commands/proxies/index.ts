@@ -1,17 +1,16 @@
 import { select } from '@inquirer/prompts';
-import { Command, Flags } from '@oclif/core';
+import { Flags } from '@oclif/core';
+import { BaseCommand } from '../../base';
 import { showProxyLogs } from '../../logs';
 import { selectProxy } from '../../proxies/management';
-import { createBt, FLAG_MANAGEMENT_KEY } from '../../utils';
 
-export default class Proxies extends Command {
+export default class Proxies extends BaseCommand {
   public static description =
     'List Proxies. Requires `proxy:read` Management Application permission';
 
   public static examples = ['<%= config.bin %> <%= command.id %>'];
 
   public static flags = {
-    ...FLAG_MANAGEMENT_KEY,
     page: Flags.integer({
       char: 'p',
       description: 'proxies list page to fetch',
@@ -23,10 +22,9 @@ export default class Proxies extends Command {
 
   public async run(): Promise<void> {
     const {
-      flags: { 'management-key': managementKey, page },
+      flags: { page },
+      bt,
     } = await this.parse(Proxies);
-
-    const bt = await createBt(managementKey);
 
     const proxy = await selectProxy(bt, page);
 
