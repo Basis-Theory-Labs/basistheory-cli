@@ -1,6 +1,6 @@
 {
   "name": "@basis-theory-labs/cli",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Basis Theory CLI tool",
   "author": "Davi Aquino @djejaquino",
   "bin": {

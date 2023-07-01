@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.2.1 linux-x64 node-v18.16.1
+@basis-theory-labs/cli/1.3.0 linux-x64 node-v18.16.1
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -31,6 +31,7 @@ USAGE
 * [`bt proxies`](#bt-proxies)
 * [`bt proxies create`](#bt-proxies-create)
 * [`bt proxies logs [ID]`](#bt-proxies-logs-id)
+* [`bt proxies update ID`](#bt-proxies-update-id)
 * [`bt reactors`](#bt-reactors)
 * [`bt reactors logs [ID]`](#bt-reactors-logs-id)
 
@@ -53,7 +54,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.2.1/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.3.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -107,6 +108,42 @@ EXAMPLES
   $ bt proxies logs 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000
 ```
 
+## `bt proxies update ID`
+
+Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission
+
+```
+USAGE
+  $ bt proxies update ID -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>]
+    [-a]
+
+ARGUMENTS
+  ID  Proxy id to update
+
+FLAGS
+  -a, --[no-]require-auth                whether the Proxy requires Basis Theory authentication to be invoked. Default:
+                                         true
+  -c, --configuration=<value>            path to configuration file (.env format) to use in the Proxy
+  -i, --application-id=<value>           application ID to use in the Proxy
+  -n, --name=<value>                     name of the Proxy
+  -q, --request-transform-code=<value>   path to JavaScript file containing a Request Transform code
+  -s, --response-transform-code=<value>  path to JavaScript file containing a Response Transform code
+  -u, --destination-url=<value>          URL to which requests will be proxied
+  -x, --management-key=<value>           (required) management key used for connecting with the reactor / proxy
+
+DESCRIPTION
+  Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission
+
+EXAMPLES
+  $ bt proxies update 
+
+  $ bt proxies update --destination-url https://echo.basistheory.com
+
+  $ bt proxies update --request-transform-code ./myRequestTransform.js
+
+  $ bt proxies update --configuration ./.env.proxy
+```
+
 ## `bt reactors`
 
 List Reactors. Requires `reactor:read` Management Application permission
@@ -126,7 +163,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.2.1/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.3.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors logs [ID]`
 
