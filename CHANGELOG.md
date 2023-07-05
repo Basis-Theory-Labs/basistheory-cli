@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.3.0...v1.3.1) (2023-07-05)
+
+
+### Bug Fixes
+
+* add logs ack ([#4](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/4)) ([11d478c](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/11d478c0055ee0dad7152974eb6bca196335d632))
+
 # [1.3.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.2.1...v1.3.0) (2023-07-01)
 
 
