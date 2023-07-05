@@ -40,6 +40,10 @@ export default class Logs extends BaseCommand {
 
     const reactor = await selectReactor(bt, 1);
 
+    if (!reactor) {
+      return undefined;
+    }
+
     return showReactorLogs(bt, reactor.id, port);
   }
 }

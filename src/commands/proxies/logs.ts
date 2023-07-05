@@ -40,6 +40,10 @@ export default class Logs extends BaseCommand {
 
     const proxy = await selectProxy(bt, 1);
 
+    if (!proxy) {
+      return undefined;
+    }
+
     return showProxyLogs(bt, proxy.id, port);
   }
 }

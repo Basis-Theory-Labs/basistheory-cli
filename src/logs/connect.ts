@@ -5,12 +5,21 @@ import { patchReactor } from '../reactors/management';
 
 const BT_LOGGING_CONFIGURATION = 'BT_LOGGING_CONFIGURATION';
 
-const createConfiguration = (url: string): Record<string, string> => ({
-  [BT_LOGGING_CONFIGURATION]: JSON.stringify({
-    destination: url,
-    date: Date.now(),
-  }),
+/**
+ * Creates configuration object to connect/disconnect to a resource
+ * @param url - server url for the resource to connect to. If `undefined`,
+ * the logging configuration is cleared.
+ */
+const createConfiguration = (url?: string): Record<string, string | null> => ({
+  [BT_LOGGING_CONFIGURATION]: url
+    ? JSON.stringify({
+        destination: url,
+        date: Date.now(),
+      })
+    : // eslint-disable-next-line unicorn/no-null
+      null,
 });
+
 const connectToReactor = async (
   bt: IBasisTheory,
   id: string,
@@ -20,6 +29,19 @@ const connectToReactor = async (
 
   await patchReactor(bt, id, {
     configuration: createConfiguration(url),
+  });
+
+  ux.action.stop('✅\t');
+};
+
+const disconnectFromReactor = async (
+  bt: IBasisTheory,
+  id: string
+): Promise<void> => {
+  ux.action.start(`Disconnecting from Reactor (${id})`);
+
+  await patchReactor(bt, id, {
+    configuration: createConfiguration(),
   });
 
   ux.action.stop('✅\t');
@@ -39,4 +61,22 @@ const connectToProxy = async (
   ux.action.stop('✅\t');
 };
 
-export { connectToProxy, connectToReactor };
+const disconnectFromProxy = async (
+  bt: IBasisTheory,
+  id: string
+): Promise<void> => {
+  ux.action.start(`Disconnecting from Proxy (${id})`);
+
+  await patchProxy(bt, id, {
+    configuration: createConfiguration(),
+  });
+
+  ux.action.stop('✅\t');
+};
+
+export {
+  connectToReactor,
+  disconnectFromReactor,
+  connectToProxy,
+  disconnectFromProxy,
+};
