@@ -47,7 +47,18 @@ const createLogServer = async (port: number): Promise<string> => {
   io.on('connection', (client) => {
     debug(`socket client connected: ${client.handshake.address}`);
 
-    client.on('log', parseLogEvent(logger));
+    client.on('log', (data, callback) => {
+      debug('received "log" event');
+
+      if (typeof callback === 'function') {
+        debug('ack expected');
+        // eslint-disable-next-line node/callback-return,node/no-callback-literal
+        callback('ack');
+        debug('ack sent');
+      }
+
+      parseLogEvent(logger, data);
+    });
 
     client.on('disconnect', (reason) => {
       debug(
