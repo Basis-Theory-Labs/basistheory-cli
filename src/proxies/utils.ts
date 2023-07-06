@@ -1,4 +1,4 @@
-import {
+import type {
   CreateProxy as CreateProxyModel,
   PatchProxy as PatchProxyModel,
 } from '@basis-theory/basis-theory-js/types/models/proxies';
@@ -58,20 +58,20 @@ interface ProxyFlagProps {
    */
   configuration?: string;
 }
-interface CreateProxy
-  extends Omit<
-      CreateProxyModel,
-      'application' | 'configuration' | 'requestTransform' | 'responseTransform'
-    >,
-    ProxyFlagProps {}
-interface PatchProxy
-  extends Omit<
-      PatchProxyModel,
-      'application' | 'configuration' | 'requestTransform' | 'responseTransform'
-    >,
-    ProxyFlagProps {}
+
+type CreateProxy = ProxyFlagProps &
+  Omit<
+    CreateProxyModel,
+    'application' | 'configuration' | 'requestTransform' | 'responseTransform'
+  >;
+type PatchProxy = ProxyFlagProps &
+  Omit<
+    PatchProxyModel,
+    'application' | 'configuration' | 'requestTransform' | 'responseTransform'
+  >;
 
 function createModelFromFlags(payload: CreateProxy): CreateProxyModel;
+
 function createModelFromFlags(payload: PatchProxy): PatchProxyModel;
 
 // eslint-disable-next-line get-off-my-lawn/prefer-arrow-functions

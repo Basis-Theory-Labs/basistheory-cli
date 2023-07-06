@@ -28,6 +28,10 @@ export default class Reactors extends BaseCommand {
 
     const reactor = await selectReactor(bt, page);
 
+    if (!reactor) {
+      return undefined;
+    }
+
     const action = await select({
       message: 'Select action to perform',
       choices: [

@@ -8,6 +8,7 @@ import type {
   PaginatedList,
 } from '@basis-theory/basis-theory-js/types/sdk';
 import { ux } from '@oclif/core';
+import type { TableRow } from '../types';
 import { selectOrNavigate } from '../utils';
 
 const debug = require('debug')('proxies:management');
@@ -25,40 +26,46 @@ const listProxies = async (
     page,
   });
 
-  const last = (proxies.pagination.pageNumber - 1) * size;
+  let data: TableRow<Proxy>[] = [];
 
-  const data = proxies.data.map((proxy, index) => ({
-    '#': last + (index + 1),
-    ...proxy,
-  }));
+  if (proxies.pagination.totalItems > 0) {
+    const last = (proxies.pagination.pageNumber - 1) * size;
 
-  ux.table(data, {
-    '#': {},
-    id: {},
-    name: {},
-    key: {},
-    /* eslint-disable camelcase */
-    destination_url: {
-      header: 'Destination URL',
-      get: (proxy) => proxy.destinationUrl,
-    },
-    require_auth: {
-      header: 'Require Auth',
-      get: (proxy) => (proxy.requireAuth ? 'yes' : 'no'),
-    },
-    request_transform: {
-      header: 'Request Transform',
-      get: (proxy) => (proxy.requestTransform?.code ? 'yes' : 'no'),
-    },
-    response_transform: {
-      header: 'Response Transform',
-      get: (proxy) => (proxy.responseTransform?.code ? 'yes' : 'no'),
-    },
-    application_id: {
-      header: 'Application Id',
-    },
-    /* eslint-enable camelcase */
-  });
+    data = proxies.data.map((proxy, index) => ({
+      '#': last + (index + 1),
+      ...proxy,
+    }));
+
+    ux.table(data, {
+      '#': {},
+      id: {},
+      name: {},
+      key: {},
+      /* eslint-disable camelcase */
+      destination_url: {
+        header: 'Destination URL',
+        get: (proxy) => proxy.destinationUrl,
+      },
+      require_auth: {
+        header: 'Require Auth',
+        get: (proxy) => (proxy.requireAuth ? 'yes' : 'no'),
+      },
+      request_transform: {
+        header: 'Request Transform',
+        get: (proxy) => (proxy.requestTransform?.code ? 'yes' : 'no'),
+      },
+      response_transform: {
+        header: 'Response Transform',
+        get: (proxy) => (proxy.responseTransform?.code ? 'yes' : 'no'),
+      },
+      application_id: {
+        header: 'Application Id',
+      },
+      /* eslint-enable camelcase */
+    });
+  } else {
+    ux.log('No proxies found.');
+  }
 
   return {
     data,
@@ -66,8 +73,15 @@ const listProxies = async (
   };
 };
 
-const selectProxy = async (bt: IBasisTheory, page: number): Promise<Proxy> => {
+const selectProxy = async (
+  bt: IBasisTheory,
+  page: number
+): Promise<Proxy | undefined> => {
   const proxies = await listProxies(bt, page);
+
+  if (proxies.pagination.totalItems === 0) {
+    return undefined;
+  }
 
   const selection = await selectOrNavigate(proxies, '#');
 

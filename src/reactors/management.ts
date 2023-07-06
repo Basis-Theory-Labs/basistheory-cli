@@ -7,6 +7,7 @@ import type {
   PaginatedList,
 } from '@basis-theory/basis-theory-js/types/sdk';
 import { ux } from '@oclif/core';
+import type { TableRow } from '../types';
 import { selectOrNavigate } from '../utils';
 
 const debug = require('debug')('reactors:management');
@@ -24,18 +25,24 @@ const listReactors = async (
     page,
   });
 
-  const last = (reactors.pagination.pageNumber - 1) * size;
+  let data: TableRow<Reactor>[] = [];
 
-  const data = reactors.data.map((reactor, index) => ({
-    '#': last + (index + 1),
-    ...reactor,
-  }));
+  if (reactors.pagination.totalItems > 0) {
+    const last = (reactors.pagination.pageNumber - 1) * size;
 
-  ux.table(data, {
-    '#': {},
-    id: {},
-    name: {},
-  });
+    data = reactors.data.map((reactor, index) => ({
+      '#': last + (index + 1),
+      ...reactor,
+    }));
+
+    ux.table(data, {
+      '#': {},
+      id: {},
+      name: {},
+    });
+  } else {
+    ux.log('No reactors found.');
+  }
 
   return {
     data,
@@ -46,8 +53,12 @@ const listReactors = async (
 const selectReactor = async (
   bt: IBasisTheory,
   page: number
-): Promise<Reactor> => {
+): Promise<Reactor | undefined> => {
   const reactors = await listReactors(bt, page);
+
+  if (reactors.pagination.totalItems === 0) {
+    return undefined;
+  }
 
   const selection = await selectOrNavigate(reactors, '#');
 

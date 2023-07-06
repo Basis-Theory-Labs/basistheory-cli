@@ -24,7 +24,9 @@ const selectOrNavigate = async <T>(
     prompt += " or 'n' for next page ";
   }
 
-  const selection = await ux.prompt(prompt);
+  const selection = await input({
+    message: prompt,
+  });
 
   if (selection === 'p' && hasPrevious) {
     return 'previous';
@@ -96,10 +98,18 @@ const promptBooleanIfUndefined = (
 const readFileContents = (filePath: string): string =>
   fs.readFileSync(path.resolve(process.cwd(), filePath)).toString();
 
+const cleanUpOnExit = (action: () => unknown): typeof process =>
+  process.on('SIGINT', async () => {
+    await action();
+
+    process.exit(1);
+  });
+
 export {
   selectOrNavigate,
   promptStringIfUndefined,
   promptUrlIfUndefined,
   promptBooleanIfUndefined,
   readFileContents,
+  cleanUpOnExit,
 };
