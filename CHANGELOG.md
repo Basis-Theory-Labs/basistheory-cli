@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.3.1...v1.3.2) (2023-07-06)
+
+
+### Bug Fixes
+
+* gracefully disconnect logs ([#5](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/5)) ([ef32e58](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/ef32e58c9abf45b8972e5d7356af15f747eb85c8))
+
 ## [1.3.1](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.3.0...v1.3.1) (2023-07-05)
 
 
