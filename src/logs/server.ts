@@ -1,10 +1,9 @@
 import { ux } from '@oclif/core';
 import { bin, install, tunnel } from 'cloudflared';
 import * as fs from 'node:fs';
-import { createServer } from 'node:http';
 import pino from 'pino';
-import { Server } from 'socket.io';
-import { parseLogEvent } from './parse';
+import { createHttpServer } from './http';
+import { createSocketServer } from './socket';
 
 const debug = require('debug')('logs:server');
 
@@ -39,36 +38,13 @@ const createLogServer = async (port: number): Promise<string> => {
   });
 
   debug('creating http server');
-  const server = createServer();
+  const fastify = createHttpServer(logger);
 
   debug('creating socket server');
-  const io = new Server(server);
-
-  io.on('connection', (client) => {
-    debug(`socket client connected: ${client.handshake.address}`);
-
-    client.on('log', (data, callback) => {
-      debug('received "log" event');
-
-      if (typeof callback === 'function') {
-        debug('ack expected');
-        // eslint-disable-next-line node/callback-return,node/no-callback-literal
-        callback('ack');
-        debug('ack sent');
-      }
-
-      parseLogEvent(logger, data);
-    });
-
-    client.on('disconnect', (reason) => {
-      debug(
-        `socket client disconnected ${client.handshake.address}: ${reason}`
-      );
-    });
-  });
+  createSocketServer(fastify.server, logger);
 
   debug(`server listening on port ${port}`);
-  server.listen(port);
+  await fastify.listen({ port });
 
   ux.action.stop(`✅\tListening at http://localhost:${port}`);
   ux.action.start('Starting tunnel');

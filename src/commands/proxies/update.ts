@@ -1,5 +1,6 @@
-import { Args } from '@oclif/core';
+import { Args, Flags } from '@oclif/core';
 import { BaseCommand } from '../../base';
+import { watchForChanges } from '../../files';
 import { patchProxy } from '../../proxies/management';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
 
@@ -16,6 +17,12 @@ export default class Update extends BaseCommand {
 
   public static flags = {
     ...PROXY_FLAGS,
+    watch: Flags.boolean({
+      char: 'w',
+      description: 'Watch for changes in informed files',
+      default: false,
+      required: false,
+    }),
   };
 
   public static args = {
@@ -37,6 +44,7 @@ export default class Update extends BaseCommand {
         'application-id': applicationId,
         configuration,
         'require-auth': requireAuth,
+        watch,
       },
       metadata,
     } = await this.parse(Update);
@@ -56,5 +64,30 @@ export default class Update extends BaseCommand {
     await patchProxy(bt, id, model);
 
     this.log('Proxy updated successfully!');
+
+    if (watch) {
+      const files = [
+        requestTransformCode,
+        responseTransformCode,
+        configuration,
+      ].filter((flag) => flag) as string[];
+
+      if (files.length) {
+        this.log(`Watching files for changes: ${files.join(', ')} `);
+      }
+
+      files.forEach((file) => {
+        watchForChanges(file, async () => {
+          this.log(`Detected change in ${file}. Updating proxy...`);
+          await patchProxy(
+            bt,
+            id,
+            createModelFromFlags({
+              responseTransformCode,
+            })
+          );
+        });
+      });
+    }
   }
 }
