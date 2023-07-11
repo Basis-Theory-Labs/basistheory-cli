@@ -10,20 +10,25 @@ const FILE_WATCH_DEBOUNCE_DELAY = 1000;
 const watchForChanges = (
   filePath: string,
   handler: (contents: string) => unknown
-): fs.FSWatcher =>
-  fs.watch(
-    filePath,
-    debounce(
-      (event) => {
-        if (event === 'change') {
-          handler(readFileContents(filePath));
-        }
-      },
-      FILE_WATCH_DEBOUNCE_DELAY,
-      {
-        trailing: true,
+): fs.FSWatcher => {
+  let lastContents = '';
+
+  const debounced = debounce(
+    () => {
+      const currentContents = readFileContents(filePath);
+
+      if (lastContents !== currentContents) {
+        lastContents = currentContents;
+        handler(currentContents);
       }
-    )
+    },
+    FILE_WATCH_DEBOUNCE_DELAY,
+    {
+      trailing: true,
+    }
   );
+
+  return fs.watch(filePath, debounced);
+};
 
 export { readFileContents, watchForChanges };

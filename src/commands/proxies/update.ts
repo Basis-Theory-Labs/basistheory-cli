@@ -1,4 +1,4 @@
-import { Args, Flags } from '@oclif/core';
+import { Args, Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { patchProxy } from '../../proxies/management';
@@ -78,7 +78,7 @@ export default class Update extends BaseCommand {
 
       files.forEach((file) => {
         watchForChanges(file, async () => {
-          this.log(`Detected change in ${file}. Updating proxy...`);
+          ux.action.start(`Detected change in ${file}. Pushing changes`);
           await patchProxy(
             bt,
             id,
@@ -86,6 +86,7 @@ export default class Update extends BaseCommand {
               responseTransformCode,
             })
           );
+          ux.action.stop('✅\t');
         });
       });
     }
