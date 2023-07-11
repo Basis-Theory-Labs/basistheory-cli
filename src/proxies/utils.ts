@@ -4,7 +4,7 @@ import type {
 } from '@basis-theory/basis-theory-js/types/models/proxies';
 import { Flags } from '@oclif/core';
 import { parse } from 'dotenv';
-import { readFileContents } from '../utils';
+import { readFileContents } from '../files';
 
 const PROXY_FLAGS = {
   name: Flags.string({

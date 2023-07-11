@@ -2,8 +2,6 @@ import { PaginatedList } from '@basis-theory/basis-theory-js/types/sdk';
 import confirm from '@inquirer/confirm';
 import input from '@inquirer/input';
 import { ux } from '@oclif/core';
-import * as fs from 'fs';
-import * as path from 'path';
 
 const selectOrNavigate = async <T>(
   list: PaginatedList<T>,
@@ -95,9 +93,6 @@ const promptBooleanIfUndefined = (
   return confirm(options);
 };
 
-const readFileContents = (filePath: string): string =>
-  fs.readFileSync(path.resolve(process.cwd(), filePath)).toString();
-
 const cleanUpOnExit = (action: () => unknown): typeof process =>
   process.on('SIGINT', async () => {
     await action();
@@ -110,6 +105,5 @@ export {
   promptStringIfUndefined,
   promptUrlIfUndefined,
   promptBooleanIfUndefined,
-  readFileContents,
   cleanUpOnExit,
 };
