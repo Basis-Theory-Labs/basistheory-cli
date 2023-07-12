@@ -2,7 +2,7 @@ import { select } from '@inquirer/prompts';
 import { Flags } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { showProxyLogs } from '../../logs';
-import { selectProxy } from '../../proxies/management';
+import { deleteProxy, selectProxy } from '../../proxies/management';
 
 export default class Proxies extends BaseCommand {
   public static description =
@@ -45,6 +45,10 @@ export default class Proxies extends BaseCommand {
           description: 'See Proxy Transforms real-time logs',
         },
         {
+          name: 'Delete',
+          value: 'delete',
+        },
+        {
           name: 'Exit',
           value: 'exit',
         },
@@ -59,6 +63,10 @@ export default class Proxies extends BaseCommand {
 
     if (action === 'logs') {
       return showProxyLogs(bt, proxy.id);
+    }
+
+    if (action === 'delete' && (await deleteProxy(bt, proxy.id))) {
+      return this.log('Proxy deleted successfully!');
     }
 
     return undefined;
