@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.4.0 linux-x64 node-v18.16.1
+@basis-theory-labs/cli/1.5.0 linux-x64 node-v18.16.1
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -30,6 +30,7 @@ USAGE
 <!-- commands -->
 * [`bt proxies`](#bt-proxies)
 * [`bt proxies create`](#bt-proxies-create)
+* [`bt proxies delete ID`](#bt-proxies-delete-id)
 * [`bt proxies logs [ID]`](#bt-proxies-logs-id)
 * [`bt proxies update ID`](#bt-proxies-update-id)
 * [`bt reactors`](#bt-reactors)
@@ -54,7 +55,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.4.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.5.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -80,6 +81,28 @@ DESCRIPTION
 
 EXAMPLES
   $ bt proxies create
+```
+
+## `bt proxies delete ID`
+
+Deletes a Proxy. Requires `proxy:delete` and `proxy:read` Management Application permissions
+
+```
+USAGE
+  $ bt proxies delete ID -x <value> [-y]
+
+ARGUMENTS
+  ID  Proxy id to delete
+
+FLAGS
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  -y, --yes                     auto confirm the operation
+
+DESCRIPTION
+  Deletes a Proxy. Requires `proxy:delete` and `proxy:read` Management Application permissions
+
+EXAMPLES
+  $ bt proxies delete 03858bf5-32d3-4a2e-b74b-daeea0883bca
 ```
 
 ## `bt proxies logs [ID]`
@@ -136,13 +159,13 @@ DESCRIPTION
   Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission
 
 EXAMPLES
-  $ bt proxies update 
+  $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca
 
-  $ bt proxies update --destination-url https://echo.basistheory.com
+  $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca --destination-url https://echo.basistheory.com
 
-  $ bt proxies update --request-transform-code ./myRequestTransform.js
+  $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca --request-transform-code ./myRequestTransform.js
 
-  $ bt proxies update --configuration ./.env.proxy
+  $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.proxy
 ```
 
 ## `bt reactors`
@@ -164,7 +187,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.4.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.5.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors logs [ID]`
 

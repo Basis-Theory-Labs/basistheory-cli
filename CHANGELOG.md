@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.4.0...v1.5.0) (2023-07-13)
+
+
+### Features
+
+* add delete proxies command ([#8](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/8)) ([8917c25](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/8917c258079a24c837c4de52eea8b54e8416c38f))
+
 # [1.4.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.3.2...v1.4.0) (2023-07-11)
 
 
