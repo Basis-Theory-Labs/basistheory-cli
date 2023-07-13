@@ -37,6 +37,8 @@ const listProxies = async (
       ...proxy,
     }));
 
+    // console.log(proxies);
+
     ux.table(data, {
       '#': {},
       id: {},
@@ -61,6 +63,7 @@ const listProxies = async (
       },
       application_id: {
         header: 'Application Id',
+        get: (proxy) => proxy.applicationId || '',
       },
       /* eslint-enable camelcase */
     });
