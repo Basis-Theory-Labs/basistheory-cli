@@ -9,10 +9,10 @@ export default class Update extends BaseCommand {
     'Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> ',
-    '<%= config.bin %> <%= command.id %> --destination-url https://echo.basistheory.com',
-    '<%= config.bin %> <%= command.id %> --request-transform-code ./myRequestTransform.js',
-    '<%= config.bin %> <%= command.id %> --configuration ./.env.proxy',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --destination-url https://echo.basistheory.com',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --request-transform-code ./myRequestTransform.js',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.proxy',
   ];
 
   public static flags = {

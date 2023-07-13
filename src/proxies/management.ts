@@ -7,6 +7,7 @@ import type {
   BasisTheory as IBasisTheory,
   PaginatedList,
 } from '@basis-theory/basis-theory-js/types/sdk';
+import confirm from '@inquirer/confirm';
 import { ux } from '@oclif/core';
 import type { TableRow } from '../types';
 import { selectOrNavigate } from '../utils';
@@ -102,6 +103,29 @@ const createProxy = (bt: IBasisTheory, model: CreateProxy): Promise<Proxy> => {
   return bt.proxies.create(model);
 };
 
+const deleteProxy = async (
+  bt: IBasisTheory,
+  id: string,
+  force = false
+): Promise<boolean> => {
+  if (!force) {
+    const proceed = await confirm({
+      message: `Are you sure you want to delete this Proxy (${id})?`,
+      default: false,
+    });
+
+    if (!proceed) {
+      return false;
+    }
+  }
+
+  debug(`Deleting Proxy`, id);
+
+  await bt.proxies.delete(id);
+
+  return true;
+};
+
 const patchProxy = (
   bt: IBasisTheory,
   id: string,
@@ -112,4 +136,4 @@ const patchProxy = (
   return bt.proxies.patch(id, model);
 };
 
-export { selectProxy, createProxy, patchProxy };
+export { selectProxy, createProxy, patchProxy, deleteProxy };
