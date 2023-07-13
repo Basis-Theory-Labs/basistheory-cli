@@ -37,8 +37,6 @@ const listProxies = async (
       ...proxy,
     }));
 
-    // console.log(proxies);
-
     ux.table(data, {
       '#': {},
       id: {},
