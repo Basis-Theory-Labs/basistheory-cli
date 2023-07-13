@@ -61,6 +61,7 @@ const listProxies = async (
       },
       application_id: {
         header: 'Application Id',
+        get: (proxy) => proxy.applicationId || '',
       },
       /* eslint-enable camelcase */
     });
