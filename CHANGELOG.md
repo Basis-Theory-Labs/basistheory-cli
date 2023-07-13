@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.5.0...v1.5.1) (2023-07-13)
+
+
+### Bug Fixes
+
+* application id in proxies table ([#9](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/9)) ([f23ece9](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/f23ece9bab1cf25d1e3c7ad020115271b92f80a7))
+
 # [1.5.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.4.0...v1.5.0) (2023-07-13)
 
 
