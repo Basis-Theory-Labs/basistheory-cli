@@ -44,15 +44,11 @@ export default class Reactors extends BaseCommand {
           value: 'logs',
           description: 'See Reactor real-time logs',
         },
-        {
-          name: 'Exit',
-          value: 'exit',
-        },
       ],
     });
 
     if (action === 'details') {
-      this.log(JSON.stringify(reactor, undefined, 2));
+      this.logJson(reactor);
 
       return undefined;
     }

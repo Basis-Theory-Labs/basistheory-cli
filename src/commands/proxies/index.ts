@@ -48,15 +48,11 @@ export default class Proxies extends BaseCommand {
           name: 'Delete',
           value: 'delete',
         },
-        {
-          name: 'Exit',
-          value: 'exit',
-        },
       ],
     });
 
     if (action === 'details') {
-      this.log(JSON.stringify(proxy, undefined, 2));
+      this.logJson(proxy);
 
       return undefined;
     }

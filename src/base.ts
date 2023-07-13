@@ -1,6 +1,8 @@
 import { BasisTheory } from '@basis-theory/basis-theory-js';
+import { BasisTheoryApiError } from '@basis-theory/basis-theory-js/common';
 import type { BasisTheory as IBasisTheory } from '@basis-theory/basis-theory-js/types/sdk';
 import { Command, Flags } from '@oclif/core';
+import type { CommandError } from '@oclif/core/lib/interfaces';
 import type {
   ArgOutput,
   FlagOutput,
@@ -57,5 +59,13 @@ export abstract class BaseCommand extends Command {
       flags,
       bt,
     };
+  }
+
+  protected catch(err: unknown): Promise<unknown> {
+    if (err instanceof BasisTheoryApiError) {
+      this.logJson(err.data);
+    }
+
+    return super.catch(err as CommandError);
   }
 }
