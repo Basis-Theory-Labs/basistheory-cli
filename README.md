@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.5.1 linux-x64 node-v18.16.1
+@basis-theory-labs/cli/1.5.2 linux-x64 node-v18.16.1
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -55,7 +55,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.5.1/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.5.2/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -187,7 +187,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.5.1/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.5.2/dist/commands/reactors/index.ts)_
 
 ## `bt reactors logs [ID]`
 

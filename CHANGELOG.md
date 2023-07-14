@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.5.1...v1.5.2) (2023-07-14)
+
+
+### Bug Fixes
+
+* improve entity and API error logging ([#10](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/10)) ([5650c0f](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/5650c0f740ad785083e432c076aa34bd965f5da3))
+
 ## [1.5.1](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.5.0...v1.5.1) (2023-07-13)
 
 
