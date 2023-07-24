@@ -1,5 +1,6 @@
 import { ux } from '@oclif/core';
 import { bin, install, tunnel } from 'cloudflared';
+import detectPort from 'detect-port';
 import * as fs from 'node:fs';
 import pino from 'pino';
 import { createHttpServer } from './http';
@@ -23,7 +24,13 @@ const runTunnel = async (port: number): Promise<string> => {
 
   return url;
 };
-const createLogServer = async (port: number): Promise<string> => {
+const createLogServer = async (_port: number): Promise<string> => {
+  const port = await detectPort(_port);
+
+  if (port !== _port) {
+    ux.log(`Port ${_port} was occupied, using port ${port}.`);
+  }
+
   ux.action.start('Starting log server');
 
   const logger = pino({

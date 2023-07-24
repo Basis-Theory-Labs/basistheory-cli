@@ -1,6 +1,7 @@
 import { Args, Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
+import { showProxyLogs } from '../../logs';
 import { patchProxy } from '../../proxies/management';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
 
@@ -20,6 +21,12 @@ export default class Update extends BaseCommand {
     watch: Flags.boolean({
       char: 'w',
       description: 'Watch for changes in informed files',
+      default: false,
+      required: false,
+    }),
+    logs: Flags.boolean({
+      char: 'l',
+      description: 'Start logs server after update',
       default: false,
       required: false,
     }),
@@ -45,6 +52,7 @@ export default class Update extends BaseCommand {
         configuration,
         'require-auth': requireAuth,
         watch,
+        logs,
       },
       metadata,
     } = await this.parse(Update);
@@ -65,25 +73,34 @@ export default class Update extends BaseCommand {
 
     this.log('Proxy updated successfully!');
 
+    if (logs) {
+      await showProxyLogs(bt, id);
+    }
+
     if (watch) {
-      const files = [
+      const entries = Object.entries({
         requestTransformCode,
         responseTransformCode,
         configuration,
-      ].filter((flag) => flag) as string[];
+      }).filter(([, value]) => Boolean(value)) as [string, string][];
+
+      const files = entries.reduce(
+        (arr, [, file]) => [...arr, file],
+        [] as string[]
+      );
 
       if (files.length) {
         this.log(`Watching files for changes: ${files.join(', ')} `);
       }
 
-      files.forEach((file) => {
+      entries.forEach(([prop, file]) => {
         watchForChanges(file, async () => {
           ux.action.start(`Detected change in ${file}. Pushing changes`);
           await patchProxy(
             bt,
             id,
             createModelFromFlags({
-              responseTransformCode,
+              [prop]: file,
             })
           );
           ux.action.stop('✅\t');
