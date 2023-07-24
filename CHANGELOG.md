@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.5.2...v1.6.0) (2023-07-24)
+
+
+### Features
+
+* add proxy logs to update command ([#12](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/12)) ([c5da85e](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/c5da85e661556f652360c1db94c7f69d9b8a2a36))
+
 ## [1.5.2](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.5.1...v1.5.2) (2023-07-14)
 
 

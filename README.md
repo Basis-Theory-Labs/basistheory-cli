@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.5.2 linux-x64 node-v18.16.1
+@basis-theory-labs/cli/1.6.0 linux-x64 node-v18.16.1
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -55,7 +55,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.5.2/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.6.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -138,7 +138,7 @@ Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management App
 ```
 USAGE
   $ bt proxies update ID -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>]
-    [-a] [-w]
+    [-a] [-w] [-l]
 
 ARGUMENTS
   ID  Proxy id to update
@@ -148,6 +148,7 @@ FLAGS
                                          true
   -c, --configuration=<value>            path to configuration file (.env format) to use in the Proxy
   -i, --application-id=<value>           application ID to use in the Proxy
+  -l, --logs                             Start logs server after update
   -n, --name=<value>                     name of the Proxy
   -q, --request-transform-code=<value>   path to JavaScript file containing a Request Transform code
   -s, --response-transform-code=<value>  path to JavaScript file containing a Response Transform code
@@ -187,7 +188,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.5.2/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.6.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors logs [ID]`
 
