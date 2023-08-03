@@ -1,4 +1,3 @@
-import { select } from '@inquirer/prompts';
 import { Flags } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { selectReactorFormula } from '../../reactorFormulas/management';
