@@ -13,7 +13,7 @@ export default class Update extends BaseCommand {
 
   public static examples = [
     '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./myRequestTransform.js',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./formula.js',
     '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./myRequestTransform.js -w',
   ];
 
