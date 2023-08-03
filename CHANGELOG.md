@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.6.0...v1.7.0) (2023-08-03)
+
+
+### Features
+
+* allowing reactor formulas to be updated ([#14](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/14)) ([997254a](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/997254a1ff21f653acc49b9d569ccfcfe570ad7f))
+
 # [1.6.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.5.2...v1.6.0) (2023-07-24)
 
 
