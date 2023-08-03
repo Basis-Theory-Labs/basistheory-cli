@@ -18,7 +18,7 @@ const listReactorFormulas = async (
 ): Promise<PaginatedList<ReactorFormula>> => {
   const size = 5;
 
-  debug('Listing reactors', `page: ${page}`, `size: ${size}`);
+  debug('Listing reactor formulas', `page: ${page}`, `size: ${size}`);
 
   const reactorFormulas = await bt.reactorFormulas.list({
     size,
@@ -78,7 +78,7 @@ const updateReactorFormula = (
   id: string,
   model: CreateReactorFormula
 ): Promise<ReactorFormula> => {
-  debug(`Patching Reactor ${id}`, JSON.stringify(model, undefined, 2));
+  debug(`Updating Reactor Formula ${id}`, JSON.stringify(model, undefined, 2));
 
   return bt.reactorFormulas.update(id, model);
 };
