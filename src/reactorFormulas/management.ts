@@ -30,9 +30,9 @@ const listReactorFormulas = async (
   if (reactorFormulas.pagination.totalItems > 0) {
     const last = (reactorFormulas.pagination.pageNumber - 1) * size;
 
-    data = reactorFormulas.data.map((reactorFormulas, index) => ({
+    data = reactorFormulas.data.map((reactorFormula, index) => ({
       '#': last + (index + 1),
-      ...reactorFormulas,
+      ...reactorFormula,
     }));
 
     ux.table(data, {

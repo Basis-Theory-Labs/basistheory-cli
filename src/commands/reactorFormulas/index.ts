@@ -1,7 +1,6 @@
 import { select } from '@inquirer/prompts';
 import { Flags } from '@oclif/core';
 import { BaseCommand } from '../../base';
-import { showReactorLogs } from '../../logs';
 import { selectReactorFormula } from '../../reactorFormulas/management';
 
 export default class ReactorFormulas extends BaseCommand {
@@ -31,11 +30,6 @@ export default class ReactorFormulas extends BaseCommand {
     if (!reactor) {
       return undefined;
     }
-
-    const action = await select({
-      message: 'Select action to perform',
-      choices: [],
-    });
 
     return undefined;
   }

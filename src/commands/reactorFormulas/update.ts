@@ -2,7 +2,10 @@ import { Args, Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { updateReactorFormula } from '../../reactorFormulas/management';
-import { createModelFromFlags, REACTOR_FORMULA_FLAGS } from '../../reactorFormulas/utils';
+import {
+  createModelFromFlags,
+  REACTOR_FORMULA_FLAGS,
+} from '../../reactorFormulas/utils';
 
 export default class Update extends BaseCommand {
   public static description =
@@ -39,11 +42,10 @@ export default class Update extends BaseCommand {
         name,
         description,
         code,
-        configuration = "",
-        'request-parameters': requestParameters = "",
+        configuration = '',
+        'request-parameters': requestParameters = '',
         watch,
       },
-      metadata,
     } = await this.parse(Update);
 
     const model = createModelFromFlags({
@@ -63,7 +65,7 @@ export default class Update extends BaseCommand {
       const entries = Object.entries({
         code,
         configuration,
-        requestParameters
+        requestParameters,
       }).filter(([, value]) => Boolean(value)) as [string, string][];
 
       const files = entries.reduce(

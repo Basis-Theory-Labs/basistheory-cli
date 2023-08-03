@@ -1,6 +1,4 @@
-import type {
-  CreateReactorFormula as CreateReactorFormulaModel,
-} from '@basis-theory/basis-theory-js/types/models/reactor-formulas';
+import type { CreateReactorFormula as CreateReactorFormulaModel } from '@basis-theory/basis-theory-js/types/models/reactor-formulas';
 import { Flags } from '@oclif/core';
 import { readFileContents } from '../files';
 
@@ -25,13 +23,15 @@ const REACTOR_FORMULA_FLAGS = {
   }),
   configuration: Flags.file({
     char: 'c',
-    description: 'path to configuration definition to use in the Reactor Formula',
-    required: true
+    description:
+      'path to configuration definition to use in the Reactor Formula',
+    required: true,
   }),
   'request-parameters': Flags.file({
     char: 'p',
-    description: 'path to request params definition to use in the Reactor Formula',
-    required: true
+    description:
+      'path to request params definition to use in the Reactor Formula',
+    required: true,
   }),
 };
 
@@ -56,7 +56,9 @@ type CreateReactorFormula = ReactorFormulaFlagProps &
     'configuration' | 'requestParameters' | 'code'
   >;
 
-function createModelFromFlags(payload: CreateReactorFormula): CreateReactorFormulaModel;
+function createModelFromFlags(
+  payload: CreateReactorFormula
+): CreateReactorFormulaModel;
 
 // eslint-disable-next-line get-off-my-lawn/prefer-arrow-functions
 function createModelFromFlags({
