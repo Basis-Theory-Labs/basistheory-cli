@@ -4,7 +4,7 @@ import { selectReactorFormula } from '../../reactorFormulas/management';
 
 export default class ReactorFormulas extends BaseCommand {
   public static description =
-    'List Reactor Formulas. Requires `reactor:read` Management Application permission';
+    '[Deprecated] List Reactor Formulas. Requires `reactor:read` Management Application permission';
 
   public static examples = ['<%= config.bin %> <%= command.id %>'];
 
@@ -19,14 +19,17 @@ export default class ReactorFormulas extends BaseCommand {
   public static args = {};
 
   public async run(): Promise<void> {
+    this.log(
+      'WARNING: Reactor Formulas are being deprecated and will be removed in a future release.'
+    );
     const {
       bt,
       flags: { page },
     } = await this.parse(ReactorFormulas);
 
-    const reactor = await selectReactorFormula(bt, page);
+    const formula = await selectReactorFormula(bt, page);
 
-    if (!reactor) {
+    if (!formula) {
       return undefined;
     }
 

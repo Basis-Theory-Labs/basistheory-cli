@@ -17,7 +17,7 @@
     "/oclif.manifest.json"
   ],
   "dependencies": {
-    "@basis-theory/basis-theory-js": "^1.79.2",
+    "@basis-theory/basis-theory-js": "^2.3.1",
     "@inquirer/confirm": "^2.0.3",
     "@inquirer/input": "^1.2.1",
     "@inquirer/prompts": "^2.1.1",
