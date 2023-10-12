@@ -2,7 +2,7 @@ import { select } from '@inquirer/prompts';
 import { Flags } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { showReactorLogs } from '../../logs';
-import { selectReactor } from '../../reactors/management';
+import { deleteReactor, selectReactor } from '../../reactors/management';
 
 export default class Reactors extends BaseCommand {
   public static description =
@@ -44,6 +44,10 @@ export default class Reactors extends BaseCommand {
           value: 'logs',
           description: 'See Reactor real-time logs',
         },
+        {
+          name: 'Delete',
+          value: 'delete',
+        },
       ],
     });
 
@@ -55,6 +59,10 @@ export default class Reactors extends BaseCommand {
 
     if (action === 'logs') {
       return showReactorLogs(bt, reactor.id);
+    }
+
+    if (action === 'delete' && (await deleteReactor(bt, reactor.id))) {
+      return this.log('Reactor deleted successfully!');
     }
 
     return undefined;

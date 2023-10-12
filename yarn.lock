@@ -381,10 +381,10 @@
     "@babel/helper-validator-identifier" "^7.22.5"
     to-fast-properties "^2.0.0"
 
-"@basis-theory/basis-theory-js@^1.79.2":
-  version "1.79.2"
-  resolved "https://registry.yarnpkg.com/@basis-theory/basis-theory-js/-/basis-theory-js-1.79.2.tgz#7cf72b092492369cb193d97d8736eecf27e2dfe4"
-  integrity sha512-3Uy6kjSNF/wTk1Ux+DVIdxeNycayB4HmDLhfUK0nuNtBiFOnNda6SnXDrGY3l1u/DKJ5SpjggyJk4Mdfr4nzBw==
+"@basis-theory/basis-theory-js@^2.3.1":
+  version "2.3.1"
+  resolved "https://registry.yarnpkg.com/@basis-theory/basis-theory-js/-/basis-theory-js-2.3.1.tgz#5b39f1a213f410aa3a3d3b6028d889a3412d671d"
+  integrity sha512-Fzu4BxongcYy3gcYdnKCIM34gwLkj4UuPLt3pFBlnYxzHDNBnsCdUkWoDygljQNzQCbkqUhj0wRa9r+33ONpPQ==
   dependencies:
     axios "^1.4.0"
     camelcase-keys "^6.2.2"

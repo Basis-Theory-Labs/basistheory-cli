@@ -1,11 +1,13 @@
 import type {
   Reactor,
   PatchReactor,
+  CreateReactor,
 } from '@basis-theory/basis-theory-js/types/models';
 import type {
   BasisTheory as IBasisTheory,
   PaginatedList,
 } from '@basis-theory/basis-theory-js/types/sdk';
+import confirm from '@inquirer/confirm';
 import { ux } from '@oclif/core';
 import type { TableRow } from '../types';
 import { selectOrNavigate } from '../utils';
@@ -73,6 +75,38 @@ const selectReactor = async (
   return selection;
 };
 
+const createReactor = (
+  bt: IBasisTheory,
+  model: CreateReactor
+): Promise<Reactor> => {
+  debug(`Creating Reactor`, JSON.stringify(model, undefined, 2));
+
+  return bt.reactors.create(model);
+};
+
+const deleteReactor = async (
+  bt: IBasisTheory,
+  id: string,
+  force = false
+): Promise<boolean> => {
+  if (!force) {
+    const proceed = await confirm({
+      message: `Are you sure you want to delete this Reactor (${id})?`,
+      default: false,
+    });
+
+    if (!proceed) {
+      return false;
+    }
+  }
+
+  debug(`Deleting Reactor`, id);
+
+  await bt.reactors.delete(id);
+
+  return true;
+};
+
 const patchReactor = (
   bt: IBasisTheory,
   id: string,
@@ -83,4 +117,4 @@ const patchReactor = (
   return bt.reactors.patch(id, model);
 };
 
-export { selectReactor, patchReactor };
+export { selectReactor, createReactor, patchReactor, deleteReactor };
