@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.7.0...v1.8.0) (2023-10-12)
+
+
+### Features
+
+* add reactor management commands ([#17](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/17)) ([67c668a](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/67c668a1ab776c899fdf2bb9e8775b1923d203f9))
+
 # [1.7.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.6.0...v1.7.0) (2023-08-03)
 
 

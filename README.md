@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.7.0 linux-x64 node-v18.17.0
+@basis-theory-labs/cli/1.8.0 linux-x64 node-v18.18.0
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -36,7 +36,10 @@ USAGE
 * [`bt reactorFormulas`](#bt-reactorformulas)
 * [`bt reactorFormulas update ID`](#bt-reactorformulas-update-id)
 * [`bt reactors`](#bt-reactors)
+* [`bt reactors create`](#bt-reactors-create)
+* [`bt reactors delete ID`](#bt-reactors-delete-id)
 * [`bt reactors logs [ID]`](#bt-reactors-logs-id)
+* [`bt reactors update ID`](#bt-reactors-update-id)
 
 ## `bt proxies`
 
@@ -57,7 +60,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.7.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.8.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -173,7 +176,7 @@ EXAMPLES
 
 ## `bt reactorFormulas`
 
-List Reactor Formulas. Requires `reactor:read` Management Application permission
+[Deprecated] List Reactor Formulas. Requires `reactor:read` Management Application permission
 
 ```
 USAGE
@@ -184,17 +187,17 @@ FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
-  List Reactor Formulas. Requires `reactor:read` Management Application permission
+  [Deprecated] List Reactor Formulas. Requires `reactor:read` Management Application permission
 
 EXAMPLES
   $ bt reactorFormulas
 ```
 
-_See code: [dist/commands/reactorFormulas/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.7.0/dist/commands/reactorFormulas/index.ts)_
+_See code: [dist/commands/reactorFormulas/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.8.0/dist/commands/reactorFormulas/index.ts)_
 
 ## `bt reactorFormulas update ID`
 
-Updates an existing Reactor Formula. Requires `reactor:update` Management Application permission
+[Deprecated] Updates an existing Reactor Formula. Requires `reactor:update` Management Application permission
 
 ```
 USAGE
@@ -214,7 +217,7 @@ FLAGS
   -x, --management-key=<value>      (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
-  Updates an existing Reactor Formula. Requires `reactor:update` Management Application permission
+  [Deprecated] Updates an existing Reactor Formula. Requires `reactor:update` Management Application permission
 
 EXAMPLES
   $ bt reactorFormulas update 03858bf5-32d3-4a2e-b74b-daeea0883bca
@@ -243,7 +246,51 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.7.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.8.0/dist/commands/reactors/index.ts)_
+
+## `bt reactors create`
+
+Creates a new Reactor. Requires `reactor:create` Management Application permission
+
+```
+USAGE
+  $ bt reactors create -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>]
+
+FLAGS
+  -c, --configuration=<value>   path to configuration file (.env format) to use in the Reactor
+  -i, --application-id=<value>  application ID to use in the Reactor
+  -n, --name=<value>            name of the Reactor
+  -r, --code=<value>            path to JavaScript file containing the Reactor code
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+
+DESCRIPTION
+  Creates a new Reactor. Requires `reactor:create` Management Application permission
+
+EXAMPLES
+  $ bt reactors create
+```
+
+## `bt reactors delete ID`
+
+Deletes a Reactor. Requires `reactor:delete` and `reactor:read` Management Application permissions
+
+```
+USAGE
+  $ bt reactors delete ID -x <value> [-y]
+
+ARGUMENTS
+  ID  Reactor id to delete
+
+FLAGS
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  -y, --yes                     auto confirm the operation
+
+DESCRIPTION
+  Deletes a Reactor. Requires `reactor:delete` and `reactor:read` Management Application permissions
+
+EXAMPLES
+  $ bt reactors delete 03858bf5-32d3-4a2e-b74b-daeea0883bca
+```
 
 ## `bt reactors logs [ID]`
 
@@ -269,5 +316,36 @@ EXAMPLES
   $ bt reactors logs 03858bf5-32d3-4a2e-b74b-daeea0883bca
 
   $ bt reactors logs 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000
+```
+
+## `bt reactors update ID`
+
+Updates an existing Reactor. Requires `reactor:update` Management Application permission
+
+```
+USAGE
+  $ bt reactors update ID -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [-w] [-l]
+
+ARGUMENTS
+  ID  Reactor id to update
+
+FLAGS
+  -c, --configuration=<value>   path to configuration file (.env format) to use in the Reactor
+  -i, --application-id=<value>  application ID to use in the Reactor
+  -l, --logs                    Start logs server after update
+  -n, --name=<value>            name of the Reactor
+  -r, --code=<value>            path to JavaScript file containing the Reactor code
+  -w, --watch                   Watch for changes in informed files
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+
+DESCRIPTION
+  Updates an existing Reactor. Requires `reactor:update` Management Application permission
+
+EXAMPLES
+  $ bt reactors update 03858bf5-32d3-4a2e-b74b-daeea0883bca
+
+  $ bt reactors update 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./reactor.js
+
+  $ bt reactors update 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.reactor
 ```
 <!-- commandsstop -->
