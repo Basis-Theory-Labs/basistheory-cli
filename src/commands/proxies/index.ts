@@ -1,4 +1,4 @@
-import { select } from '@inquirer/prompts';
+import select from '@inquirer/select';
 import { Flags } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { showProxyLogs } from '../../logs';

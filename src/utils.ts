@@ -1,6 +1,8 @@
 import { PaginatedList } from '@basis-theory/basis-theory-js/types/sdk';
+import checkbox from '@inquirer/checkbox';
 import confirm from '@inquirer/confirm';
 import input from '@inquirer/input';
+import select from '@inquirer/select';
 import { ux } from '@oclif/core';
 
 const selectOrNavigate = async <T>(
@@ -57,6 +59,29 @@ const promptStringIfUndefined = (
 
   return input(options);
 };
+
+const promptSelectIfUndefined = (
+  value: string | undefined,
+  options: Parameters<typeof select>[0]
+): Promise<string> => {
+  if (value) {
+    return Promise.resolve(value);
+  }
+
+  return select(options) as Promise<string>;
+};
+
+const promptCheckboxIfUndefined = (
+  value: string[] | undefined,
+  options: Parameters<typeof checkbox>[0]
+): Promise<string[]> => {
+  if (value) {
+    return Promise.resolve(value);
+  }
+
+  return checkbox(options) as Promise<string[]>;
+};
+
 const promptUrlIfUndefined = async (
   value: URL | undefined,
   options: Parameters<typeof input>[0]
@@ -103,6 +128,8 @@ const cleanUpOnExit = (action: () => unknown): typeof process =>
 export {
   selectOrNavigate,
   promptStringIfUndefined,
+  promptSelectIfUndefined,
+  promptCheckboxIfUndefined,
   promptUrlIfUndefined,
   promptBooleanIfUndefined,
   cleanUpOnExit,
