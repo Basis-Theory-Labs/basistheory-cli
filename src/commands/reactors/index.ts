@@ -13,7 +13,7 @@ export default class Reactors extends BaseCommand {
   public static flags = {
     page: Flags.integer({
       char: 'p',
-      description: 'reactors list page to fetch',
+      description: 'Reactors list page to fetch',
       default: 1,
     }),
   };

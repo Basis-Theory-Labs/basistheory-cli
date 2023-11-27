@@ -11,7 +11,7 @@ export default class ReactorFormulas extends BaseCommand {
   public static flags = {
     page: Flags.integer({
       char: 'p',
-      description: 'reactors formulas list page to fetch',
+      description: 'Reactors formulas list page to fetch',
       default: 1,
     }),
   };

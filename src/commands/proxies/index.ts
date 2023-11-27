@@ -13,7 +13,7 @@ export default class Proxies extends BaseCommand {
   public static flags = {
     page: Flags.integer({
       char: 'p',
-      description: 'proxies list page to fetch',
+      description: 'Proxies list page to fetch',
       default: 1,
     }),
   };

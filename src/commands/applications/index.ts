@@ -15,7 +15,7 @@ export default class Applications extends BaseCommand {
   public static flags = {
     page: Flags.integer({
       char: 'p',
-      description: 'applications list page to fetch',
+      description: 'Applications list page to fetch',
       default: 1,
     }),
   };

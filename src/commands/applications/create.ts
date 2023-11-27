@@ -25,7 +25,7 @@ export default class Create extends BaseCommand {
     ...APPLICATION_FLAGS,
     type: Flags.string({
       char: 't',
-      description: 'type of the application',
+      description: 'type of the Application',
       options: [...APPLICATION_TYPES],
     }),
   };
