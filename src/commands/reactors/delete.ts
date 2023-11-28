@@ -4,7 +4,7 @@ import { deleteReactor } from '../../reactors/management';
 
 export default class Delete extends BaseCommand {
   public static description =
-    'Deletes a Reactor. Requires `reactor:delete` and `reactor:read` Management Application permissions';
+    'Deletes a Reactor. Requires `reactor:delete` Management Application permissions';
 
   public static examples = [
     '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',

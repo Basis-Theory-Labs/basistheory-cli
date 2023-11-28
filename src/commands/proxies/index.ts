@@ -1,4 +1,4 @@
-import { select } from '@inquirer/prompts';
+import select from '@inquirer/select';
 import { Flags } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { showProxyLogs } from '../../logs';
@@ -13,7 +13,7 @@ export default class Proxies extends BaseCommand {
   public static flags = {
     page: Flags.integer({
       char: 'p',
-      description: 'proxies list page to fetch',
+      description: 'Proxies list page to fetch',
       default: 1,
     }),
   };

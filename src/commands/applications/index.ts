@@ -1,34 +1,34 @@
 import select from '@inquirer/select';
 import { Flags } from '@oclif/core';
+import {
+  deleteApplication,
+  selectApplication,
+} from '../../applications/management';
 import { BaseCommand } from '../../base';
-import { showReactorLogs } from '../../logs';
-import { deleteReactor, selectReactor } from '../../reactors/management';
 
-export default class Reactors extends BaseCommand {
+export default class Applications extends BaseCommand {
   public static description =
-    'List Reactors. Requires `reactor:read` Management Application permission';
+    'List Applications. Requires `application:read` Management Application permission';
 
   public static examples = ['<%= config.bin %> <%= command.id %>'];
 
   public static flags = {
     page: Flags.integer({
       char: 'p',
-      description: 'Reactors list page to fetch',
+      description: 'Applications list page to fetch',
       default: 1,
     }),
   };
-
-  public static args = {};
 
   public async run(): Promise<void> {
     const {
       bt,
       flags: { page },
-    } = await this.parse(Reactors);
+    } = await this.parse(Applications);
 
-    const reactor = await selectReactor(bt, page);
+    const application = await selectApplication(bt, page);
 
-    if (!reactor) {
+    if (!application) {
       return undefined;
     }
 
@@ -40,11 +40,6 @@ export default class Reactors extends BaseCommand {
           value: 'details',
         },
         {
-          name: 'Logs',
-          value: 'logs',
-          description: 'See Reactor real-time logs',
-        },
-        {
           name: 'Delete',
           value: 'delete',
         },
@@ -52,17 +47,13 @@ export default class Reactors extends BaseCommand {
     });
 
     if (action === 'details') {
-      this.logJson(reactor);
+      this.logJson(application);
 
       return undefined;
     }
 
-    if (action === 'logs') {
-      return showReactorLogs(bt, reactor.id);
-    }
-
-    if (action === 'delete' && (await deleteReactor(bt, reactor.id))) {
-      return this.log('Reactor deleted successfully!');
+    if (action === 'delete' && (await deleteApplication(bt, application.id))) {
+      return this.log('Application deleted successfully!');
     }
 
     return undefined;
