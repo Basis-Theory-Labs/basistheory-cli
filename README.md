@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.8.0 linux-x64 node-v18.18.0
+@basis-theory-labs/cli/1.9.0 linux-x64 node-v18.18.2
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -28,6 +28,10 @@ USAGE
 <!-- usagestop -->
 # Commands
 <!-- commands -->
+* [`bt applications`](#bt-applications)
+* [`bt applications create`](#bt-applications-create)
+* [`bt applications delete ID`](#bt-applications-delete-id)
+* [`bt applications update ID`](#bt-applications-update-id)
 * [`bt proxies`](#bt-proxies)
 * [`bt proxies create`](#bt-proxies-create)
 * [`bt proxies delete ID`](#bt-proxies-delete-id)
@@ -41,6 +45,94 @@ USAGE
 * [`bt reactors logs [ID]`](#bt-reactors-logs-id)
 * [`bt reactors update ID`](#bt-reactors-update-id)
 
+## `bt applications`
+
+List Applications. Requires `application:read` Management Application permission
+
+```
+USAGE
+  $ bt applications -x <value> [-p <value>]
+
+FLAGS
+  -p, --page=<value>            [default: 1] Applications list page to fetch
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+
+DESCRIPTION
+  List Applications. Requires `application:read` Management Application permission
+
+EXAMPLES
+  $ bt applications
+```
+
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.9.0/dist/commands/applications/index.ts)_
+
+## `bt applications create`
+
+Creates a new Application. Requires `application:create` Management Application permission
+
+```
+USAGE
+  $ bt applications create -x <value> [-n <value>] [-p <value>] [-t private|public|management]
+
+FLAGS
+  -n, --name=<value>            name of the Application
+  -p, --permission=<value>...   permission(s) to use in the Application
+  -t, --type=<option>           type of the Application
+                                <options: private|public|management>
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+
+DESCRIPTION
+  Creates a new Application. Requires `application:create` Management Application permission
+
+EXAMPLES
+  $ bt applications create
+```
+
+## `bt applications delete ID`
+
+Deletes a Application. Requires `application:delete` Management Application permissions
+
+```
+USAGE
+  $ bt applications delete ID -x <value> [-y]
+
+ARGUMENTS
+  ID  Application id to delete
+
+FLAGS
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  -y, --yes                     auto confirm the operation
+
+DESCRIPTION
+  Deletes a Application. Requires `application:delete` Management Application permissions
+
+EXAMPLES
+  $ bt applications delete 03858bf5-32d3-4a2e-b74b-daeea0883bca
+```
+
+## `bt applications update ID`
+
+Updates a new Application. Requires `application:update` Management Application permission
+
+```
+USAGE
+  $ bt applications update ID -x <value> [-n <value>] [-p <value>]
+
+ARGUMENTS
+  ID  Application id to update
+
+FLAGS
+  -n, --name=<value>            name of the Application
+  -p, --permission=<value>...   permission(s) to use in the Application
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+
+DESCRIPTION
+  Updates a new Application. Requires `application:update` Management Application permission
+
+EXAMPLES
+  $ bt applications update
+```
+
 ## `bt proxies`
 
 List Proxies. Requires `proxy:read` Management Application permission
@@ -50,7 +142,7 @@ USAGE
   $ bt proxies -x <value> [-p <value>]
 
 FLAGS
-  -p, --page=<value>            [default: 1] proxies list page to fetch
+  -p, --page=<value>            [default: 1] Proxies list page to fetch
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
@@ -60,7 +152,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.8.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.9.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -90,7 +182,7 @@ EXAMPLES
 
 ## `bt proxies delete ID`
 
-Deletes a Proxy. Requires `proxy:delete` and `proxy:read` Management Application permissions
+Deletes a Proxy. Requires `proxy:delete` Management Application permissions
 
 ```
 USAGE
@@ -104,7 +196,7 @@ FLAGS
   -y, --yes                     auto confirm the operation
 
 DESCRIPTION
-  Deletes a Proxy. Requires `proxy:delete` and `proxy:read` Management Application permissions
+  Deletes a Proxy. Requires `proxy:delete` Management Application permissions
 
 EXAMPLES
   $ bt proxies delete 03858bf5-32d3-4a2e-b74b-daeea0883bca
@@ -183,7 +275,7 @@ USAGE
   $ bt reactorFormulas -x <value> [-p <value>]
 
 FLAGS
-  -p, --page=<value>            [default: 1] reactors formulas list page to fetch
+  -p, --page=<value>            [default: 1] Reactors formulas list page to fetch
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
@@ -193,7 +285,7 @@ EXAMPLES
   $ bt reactorFormulas
 ```
 
-_See code: [dist/commands/reactorFormulas/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.8.0/dist/commands/reactorFormulas/index.ts)_
+_See code: [dist/commands/reactorFormulas/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.9.0/dist/commands/reactorFormulas/index.ts)_
 
 ## `bt reactorFormulas update ID`
 
@@ -236,7 +328,7 @@ USAGE
   $ bt reactors -x <value> [-p <value>]
 
 FLAGS
-  -p, --page=<value>            [default: 1] reactors list page to fetch
+  -p, --page=<value>            [default: 1] Reactors list page to fetch
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
@@ -246,7 +338,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.8.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.9.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 
@@ -272,7 +364,7 @@ EXAMPLES
 
 ## `bt reactors delete ID`
 
-Deletes a Reactor. Requires `reactor:delete` and `reactor:read` Management Application permissions
+Deletes a Reactor. Requires `reactor:delete` Management Application permissions
 
 ```
 USAGE
@@ -286,7 +378,7 @@ FLAGS
   -y, --yes                     auto confirm the operation
 
 DESCRIPTION
-  Deletes a Reactor. Requires `reactor:delete` and `reactor:read` Management Application permissions
+  Deletes a Reactor. Requires `reactor:delete` Management Application permissions
 
 EXAMPLES
   $ bt reactors delete 03858bf5-32d3-4a2e-b74b-daeea0883bca

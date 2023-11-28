@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.8.0...v1.9.0) (2023-11-28)
+
+
+### Features
+
+* add application management commands ([#18](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/18)) ([2acf7a9](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/2acf7a931fb38df4f02caa8573cbad119af52921))
+
 # [1.8.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.7.0...v1.8.0) (2023-10-12)
 
 
