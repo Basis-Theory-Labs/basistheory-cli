@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.9.0...v1.10.0) (2023-12-11)
+
+
+### Features
+
+* support application templates ([#19](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/19)) ([c14bf7e](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/c14bf7e495ddb47214e947cc09bb12390ad82d89))
+
 # [1.9.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.8.0...v1.9.0) (2023-11-28)
 
 

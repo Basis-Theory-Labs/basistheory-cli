@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.9.0 linux-x64 node-v18.18.2
+@basis-theory-labs/cli/1.10.0 linux-x64 node-v18.19.0
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -64,7 +64,7 @@ EXAMPLES
   $ bt applications
 ```
 
-_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.9.0/dist/commands/applications/index.ts)_
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.10.0/dist/commands/applications/index.ts)_
 
 ## `bt applications create`
 
@@ -72,7 +72,7 @@ Creates a new Application. Requires `application:create` Management Application 
 
 ```
 USAGE
-  $ bt applications create -x <value> [-n <value>] [-p <value>] [-t private|public|management]
+  $ bt applications create -x <value> [-n <value>] [-p <value>] [-t private|public|management] [-z <value>]
 
 FLAGS
   -n, --name=<value>            name of the Application
@@ -80,6 +80,7 @@ FLAGS
   -t, --type=<option>           type of the Application
                                 <options: private|public|management>
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  -z, --template=<value>        template ID to create the application with
 
 DESCRIPTION
   Creates a new Application. Requires `application:create` Management Application permission
@@ -152,7 +153,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.9.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.10.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -285,7 +286,7 @@ EXAMPLES
   $ bt reactorFormulas
 ```
 
-_See code: [dist/commands/reactorFormulas/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.9.0/dist/commands/reactorFormulas/index.ts)_
+_See code: [dist/commands/reactorFormulas/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.10.0/dist/commands/reactorFormulas/index.ts)_
 
 ## `bt reactorFormulas update ID`
 
@@ -338,7 +339,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.9.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.10.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 
