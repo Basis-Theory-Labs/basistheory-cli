@@ -5,12 +5,15 @@ import type {
   Permission,
   UpdateApplication,
 } from '@basis-theory/basis-theory-js/types/models';
+import { ApplicationTemplate } from '@basis-theory/basis-theory-js/types/models/application-templates';
 import type {
   BasisTheory as IBasisTheory,
   PaginatedList,
 } from '@basis-theory/basis-theory-js/types/sdk';
 import confirm from '@inquirer/confirm';
+import select from '@inquirer/select';
 import { ux } from '@oclif/core';
+import groupBy from 'lodash.groupby';
 import { TableRow } from '../types';
 import { selectOrNavigate } from '../utils';
 
@@ -146,10 +149,59 @@ const deleteApplication = async (
   return true;
 };
 
+const createApplicationFromTemplate = async (
+  bt: IBasisTheory,
+  templateId: string
+): Promise<Application> => {
+  const template = await bt.applicationTemplates.retrieve(templateId);
+
+  return createApplication(bt, {
+    name: template.name,
+    type: template.applicationType,
+    permissions: template.permissions,
+    rules: template.rules,
+  });
+};
+
+const promptTemplate = async (
+  bt: IBasisTheory
+): Promise<ApplicationTemplate | undefined> => {
+  const useTemplate = await confirm({
+    message: 'Do you want to use an application template?',
+  });
+
+  if (!useTemplate) {
+    return undefined;
+  }
+
+  const templates = groupBy(
+    await bt.applicationTemplates.list(),
+    'templateType'
+  );
+
+  const type = await select({
+    message: 'Which template type do you want to use?',
+    choices: Object.keys(templates).map((t) => ({
+      value: t,
+    })),
+  });
+
+  return select({
+    message: 'Choose a template',
+    choices: templates[type].map((t) => ({
+      name: t.name,
+      value: t,
+      description: t.description,
+    })),
+  });
+};
+
 export {
   listPermissions,
   createApplication,
   updateApplication,
   selectApplication,
   deleteApplication,
+  createApplicationFromTemplate,
+  promptTemplate,
 };
