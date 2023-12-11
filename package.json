@@ -25,7 +25,6 @@
     "@oclif/core": "^2",
     "@oclif/plugin-help": "^5",
     "@oclif/plugin-plugins": "^2.4.7",
-    "axios": "^1.6.2",
     "cloudflared": "^0.4.0",
     "debug": "^4.3.4",
     "detect-port": "^1.5.1",
