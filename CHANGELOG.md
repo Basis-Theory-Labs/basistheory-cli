@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.10.0...v1.11.0) (2025-04-02)
+
+
+### Features
+
+* ensuring tunnel is ready to receive logs ([#23](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/23)) ([d13b74a](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/d13b74ab815477e3018ba0db4da74889979228df))
+
 # [1.10.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.9.0...v1.10.0) (2023-12-11)
 
 
