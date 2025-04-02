@@ -1,3 +1,4 @@
+// eslint-disable-next-line eslint-comments/disable-enable-pair
 /* eslint-disable no-promise-executor-return */
 import { ux } from '@oclif/core';
 import { bin, install, Tunnel } from 'cloudflared';
