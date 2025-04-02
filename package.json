@@ -25,7 +25,7 @@
     "@oclif/core": "^2",
     "@oclif/plugin-help": "^5",
     "@oclif/plugin-plugins": "^2.4.7",
-    "cloudflared": "^0.4.0",
+    "cloudflared": "^0.7.0",
     "debug": "^4.3.4",
     "detect-port": "^1.5.1",
     "dotenv": "^16.3.1",
