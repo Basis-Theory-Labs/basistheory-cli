@@ -1,5 +1,6 @@
+/* eslint-disable no-promise-executor-return */
 import { ux } from '@oclif/core';
-import { bin, install, tunnel } from 'cloudflared';
+import { bin, install, Tunnel } from 'cloudflared';
 import detectPort from 'detect-port';
 import * as fs from 'node:fs';
 import pino from 'pino';
@@ -14,16 +15,23 @@ const runTunnel = async (port: number): Promise<string> => {
   }
 
   debug('starting tunnel');
-  const { url: urlPromise } = tunnel({
-    '--url': `localhost:${port}`,
-  });
+  const tunnel = Tunnel.quick(`localhost:${port}`);
 
-  const url = await urlPromise;
+  const url: string = await new Promise((resolve) =>
+    tunnel.once('url', resolve)
+  );
 
   debug(`tunnel started at ${url}`);
 
+  const connection = await new Promise((resolve) =>
+    tunnel.once('connected', resolve)
+  );
+
+  debug(`tunnel connection is ready`, connection);
+
   return url;
 };
+
 const createLogServer = async (_port: number): Promise<string> => {
   const port = await detectPort(_port);
 

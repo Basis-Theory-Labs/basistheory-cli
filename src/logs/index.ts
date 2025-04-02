@@ -20,6 +20,7 @@ const showProxyLogs = async (
   await connectToProxy(bt, id, url);
   cleanUpOnExit(() => disconnectFromProxy(bt, id));
 };
+
 const showReactorLogs = async (
   bt: BasisTheory,
   id: string,
