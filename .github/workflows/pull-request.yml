@@ -10,9 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.SEMANTIC_RELEASE_PAT }}
+        uses: actions/checkout@v4
 
       - name: Use Node 18
         uses: actions/setup-node@v4
