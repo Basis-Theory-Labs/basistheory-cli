@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.11.0...v1.12.0) (2025-04-03)
+
+
+### Features
+
+* updating pr template ([#25](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/25)) ([fec9a75](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/fec9a7533ab9ce2f7482d6a749c0360f7f56c7ca))
+
 # [1.11.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.10.0...v1.11.0) (2025-04-02)
 
 
