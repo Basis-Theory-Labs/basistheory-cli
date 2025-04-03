@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/1.11.0 linux-x64 node-v18.20.7
+@basis-theory-labs/cli/1.12.0 linux-x64 node-v18.20.7
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -64,7 +64,7 @@ EXAMPLES
   $ bt applications
 ```
 
-_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.11.0/dist/commands/applications/index.ts)_
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.12.0/dist/commands/applications/index.ts)_
 
 ## `bt applications create`
 
@@ -153,7 +153,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.11.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.12.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -286,7 +286,7 @@ EXAMPLES
   $ bt reactorFormulas
 ```
 
-_See code: [dist/commands/reactorFormulas/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.11.0/dist/commands/reactorFormulas/index.ts)_
+_See code: [dist/commands/reactorFormulas/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.12.0/dist/commands/reactorFormulas/index.ts)_
 
 ## `bt reactorFormulas update ID`
 
@@ -339,7 +339,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.11.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.12.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 
