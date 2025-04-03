@@ -18,6 +18,12 @@ const createHttpServer = (logger: Logger): FastifyInstance => {
     parseLogEvent(logger, request.body as LogEvent);
   });
 
+  fastify.get('/ping', (_, reply) => {
+    debug('received "ping" request');
+
+    reply.code(200).send();
+  });
+
   return fastify;
 };
 

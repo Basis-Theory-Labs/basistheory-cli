@@ -1,6 +1,10 @@
 // eslint-disable-next-line eslint-comments/disable-enable-pair
+
 /* eslint-disable no-promise-executor-return */
+
+/* eslint-disable no-await-in-loop */
 import { ux } from '@oclif/core';
+import axios from 'axios';
 import { bin, install, Tunnel } from 'cloudflared';
 import detectPort from 'detect-port';
 import * as fs from 'node:fs';
@@ -9,6 +13,26 @@ import { createHttpServer } from './http';
 import { createSocketServer } from './socket';
 
 const debug = require('debug')('logs:server');
+
+const verifyTunnelIsReady = async (url: string): Promise<boolean> => {
+  for (let i = 0; i < 10; i++) {
+    ux.log(`Testing connection ${i}/10...`);
+
+    try {
+      const response = await axios.get(url);
+
+      if (response.status === 200) {
+        ux.log(`✅ Connection successful!`);
+
+        return true;
+      }
+    } catch {
+      debug(`tunnel ping unsuccessful`);
+    }
+  }
+
+  return false;
+};
 
 const runTunnel = async (port: number): Promise<string> => {
   if (!fs.existsSync(bin)) {
@@ -66,8 +90,13 @@ const createLogServer = async (_port: number): Promise<string> => {
   ux.action.start('Starting tunnel');
 
   const url = await runTunnel(port);
+  const tunnelReady = await verifyTunnelIsReady(url);
 
-  ux.action.stop(`✅\t\tListening at ${url}`);
+  if (tunnelReady) {
+    ux.action.stop(`✅\t\tListening at ${url}`);
+  } else {
+    ux.action.stop(`✅\t\tTunnel failed to start.`);
+  }
 
   return url;
 };
