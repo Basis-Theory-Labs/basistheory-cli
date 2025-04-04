@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.12.0...v1.13.0) (2025-04-04)
+
+
+### Features
+
+* waiting for tunnel to be ready ([#26](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/26)) ([be846bf](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/be846bf0e495229a62e0db2570683ad7a337038c))
+
 # [1.12.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.11.0...v1.12.0) (2025-04-03)
 
 
