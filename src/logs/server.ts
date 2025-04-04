@@ -63,11 +63,15 @@ const createLogServer = async (_port: number): Promise<string> => {
   await fastify.listen({ port });
 
   ux.action.stop(`✅\tListening at http://localhost:${port}`);
-  ux.action.start('Starting tunnel');
+  ux.action.start('Creating tunnel');
 
   const url = await runTunnel(port);
 
-  ux.action.stop(`✅\t\tListening at ${url}`);
+  ux.action.stop(`✅\t\tTunnel created at ${url}`);
+
+  ux.action.start('Waiting for tunnel to be ready');
+  await new Promise((resolve) => setTimeout(resolve, 10000));
+  ux.action.stop('✅\t\tTunnel is now up');
 
   return url;
 };
