@@ -71,7 +71,7 @@ const createLogServer = async (_port: number): Promise<string> => {
 
   ux.action.start('Waiting for tunnel to be ready');
   await new Promise((resolve) => setTimeout(resolve, 10000));
-  ux.action.stop('✅\t\tTunnel is now up');
+  ux.action.stop('✅\t\tTunnel is now ready');
 
   return url;
 };

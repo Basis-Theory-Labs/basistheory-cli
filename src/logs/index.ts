@@ -7,7 +7,6 @@ import {
   disconnectFromReactor,
 } from './connect';
 import { createLogServer } from './server';
-import { ux } from "@oclif/core";
 
 const DEFAULT_LOGS_SERVER_PORT = 8220;
 
