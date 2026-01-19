@@ -5,14 +5,15 @@ import sinon from 'sinon';
 import * as files from '../../../../src/files';
 import { reactorFixtures } from '../../fixtures/reactors';
 import { runCommand } from '../../helpers/run-command';
+import { PromptStub } from '../../helpers/types';
 
 describe('reactors create', () => {
-  let inputStub: sinon.SinonStub;
+  let inputStub: PromptStub;
   let readFileStub: sinon.SinonStub;
   let reactorsCreateStub: sinon.SinonStub;
 
   beforeEach(() => {
-    inputStub = sinon.stub(input, 'default');
+    inputStub = new PromptStub(sinon.stub(input, 'default'));
     readFileStub = sinon.stub(files, 'readFileContents');
     reactorsCreateStub = sinon.stub();
 
@@ -86,24 +87,38 @@ describe('reactors create', () => {
 
   describe('with prompts', () => {
     it('prompts for name and code when not provided', async () => {
-      inputStub.onCall(0).resolves('Prompted Reactor');
-      inputStub.onCall(1).resolves('./reactor.js');
-      inputStub.onCall(2).resolves('');
-      inputStub.onCall(3).resolves('');
+      inputStub
+        .onCallResolves('What is the Reactor name?', 'Prompted Reactor')
+        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
+        .onCallResolves(
+          '(Optional) Enter the Application ID to use in the Reactor:',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Enter the configuration file path (.env format):',
+          ''
+        );
 
       const result = await runCommand(['reactors:create']);
 
       expect(result.stdout).to.contain('Reactor created successfully!');
-      expect(inputStub.callCount).to.be.greaterThanOrEqual(2);
-      const [createArg] = reactorsCreateStub.firstCall.args;
-
-      expect(createArg.name).to.equal('Prompted Reactor');
+      expect(reactorsCreateStub.firstCall.args[0].name).to.equal(
+        'Prompted Reactor'
+      );
+      inputStub.verifyExpectations();
     });
 
     it('only prompts for missing fields', async () => {
-      inputStub.onCall(0).resolves('./reactor.js');
-      inputStub.onCall(1).resolves('');
-      inputStub.onCall(2).resolves('');
+      inputStub
+        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
+        .onCallResolves(
+          '(Optional) Enter the Application ID to use in the Reactor:',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Enter the configuration file path (.env format):',
+          ''
+        );
 
       const result = await runCommand([
         'reactors:create',
@@ -112,23 +127,35 @@ describe('reactors create', () => {
       ]);
 
       expect(result.stdout).to.contain('Reactor created successfully!');
-      const [createArg] = reactorsCreateStub.firstCall.args;
+      expect(reactorsCreateStub.firstCall.args[0].name).to.equal(
+        'Test Reactor'
+      );
 
-      expect(createArg.name).to.equal('Test Reactor');
+      // Name was provided via flag, so should NOT prompt for it
+      inputStub.expectNotCalledWith('What is the Reactor name?');
+      inputStub.verifyExpectations();
     });
 
     it('prompts for optional application-id', async () => {
-      inputStub.onCall(0).resolves('Prompted Reactor');
-      inputStub.onCall(1).resolves('./reactor.js');
-      inputStub.onCall(2).resolves('app-456');
-      inputStub.onCall(3).resolves('');
+      inputStub
+        .onCallResolves('What is the Reactor name?', 'Prompted Reactor')
+        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
+        .onCallResolves(
+          '(Optional) Enter the Application ID to use in the Reactor:',
+          'app-456'
+        )
+        .onCallResolves(
+          '(Optional) Enter the configuration file path (.env format):',
+          ''
+        );
 
       const result = await runCommand(['reactors:create']);
 
       expect(result.stdout).to.contain('Reactor created successfully!');
-      const [createArg] = reactorsCreateStub.firstCall.args;
-
-      expect(createArg.application).to.deep.equal({ id: 'app-456' });
+      expect(reactorsCreateStub.firstCall.args[0].application).to.deep.equal({
+        id: 'app-456',
+      });
+      inputStub.verifyExpectations();
     });
   });
 

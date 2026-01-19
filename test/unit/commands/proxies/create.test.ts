@@ -6,16 +6,17 @@ import sinon from 'sinon';
 import * as files from '../../../../src/files';
 import { proxyFixtures } from '../../fixtures/proxies';
 import { runCommand } from '../../helpers/run-command';
+import { PromptStub } from '../../helpers/types';
 
 describe('proxies create', () => {
-  let inputStub: sinon.SinonStub;
-  let confirmStub: sinon.SinonStub;
+  let inputStub: PromptStub;
+  let confirmStub: PromptStub;
   let readFileStub: sinon.SinonStub;
   let proxiesCreateStub: sinon.SinonStub;
 
   beforeEach(() => {
-    inputStub = sinon.stub(input, 'default');
-    confirmStub = sinon.stub(confirm, 'default');
+    inputStub = new PromptStub(sinon.stub(input, 'default'));
+    confirmStub = new PromptStub(sinon.stub(confirm, 'default'));
     readFileStub = sinon.stub(files, 'readFileContents');
     proxiesCreateStub = sinon.stub();
 
@@ -145,29 +146,64 @@ describe('proxies create', () => {
 
   describe('with prompts', () => {
     it('prompts for name and destination-url when not provided', async () => {
-      inputStub.onCall(0).resolves('Prompted Proxy');
-      inputStub.onCall(1).resolves('https://example.com/api');
-      inputStub.onCall(2).resolves('');
-      inputStub.onCall(3).resolves('');
-      inputStub.onCall(4).resolves('');
-      inputStub.onCall(5).resolves('');
+      inputStub
+        .onCallResolves('What is the Proxy name?', 'Prompted Proxy')
+        .onCallResolves(
+          'What is the Proxy destination URL?',
+          'https://example.com/api'
+        )
+        .onCallResolves(
+          '(Optional) Enter the Request Transform code file path:',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Enter the Response Transform code file path:',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Enter the Application ID to use in the Proxy:',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Enter the configuration file path (.env format):',
+          ''
+        );
       confirmStub.resolves(true);
 
       const result = await runCommand(['proxies:create']);
 
       expect(result.stdout).to.contain('Proxy created successfully!');
-      expect(inputStub.callCount).to.be.greaterThanOrEqual(2);
-      const [createArg] = proxiesCreateStub.firstCall.args;
-
-      expect(createArg.name).to.equal('Prompted Proxy');
+      expect(proxiesCreateStub.firstCall.args[0].name).to.equal(
+        'Prompted Proxy'
+      );
+      inputStub.verifyExpectations();
+      confirmStub.expectCalledWith(
+        'Does the Proxy require Basis Theory authentication?'
+      );
     });
 
     it('only prompts for missing fields', async () => {
-      inputStub.onCall(0).resolves('https://example.com/api');
-      inputStub.onCall(1).resolves('');
-      inputStub.onCall(2).resolves('');
-      inputStub.onCall(3).resolves('');
-      inputStub.onCall(4).resolves('');
+      inputStub
+        .onCallResolves(
+          'What is the Proxy destination URL?',
+          'https://example.com/api'
+        )
+        .onCallResolves(
+          '(Optional) Enter the Request Transform code file path:',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Enter the Response Transform code file path:',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Enter the Application ID to use in the Proxy:',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Enter the configuration file path (.env format):',
+          ''
+        );
       confirmStub.resolves(true);
 
       const result = await runCommand([
@@ -177,9 +213,11 @@ describe('proxies create', () => {
       ]);
 
       expect(result.stdout).to.contain('Proxy created successfully!');
-      const [createArg] = proxiesCreateStub.firstCall.args;
+      expect(proxiesCreateStub.firstCall.args[0].name).to.equal('Test Proxy');
 
-      expect(createArg.name).to.equal('Test Proxy');
+      // Name was provided via flag, so should NOT prompt for it
+      inputStub.expectNotCalledWith('What is the Proxy name?');
+      inputStub.verifyExpectations();
     });
   });
 

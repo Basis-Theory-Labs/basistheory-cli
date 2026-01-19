@@ -11,12 +11,13 @@ import {
   applicationTemplateFixtures,
 } from '../../fixtures/applications';
 import { runCommand } from '../../helpers/run-command';
+import { PromptStub } from '../../helpers/types';
 
 describe('applications create', () => {
-  let inputStub: sinon.SinonStub;
-  let selectStub: sinon.SinonStub;
-  let checkboxStub: sinon.SinonStub;
-  let confirmStub: sinon.SinonStub;
+  let inputStub: PromptStub;
+  let selectStub: PromptStub;
+  let checkboxStub: PromptStub;
+  let confirmStub: PromptStub;
   let applicationsCreateStub: sinon.SinonStub;
   let applicationsGetStub: sinon.SinonStub;
   let permissionsListStub: sinon.SinonStub;
@@ -24,10 +25,10 @@ describe('applications create', () => {
   let applicationTemplatesGetStub: sinon.SinonStub;
 
   beforeEach(() => {
-    inputStub = sinon.stub(input, 'default');
-    selectStub = sinon.stub(select, 'default');
-    checkboxStub = sinon.stub(checkbox, 'default');
-    confirmStub = sinon.stub(confirm, 'default');
+    inputStub = new PromptStub(sinon.stub(input, 'default'));
+    selectStub = new PromptStub(sinon.stub(select, 'default'));
+    checkboxStub = new PromptStub(sinon.stub(checkbox, 'default'));
+    confirmStub = new PromptStub(sinon.stub(confirm, 'default'));
     applicationsCreateStub = sinon.stub();
     applicationsGetStub = sinon.stub();
     permissionsListStub = sinon.stub();
@@ -136,30 +137,42 @@ describe('applications create', () => {
   describe('with prompts', () => {
     it('prompts for all fields when no flags provided', async () => {
       confirmStub.resolves(false); // Don't use template
-      inputStub.onCall(0).resolves('Prompted App');
-      selectStub.onCall(0).resolves('private');
-      checkboxStub.onCall(0).resolves(['token:read']);
+      inputStub.onCallResolves('What is the Application name?', 'Prompted App');
+      selectStub.onCallResolves('What is the Application type?', 'private');
+      checkboxStub.onCallResolves(
+        'Select the permissions for the Application',
+        ['token:read']
+      );
 
       const result = await runCommand(['applications:create']);
 
       expect(result.stdout).to.contain('Application created successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(inputStub.calledOnce).to.be.true;
-      expect(selectStub.calledOnce).to.be.true;
-      expect(checkboxStub.calledOnce).to.be.true;
+      confirmStub.expectCalledWith(
+        'Do you want to use an application template?'
+      );
+      inputStub.verifyExpectations();
+      selectStub.verifyExpectations();
+      checkboxStub.verifyExpectations();
     });
 
     it('prompts for template when no flags provided', async () => {
       confirmStub.resolves(true); // Use template
-      selectStub.onCall(0).resolves('official'); // Template type
-      selectStub.onCall(1).resolves(applicationTemplateFixtures[0]); // Template
-      inputStub.onCall(0).resolves('App from Template');
+      selectStub
+        .onCallResolves('Which template type do you want to use?', 'official')
+        .onCallResolves('Choose a template', applicationTemplateFixtures[0]);
+      inputStub.onCallResolves(
+        'What is the Application name?',
+        'App from Template'
+      );
 
       const result = await runCommand(['applications:create']);
 
       expect(result.stdout).to.contain('Application created successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(selectStub.calledTwice).to.be.true;
+      confirmStub.expectCalledWith(
+        'Do you want to use an application template?'
+      );
+      selectStub.verifyExpectations();
+      inputStub.verifyExpectations();
     });
   });
 
