@@ -1,6 +1,4 @@
-import { BasisTheory } from '@basis-theory/basis-theory-js';
-import { BasisTheoryApiError } from '@basis-theory/basis-theory-js/common';
-import type { BasisTheory as IBasisTheory } from '@basis-theory/basis-theory-js/types/sdk';
+import { BasisTheoryClient, BasisTheoryError } from '@basis-theory/node-sdk';
 import { Command, Flags } from '@oclif/core';
 import type { CommandError } from '@oclif/core/lib/interfaces';
 import type {
@@ -35,23 +33,16 @@ export abstract class BaseCommand extends Command {
     argv?: string[]
   ): Promise<
     ParserOutput<F, B, A> & {
-      bt: IBasisTheory;
+      bt: BasisTheoryClient;
     }
   > {
     const { flags, ...parsed } = await super.parse(options, argv);
     const { 'management-key': managementKey, 'api-base-url': apiBaseUrl } =
       flags;
 
-    const bt = await new BasisTheory().init(managementKey, {
-      appInfo: {
-        name: this.config.userAgent,
-        version: this.config.version,
-      },
-      ...(apiBaseUrl
-        ? {
-            apiBaseUrl,
-          }
-        : {}),
+    const bt = new BasisTheoryClient({
+      apiKey: managementKey,
+      ...(apiBaseUrl ? { environment: apiBaseUrl } : {}),
     });
 
     return {
@@ -62,8 +53,8 @@ export abstract class BaseCommand extends Command {
   }
 
   protected catch(err: unknown): Promise<unknown> {
-    if (err instanceof BasisTheoryApiError) {
-      this.logJson(err.data);
+    if (err instanceof BasisTheoryError) {
+      this.logJson(err.body);
     }
 
     return super.catch(err as CommandError);

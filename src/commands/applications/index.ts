@@ -52,7 +52,7 @@ export default class Applications extends BaseCommand {
       return undefined;
     }
 
-    if (action === 'delete' && (await deleteApplication(bt, application.id))) {
+    if (action === 'delete' && (await deleteApplication(bt, application.id!))) {
       return this.log('Application deleted successfully!');
     }
 

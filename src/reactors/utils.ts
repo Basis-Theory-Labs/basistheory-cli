@@ -1,7 +1,4 @@
-import type {
-  CreateReactor as CreateReactorModel,
-  PatchReactor as PatchReactorModel,
-} from '@basis-theory/basis-theory-js/types/models/reactors';
+import type { BasisTheory } from '@basis-theory/node-sdk';
 import { Flags } from '@oclif/core';
 import { parse } from 'dotenv';
 import { readFileContents } from '../files';
@@ -27,28 +24,23 @@ const REACTOR_FLAGS = {
 };
 
 interface ReactorFlagProps {
-  /**
-   * Reactor's application id
-   */
   applicationId?: string;
-  /**
-   * Path to code file
-   */
   code?: string;
-  /**
-   * Path to .env file
-   */
   configuration?: string;
 }
 
 type CreateReactor = ReactorFlagProps &
-  Omit<CreateReactorModel, 'application' | 'configuration'>;
+  Omit<BasisTheory.CreateReactorRequest, 'application' | 'configuration'>;
 type PatchReactor = ReactorFlagProps &
-  Omit<PatchReactorModel, 'application' | 'configuration'>;
+  Omit<BasisTheory.PatchReactorRequest, 'application' | 'configuration'>;
 
-function createModelFromFlags(payload: CreateReactor): CreateReactorModel;
+function createModelFromFlags(
+  payload: CreateReactor
+): BasisTheory.CreateReactorRequest;
 
-function createModelFromFlags(payload: PatchReactor): PatchReactorModel;
+function createModelFromFlags(
+  payload: PatchReactor
+): BasisTheory.PatchReactorRequest;
 
 // eslint-disable-next-line get-off-my-lawn/prefer-arrow-functions
 function createModelFromFlags({
@@ -56,7 +48,9 @@ function createModelFromFlags({
   applicationId,
   code,
   configuration,
-}: CreateReactor | PatchReactor): CreateReactorModel | PatchReactorModel {
+}: CreateReactor | PatchReactor):
+  | BasisTheory.CreateReactorRequest
+  | BasisTheory.PatchReactorRequest {
   return {
     name,
     code: code ? readFileContents(code) : undefined,

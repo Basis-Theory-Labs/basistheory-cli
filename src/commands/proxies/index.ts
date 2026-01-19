@@ -58,10 +58,10 @@ export default class Proxies extends BaseCommand {
     }
 
     if (action === 'logs') {
-      return showProxyLogs(bt, proxy.id);
+      return showProxyLogs(bt, proxy.id!);
     }
 
-    if (action === 'delete' && (await deleteProxy(bt, proxy.id))) {
+    if (action === 'delete' && (await deleteProxy(bt, proxy.id!))) {
       return this.log('Proxy deleted successfully!');
     }
 

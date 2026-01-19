@@ -44,6 +44,6 @@ export default class Logs extends BaseCommand {
       return undefined;
     }
 
-    return showProxyLogs(bt, proxy.id, port);
+    return showProxyLogs(bt, proxy.id!, port);
   }
 }

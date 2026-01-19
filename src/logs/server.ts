@@ -1,5 +1,4 @@
-// eslint-disable-next-line eslint-comments/disable-enable-pair
-/* eslint-disable no-promise-executor-return */
+/* eslint-disable no-promise-executor-return, eslint-comments/disable-enable-pair */
 import { ux } from '@oclif/core';
 import { bin, install, Tunnel } from 'cloudflared';
 import detectPort from 'detect-port';

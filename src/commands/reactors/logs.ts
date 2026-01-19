@@ -44,6 +44,6 @@ export default class Logs extends BaseCommand {
       return undefined;
     }
 
-    return showReactorLogs(bt, reactor.id, port);
+    return showReactorLogs(bt, reactor.id!, port);
   }
 }

@@ -1,9 +1,14 @@
-import { PaginatedList } from '@basis-theory/basis-theory-js/types/sdk';
+import type { BasisTheory } from '@basis-theory/node-sdk';
 import checkbox from '@inquirer/checkbox';
 import confirm from '@inquirer/confirm';
 import input from '@inquirer/input';
 import select from '@inquirer/select';
 import { ux } from '@oclif/core';
+
+interface PaginatedList<T> {
+  data: T[];
+  pagination: BasisTheory.Pagination;
+}
 
 const selectOrNavigate = async <T>(
   list: PaginatedList<T>,
@@ -13,8 +18,8 @@ const selectOrNavigate = async <T>(
 
   let prompt = `Select one (${prop})`;
 
-  const hasNext = pagination.totalPages > pagination.pageNumber;
-  const hasPrevious = pagination.pageNumber > 1;
+  const hasNext = (pagination.totalPages ?? 0) > (pagination.pageNumber ?? 0);
+  const hasPrevious = (pagination.pageNumber ?? 0) > 1;
 
   if (hasPrevious) {
     prompt += " or 'p' for previous page ";
@@ -133,4 +138,5 @@ export {
   promptUrlIfUndefined,
   promptBooleanIfUndefined,
   cleanUpOnExit,
+  PaginatedList,
 };

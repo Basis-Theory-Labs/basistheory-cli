@@ -1,7 +1,3 @@
-import {
-  APPLICATION_TYPES,
-  ApplicationType,
-} from '@basis-theory/basis-theory-js/types/models';
 import { Flags } from '@oclif/core';
 import {
   createApplication,
@@ -16,6 +12,15 @@ import {
   promptSelectIfUndefined,
   promptStringIfUndefined,
 } from '../../utils';
+
+const APPLICATION_TYPES = [
+  'public',
+  'private',
+  'management',
+  'elements',
+] as const;
+
+type ApplicationType = (typeof APPLICATION_TYPES)[number];
 
 export default class Create extends BaseCommand {
   public static description =
@@ -83,7 +88,7 @@ export default class Create extends BaseCommand {
 
       application = await createApplication(bt, {
         name,
-        type,
+        type: type!,
         permissions,
         rules,
       });

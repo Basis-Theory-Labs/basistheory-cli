@@ -1,38 +1,36 @@
-import type {
-  Reactor,
-  PatchReactor,
-  CreateReactor,
-} from '@basis-theory/basis-theory-js/types/models';
-import type {
-  BasisTheory as IBasisTheory,
-  PaginatedList,
-} from '@basis-theory/basis-theory-js/types/sdk';
+import type { BasisTheory, BasisTheoryClient } from '@basis-theory/node-sdk';
 import confirm from '@inquirer/confirm';
 import { ux } from '@oclif/core';
 import type { TableRow } from '../types';
-import { selectOrNavigate } from '../utils';
+import { selectOrNavigate, PaginatedList } from '../utils';
 
 const debug = require('debug')('reactors:management');
 
 const listReactors = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   page: number
-): Promise<PaginatedList<Reactor>> => {
+): Promise<PaginatedList<BasisTheory.Reactor>> => {
   const size = 5;
 
   debug('Listing reactors', `page: ${page}`, `size: ${size}`);
 
-  const reactors = await bt.reactors.list({
+  const reactorsPage = await bt.reactors.list({
     size,
     page,
   });
 
-  let data: TableRow<Reactor>[] = [];
+  // Access internal response for pagination data
+  const response = (
+    reactorsPage as unknown as { response: BasisTheory.ReactorPaginatedList }
+  ).response;
+  const pagination = response.pagination!;
 
-  if (reactors.pagination.totalItems > 0) {
-    const last = (reactors.pagination.pageNumber - 1) * size;
+  let data: TableRow<BasisTheory.Reactor>[] = [];
 
-    data = reactors.data.map((reactor, index) => ({
+  if (pagination.totalItems! > 0) {
+    const last = (pagination.pageNumber! - 1) * size;
+
+    data = reactorsPage.data.map((reactor, index) => ({
       '#': last + (index + 1),
       ...reactor,
     }));
@@ -48,14 +46,14 @@ const listReactors = async (
 
   return {
     data,
-    pagination: reactors.pagination,
+    pagination,
   };
 };
 
 const selectReactor = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   page: number
-): Promise<Reactor | undefined> => {
+): Promise<BasisTheory.Reactor | undefined> => {
   const reactors = await listReactors(bt, page);
 
   if (reactors.pagination.totalItems === 0) {
@@ -76,16 +74,16 @@ const selectReactor = async (
 };
 
 const createReactor = (
-  bt: IBasisTheory,
-  model: CreateReactor
-): Promise<Reactor> => {
+  bt: BasisTheoryClient,
+  model: BasisTheory.CreateReactorRequest
+): Promise<BasisTheory.Reactor> => {
   debug(`Creating Reactor`, JSON.stringify(model, undefined, 2));
 
   return bt.reactors.create(model);
 };
 
 const deleteReactor = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string,
   force = false
 ): Promise<boolean> => {
@@ -108,9 +106,9 @@ const deleteReactor = async (
 };
 
 const patchReactor = (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string,
-  model: PatchReactor
+  model: BasisTheory.PatchReactorRequest
 ): Promise<void> => {
   debug(`Patching Reactor ${id}`, JSON.stringify(model, undefined, 2));
 

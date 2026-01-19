@@ -5,8 +5,8 @@ on:
     branches: [ master ]
 
 jobs:
-  lint-build:
-    name: Lint and Build
+  lint-test-build:
+    name: Lint, Test and Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -22,6 +22,9 @@ jobs:
 
       - name: Lint
         run: yarn lint
+
+      - name: Unit Test
+        run: yarn test
 
       - name: Build
         run: yarn build

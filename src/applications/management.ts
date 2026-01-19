@@ -1,55 +1,52 @@
-import type {
-  Application,
-  ApplicationType,
-  CreateApplication,
-  Permission,
-  UpdateApplication,
-} from '@basis-theory/basis-theory-js/types/models';
-import { ApplicationTemplate } from '@basis-theory/basis-theory-js/types/models/application-templates';
-import type {
-  BasisTheory as IBasisTheory,
-  PaginatedList,
-} from '@basis-theory/basis-theory-js/types/sdk';
+import type { BasisTheory, BasisTheoryClient } from '@basis-theory/node-sdk';
 import confirm from '@inquirer/confirm';
 import select from '@inquirer/select';
 import { ux } from '@oclif/core';
 import groupBy from 'lodash.groupby';
 import { TableRow } from '../types';
-import { selectOrNavigate } from '../utils';
+import { selectOrNavigate, PaginatedList } from '../utils';
 
 const debug = require('debug')('applications:management');
 
 const listPermissions = (
-  bt: IBasisTheory,
-  type: ApplicationType
-): Promise<Permission[]> =>
+  bt: BasisTheoryClient,
+  type: string
+): Promise<BasisTheory.Permission[]> =>
   bt.permissions
     .list({
       applicationType: type,
     })
     .then((permissions) =>
-      permissions.sort((p1, p2) => p1.type.localeCompare(p2.type))
+      permissions.sort((p1, p2) => p1.type!.localeCompare(p2.type!))
     );
 
 const listApplications = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   page: number
-): Promise<PaginatedList<Application>> => {
+): Promise<PaginatedList<BasisTheory.Application>> => {
   const size = 5;
 
   debug('Listing applications', `page: ${page}`, `size: ${size}`);
 
-  const applications = await bt.applications.list({
+  const applicationsPage = await bt.applications.list({
     size,
     page,
   });
 
-  let data: TableRow<Application>[] = [];
+  // Access internal response for pagination data
+  const response = (
+    applicationsPage as unknown as {
+      response: BasisTheory.ApplicationPaginatedList;
+    }
+  ).response;
+  const pagination = response.pagination!;
 
-  if (applications.pagination.totalItems > 0) {
-    const last = (applications.pagination.pageNumber - 1) * size;
+  let data: TableRow<BasisTheory.Application>[] = [];
 
-    data = applications.data.map((application, index) => ({
+  if (pagination.totalItems! > 0) {
+    const last = (pagination.pageNumber! - 1) * size;
+
+    data = applicationsPage.data.map((application, index) => ({
       '#': last + (index + 1),
       ...application,
     }));
@@ -66,23 +63,23 @@ const listApplications = async (
 
   return {
     data,
-    pagination: applications.pagination,
+    pagination,
   };
 };
 
 const retrieveApplication = (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string
-): Promise<Application> => {
+): Promise<BasisTheory.Application> => {
   debug(`Retrieving Application ${id}`);
 
-  return bt.applications.retrieve(id);
+  return bt.applications.get(id);
 };
 
 const selectApplication = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   page: number
-): Promise<Application | undefined> => {
+): Promise<BasisTheory.Application | undefined> => {
   const applications = await listApplications(bt, page);
 
   if (applications.pagination.totalItems === 0) {
@@ -103,31 +100,31 @@ const selectApplication = async (
 };
 
 const createApplication = (
-  bt: IBasisTheory,
-  model: CreateApplication
-): Promise<Application> => {
+  bt: BasisTheoryClient,
+  model: BasisTheory.CreateApplicationRequest
+): Promise<BasisTheory.Application> => {
   debug('Creating Application', JSON.stringify(model, undefined, 2));
 
   return bt.applications.create(model);
 };
 const updateApplication = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string,
-  model: UpdateApplication
-): Promise<Application> => {
+  model: Partial<BasisTheory.UpdateApplicationRequest>
+): Promise<BasisTheory.Application> => {
   const application = await retrieveApplication(bt, id);
 
   debug(`Updating Application ${id}`, JSON.stringify(model, undefined, 2));
 
   return bt.applications.update(id, {
-    name: model.name || application.name,
+    name: model.name || application.name!,
     permissions: model.permissions || application.permissions,
-    rules: model.permissions ? undefined : application.rules, // if permissions were passed, overwrite rules
+    rules: model.permissions ? undefined : application.rules,
   });
 };
 
 const deleteApplication = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string,
   force = false
 ): Promise<boolean> => {
@@ -150,22 +147,22 @@ const deleteApplication = async (
 };
 
 const createApplicationFromTemplate = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   templateId: string
-): Promise<Application> => {
-  const template = await bt.applicationTemplates.retrieve(templateId);
+): Promise<BasisTheory.Application> => {
+  const template = await bt.applicationTemplates.get(templateId);
 
   return createApplication(bt, {
-    name: template.name,
-    type: template.applicationType,
+    name: template.name!,
+    type: template.applicationType!,
     permissions: template.permissions,
     rules: template.rules,
   });
 };
 
 const promptTemplate = async (
-  bt: IBasisTheory
-): Promise<ApplicationTemplate | undefined> => {
+  bt: BasisTheoryClient
+): Promise<BasisTheory.ApplicationTemplate | undefined> => {
   const useTemplate = await confirm({
     message: 'Do you want to use an application template?',
   });

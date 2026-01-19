@@ -1,4 +1,4 @@
-import type { BasisTheory } from '@basis-theory/basis-theory-js/types/sdk';
+import type { BasisTheoryClient } from '@basis-theory/node-sdk';
 import { cleanUpOnExit } from '../utils';
 import {
   connectToProxy,
@@ -11,7 +11,7 @@ import { createLogServer } from './server';
 const DEFAULT_LOGS_SERVER_PORT = 8220;
 
 const showProxyLogs = async (
-  bt: BasisTheory,
+  bt: BasisTheoryClient,
   id: string,
   port: number = DEFAULT_LOGS_SERVER_PORT
 ): Promise<void> => {
@@ -22,7 +22,7 @@ const showProxyLogs = async (
 };
 
 const showReactorLogs = async (
-  bt: BasisTheory,
+  bt: BasisTheoryClient,
   id: string,
   port: number = DEFAULT_LOGS_SERVER_PORT
 ): Promise<void> => {

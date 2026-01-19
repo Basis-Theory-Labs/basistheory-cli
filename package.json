@@ -17,7 +17,7 @@
     "/oclif.manifest.json"
   ],
   "dependencies": {
-    "@basis-theory/basis-theory-js": "^2.7.0",
+    "@basis-theory/node-sdk": "^4.4.0",
     "@inquirer/checkbox": "^1.5.0",
     "@inquirer/confirm": "^2.0.15",
     "@inquirer/input": "^1.2.14",
@@ -53,6 +53,7 @@
     "@types/lodash.groupby": "^4.6.9",
     "@types/mocha": "^9.0.0",
     "@types/node": "^16.18.36",
+    "@types/sinon": "^21.0.0",
     "chai": "^4",
     "eslint": "^7.32.0",
     "eslint-config-oclif": "^4",
@@ -62,6 +63,7 @@
     "prettier": "^2.8.8",
     "semantic-release": "^21.0.5",
     "shx": "^0.3.3",
+    "sinon": "^21.0.1",
     "ts-node": "^10.9.1",
     "tslib": "^2.5.3",
     "typescript": "^4.9.5"
@@ -85,7 +87,6 @@
     "build": "shx rm -rf dist && tsc -b",
     "lint": "eslint . --ext .ts --config .eslintrc",
     "postpack": "shx rm -f oclif.manifest.json",
-    "posttest": "yarn lint",
     "prepack": "yarn build && oclif manifest && oclif readme",
     "version": "yarn build && oclif readme",
     "test": "mocha --forbid-only \"test/**/*.test.ts\"",
