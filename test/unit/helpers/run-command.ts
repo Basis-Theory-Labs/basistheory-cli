@@ -3,7 +3,7 @@ import { Config } from '@oclif/core';
 import path from 'path';
 
 // eslint-disable-next-line no-control-regex
-const ANSI_REGEX = /\u001b\[[0-9;]*m/g;
+const ANSI_REGEX = /\u001B\[[\d;]*m/gu;
 
 const stripAnsi = (str: string): string => str.replace(ANSI_REGEX, '');
 
