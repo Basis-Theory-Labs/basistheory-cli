@@ -2,6 +2,11 @@
 import { Config } from '@oclif/core';
 import path from 'path';
 
+// eslint-disable-next-line no-control-regex
+const ANSI_REGEX = /\u001b\[[0-9;]*m/g;
+
+const stripAnsi = (str: string): string => str.replace(ANSI_REGEX, '');
+
 interface RunResult {
   stdout: string;
   stderr: string;
@@ -64,8 +69,8 @@ const runCommand = async (argv: string[]): Promise<RunResult> => {
   }
 
   return {
-    stdout,
-    stderr,
+    stdout: stripAnsi(stdout),
+    stderr: stripAnsi(stderr),
     error,
   };
 };
