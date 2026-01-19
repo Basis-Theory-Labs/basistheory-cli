@@ -1,4 +1,3 @@
-import type { BasisTheory } from '@basis-theory/node-sdk';
 import checkbox from '@inquirer/checkbox';
 import confirm from '@inquirer/confirm';
 import input from '@inquirer/input';
@@ -7,19 +6,20 @@ import { ux } from '@oclif/core';
 
 interface PaginatedList<T> {
   data: T[];
-  pagination: BasisTheory.Pagination;
+  page: number;
+  hasNextPage: boolean;
 }
 
 const selectOrNavigate = async <T>(
   list: PaginatedList<T>,
   prop: string
 ): Promise<'previous' | T | 'next'> => {
-  const { data, pagination } = list;
+  const { data, page, hasNextPage } = list;
 
   let prompt = `Select one (${prop})`;
 
-  const hasNext = (pagination.totalPages ?? 0) > (pagination.pageNumber ?? 0);
-  const hasPrevious = (pagination.pageNumber ?? 0) > 1;
+  const hasNext = hasNextPage;
+  const hasPrevious = page > 1;
 
   if (hasPrevious) {
     prompt += " or 'p' for previous page ";

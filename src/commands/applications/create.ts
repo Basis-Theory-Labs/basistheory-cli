@@ -13,12 +13,7 @@ import {
   promptStringIfUndefined,
 } from '../../utils';
 
-const APPLICATION_TYPES = [
-  'public',
-  'private',
-  'management',
-  'elements',
-] as const;
+const APPLICATION_TYPES = ['private', 'public', 'management'] as const;
 
 type ApplicationType = (typeof APPLICATION_TYPES)[number];
 

@@ -19,16 +19,10 @@ const listProxies = async (
     page,
   });
 
-  // Access internal response for pagination data
-  const response = (
-    proxiesPage as unknown as { response: BasisTheory.ProxyPaginatedList }
-  ).response;
-  const pagination = response.pagination ?? {};
-
   let data: TableRow<BasisTheory.Proxy>[] = [];
 
-  if ((pagination.totalItems ?? 0) > 0) {
-    const last = ((pagination.pageNumber ?? 1) - 1) * size;
+  if (proxiesPage.data.length) {
+    const last = (page - 1) * size;
 
     data = proxiesPage.data.map((proxy, index) => ({
       '#': last + (index + 1),
@@ -69,7 +63,8 @@ const listProxies = async (
 
   return {
     data,
-    pagination,
+    page,
+    hasNextPage: proxiesPage.hasNextPage(),
   };
 };
 
@@ -79,7 +74,7 @@ const selectProxy = async (
 ): Promise<BasisTheory.Proxy | undefined> => {
   const proxies = await listProxies(bt, page);
 
-  if (proxies.pagination.totalItems === 0) {
+  if (!proxies.data.length) {
     return undefined;
   }
 

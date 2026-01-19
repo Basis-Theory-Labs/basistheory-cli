@@ -19,16 +19,10 @@ const listReactors = async (
     page,
   });
 
-  // Access internal response for pagination data
-  const response = (
-    reactorsPage as unknown as { response: BasisTheory.ReactorPaginatedList }
-  ).response;
-  const pagination = response.pagination ?? {};
-
   let data: TableRow<BasisTheory.Reactor>[] = [];
 
-  if ((pagination.totalItems ?? 0) > 0) {
-    const last = ((pagination.pageNumber ?? 1) - 1) * size;
+  if (reactorsPage.data.length) {
+    const last = (page - 1) * size;
 
     data = reactorsPage.data.map((reactor, index) => ({
       '#': last + (index + 1),
@@ -46,7 +40,8 @@ const listReactors = async (
 
   return {
     data,
-    pagination,
+    page,
+    hasNextPage: reactorsPage.hasNextPage(),
   };
 };
 
@@ -56,7 +51,7 @@ const selectReactor = async (
 ): Promise<BasisTheory.Reactor | undefined> => {
   const reactors = await listReactors(bt, page);
 
-  if (reactors.pagination.totalItems === 0) {
+  if (!reactors.data.length) {
     return undefined;
   }
 

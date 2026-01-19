@@ -33,18 +33,10 @@ const listApplications = async (
     page,
   });
 
-  // Access internal response for pagination data
-  const response = (
-    applicationsPage as unknown as {
-      response: BasisTheory.ApplicationPaginatedList;
-    }
-  ).response;
-  const pagination = response.pagination ?? {};
-
   let data: TableRow<BasisTheory.Application>[] = [];
 
-  if ((pagination.totalItems ?? 0) > 0) {
-    const last = ((pagination.pageNumber ?? 1) - 1) * size;
+  if (applicationsPage.data.length) {
+    const last = (page - 1) * size;
 
     data = applicationsPage.data.map((application, index) => ({
       '#': last + (index + 1),
@@ -63,7 +55,8 @@ const listApplications = async (
 
   return {
     data,
-    pagination,
+    page,
+    hasNextPage: applicationsPage.hasNextPage(),
   };
 };
 
@@ -82,7 +75,7 @@ const selectApplication = async (
 ): Promise<BasisTheory.Application | undefined> => {
   const applications = await listApplications(bt, page);
 
-  if (applications.pagination.totalItems === 0) {
+  if (!applications.data.length) {
     return undefined;
   }
 
