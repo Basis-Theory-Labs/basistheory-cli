@@ -6,6 +6,9 @@ process.env.NODE_ENV = 'test';
 // Set a dummy management key for tests
 process.env.BT_MANAGEMENT_KEY = 'test_management_key';
 
-// oclif settings
-global.oclif = global.oclif || {};
-global.oclif.columns = 80;
+// oclif settings - cast to any to avoid globalThis type issues
+(global as Record<string, unknown>).oclif =
+  (global as Record<string, unknown>).oclif || {};
+(
+  (global as Record<string, unknown>).oclif as Record<string, unknown>
+).columns = 80;

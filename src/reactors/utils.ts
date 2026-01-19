@@ -24,8 +24,17 @@ const REACTOR_FLAGS = {
 };
 
 interface ReactorFlagProps {
+  /**
+   * Reactor's application id
+   */
   applicationId?: string;
+  /**
+   * Path to code file
+   */
   code?: string;
+  /**
+   * Path to .env file
+   */
   configuration?: string;
 }
 

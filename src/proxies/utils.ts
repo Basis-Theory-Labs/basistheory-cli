@@ -38,9 +38,21 @@ const PROXY_FLAGS = {
 };
 
 interface ProxyFlagProps {
+  /**
+   * Proxy's application id
+   */
   applicationId?: string;
+  /**
+   * Path to code file
+   */
   requestTransformCode?: string;
+  /**
+   * Path to code file
+   */
   responseTransformCode?: string;
+  /**
+   * Path to .env file
+   */
   configuration?: string;
 }
 

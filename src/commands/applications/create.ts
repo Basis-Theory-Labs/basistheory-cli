@@ -86,9 +86,13 @@ export default class Create extends BaseCommand {
         });
       }
 
+      if (!type) {
+        throw new Error('Application type is required');
+      }
+
       application = await createApplication(bt, {
         name,
-        type: type!,
+        type,
         permissions,
         rules,
       });

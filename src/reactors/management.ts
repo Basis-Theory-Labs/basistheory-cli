@@ -23,12 +23,12 @@ const listReactors = async (
   const response = (
     reactorsPage as unknown as { response: BasisTheory.ReactorPaginatedList }
   ).response;
-  const pagination = response.pagination!;
+  const pagination = response.pagination ?? {};
 
   let data: TableRow<BasisTheory.Reactor>[] = [];
 
-  if (pagination.totalItems! > 0) {
-    const last = (pagination.pageNumber! - 1) * size;
+  if ((pagination.totalItems ?? 0) > 0) {
+    const last = ((pagination.pageNumber ?? 1) - 1) * size;
 
     data = reactorsPage.data.map((reactor, index) => ({
       '#': last + (index + 1),

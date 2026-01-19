@@ -58,10 +58,10 @@ export default class Reactors extends BaseCommand {
     }
 
     if (action === 'logs') {
-      return showReactorLogs(bt, reactor.id!);
+      return showReactorLogs(bt, reactor.id ?? '');
     }
 
-    if (action === 'delete' && (await deleteReactor(bt, reactor.id!))) {
+    if (action === 'delete' && (await deleteReactor(bt, reactor.id ?? ''))) {
       return this.log('Reactor deleted successfully!');
     }
 

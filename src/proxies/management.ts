@@ -23,12 +23,12 @@ const listProxies = async (
   const response = (
     proxiesPage as unknown as { response: BasisTheory.ProxyPaginatedList }
   ).response;
-  const pagination = response.pagination!;
+  const pagination = response.pagination ?? {};
 
   let data: TableRow<BasisTheory.Proxy>[] = [];
 
-  if (pagination.totalItems! > 0) {
-    const last = (pagination.pageNumber! - 1) * size;
+  if ((pagination.totalItems ?? 0) > 0) {
+    const last = ((pagination.pageNumber ?? 1) - 1) * size;
 
     data = proxiesPage.data.map((proxy, index) => ({
       '#': last + (index + 1),

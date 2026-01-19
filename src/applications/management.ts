@@ -17,7 +17,7 @@ const listPermissions = (
       applicationType: type,
     })
     .then((permissions) =>
-      permissions.sort((p1, p2) => p1.type!.localeCompare(p2.type!))
+      permissions.sort((p1, p2) => (p1.type ?? '').localeCompare(p2.type ?? ''))
     );
 
 const listApplications = async (
@@ -39,12 +39,12 @@ const listApplications = async (
       response: BasisTheory.ApplicationPaginatedList;
     }
   ).response;
-  const pagination = response.pagination!;
+  const pagination = response.pagination ?? {};
 
   let data: TableRow<BasisTheory.Application>[] = [];
 
-  if (pagination.totalItems! > 0) {
-    const last = (pagination.pageNumber! - 1) * size;
+  if ((pagination.totalItems ?? 0) > 0) {
+    const last = ((pagination.pageNumber ?? 1) - 1) * size;
 
     data = applicationsPage.data.map((application, index) => ({
       '#': last + (index + 1),
@@ -117,9 +117,9 @@ const updateApplication = async (
   debug(`Updating Application ${id}`, JSON.stringify(model, undefined, 2));
 
   return bt.applications.update(id, {
-    name: model.name || application.name!,
+    name: model.name || application.name || '',
     permissions: model.permissions || application.permissions,
-    rules: model.permissions ? undefined : application.rules,
+    rules: model.permissions ? undefined : application.rules, // if permissions were passed, overwrite rules
   });
 };
 
@@ -152,9 +152,13 @@ const createApplicationFromTemplate = async (
 ): Promise<BasisTheory.Application> => {
   const template = await bt.applicationTemplates.get(templateId);
 
+  if (!template.name || !template.applicationType) {
+    throw new Error('Invalid template: missing name or applicationType');
+  }
+
   return createApplication(bt, {
-    name: template.name!,
-    type: template.applicationType!,
+    name: template.name,
+    type: template.applicationType,
     permissions: template.permissions,
     rules: template.rules,
   });
