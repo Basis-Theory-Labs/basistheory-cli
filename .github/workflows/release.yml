@@ -2,14 +2,14 @@ name: Release
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build-release:
     name: Build and Release
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # Required for OIDC NPMJS uses OIDC Trusted Publishing
+      id-token: write # Required for OIDC NPMJS uses OIDC Trusted Publishing
       contents: write
       actions: read
     steps:
@@ -33,7 +33,6 @@ jobs:
         run: yarn release
         env:
           GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_PAT }}
-
 #      - name: Slack Deploy / Release Alert
 #        uses: 8398a7/action-slack@v3
 #        if: always()
