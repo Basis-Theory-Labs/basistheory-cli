@@ -33,10 +33,7 @@ jobs:
         run: yarn release
         env:
           GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_PAT }}
-<<<<<<< Updated upstream
-=======
           NPM_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
->>>>>>> Stashed changes
 
 #      - name: Slack Deploy / Release Alert
 #        uses: 8398a7/action-slack@v3
