@@ -8,6 +8,9 @@ jobs:
   build-release:
     name: Build and Release
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for OIDC NPMJS uses OIDC Trusted Publishing
+      contents: read
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -18,6 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
+          registry-url: https://registry.npmjs.org
 
       - name: Install deps (with cache)
         uses: bahmutov/npm-install@v1
@@ -26,7 +30,6 @@ jobs:
         run: yarn release
         env:
           GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_PAT }}
-          NPM_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
 
 #      - name: Slack Deploy / Release Alert
 #        uses: 8398a7/action-slack@v3
