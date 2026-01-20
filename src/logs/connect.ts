@@ -1,4 +1,4 @@
-import type { BasisTheory as IBasisTheory } from '@basis-theory/basis-theory-js/types/sdk/sdk';
+import type { BasisTheoryClient } from '@basis-theory/node-sdk';
 import { ux } from '@oclif/core';
 import { patchProxy } from '../proxies/management';
 import { patchReactor } from '../reactors/management';
@@ -10,18 +10,19 @@ const BT_LOGGING_CONFIGURATION = 'BT_LOGGING_CONFIGURATION';
  * @param url - server url for the resource to connect to. If `undefined`,
  * the logging configuration is cleared.
  */
-const createConfiguration = (url?: string): Record<string, string | null> => ({
+const createConfiguration = (
+  url?: string
+): Record<string, string | undefined> => ({
   [BT_LOGGING_CONFIGURATION]: url
     ? JSON.stringify({
         destination: url,
         date: Date.now(),
       })
-    : // eslint-disable-next-line unicorn/no-null
-      null,
+    : undefined,
 });
 
 const connectToReactor = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string,
   url: string
 ): Promise<void> => {
@@ -35,7 +36,7 @@ const connectToReactor = async (
 };
 
 const disconnectFromReactor = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string
 ): Promise<void> => {
   ux.action.start(`Disconnecting from Reactor (${id})`);
@@ -48,7 +49,7 @@ const disconnectFromReactor = async (
 };
 
 const connectToProxy = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string,
   url: string
 ): Promise<void> => {
@@ -62,7 +63,7 @@ const connectToProxy = async (
 };
 
 const disconnectFromProxy = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string
 ): Promise<void> => {
   ux.action.start(`Disconnecting from Proxy (${id})`);

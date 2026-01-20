@@ -1,38 +1,30 @@
-import type {
-  CreateProxy,
-  PatchProxy,
-  Proxy,
-} from '@basis-theory/basis-theory-js/types/models';
-import type {
-  BasisTheory as IBasisTheory,
-  PaginatedList,
-} from '@basis-theory/basis-theory-js/types/sdk';
+import type { BasisTheory, BasisTheoryClient } from '@basis-theory/node-sdk';
 import confirm from '@inquirer/confirm';
 import { ux } from '@oclif/core';
 import type { TableRow } from '../types';
-import { selectOrNavigate } from '../utils';
+import { selectOrNavigate, PaginatedList } from '../utils';
 
 const debug = require('debug')('proxies:management');
 
 const listProxies = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   page: number
-): Promise<PaginatedList<Proxy>> => {
+): Promise<PaginatedList<BasisTheory.Proxy>> => {
   const size = 5;
 
   debug('Listing proxies', `page: ${page}`, `size: ${size}`);
 
-  const proxies = await bt.proxies.list({
+  const proxiesPage = await bt.proxies.list({
     size,
     page,
   });
 
-  let data: TableRow<Proxy>[] = [];
+  let data: TableRow<BasisTheory.Proxy>[] = [];
 
-  if (proxies.pagination.totalItems > 0) {
-    const last = (proxies.pagination.pageNumber - 1) * size;
+  if (proxiesPage.data.length) {
+    const last = (page - 1) * size;
 
-    data = proxies.data.map((proxy, index) => ({
+    data = proxiesPage.data.map((proxy, index) => ({
       '#': last + (index + 1),
       ...proxy,
     }));
@@ -71,17 +63,18 @@ const listProxies = async (
 
   return {
     data,
-    pagination: proxies.pagination,
+    page,
+    hasNextPage: proxiesPage.hasNextPage(),
   };
 };
 
 const selectProxy = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   page: number
-): Promise<Proxy | undefined> => {
+): Promise<BasisTheory.Proxy | undefined> => {
   const proxies = await listProxies(bt, page);
 
-  if (proxies.pagination.totalItems === 0) {
+  if (!proxies.data.length) {
     return undefined;
   }
 
@@ -98,14 +91,17 @@ const selectProxy = async (
   return selection;
 };
 
-const createProxy = (bt: IBasisTheory, model: CreateProxy): Promise<Proxy> => {
+const createProxy = (
+  bt: BasisTheoryClient,
+  model: BasisTheory.CreateProxyRequest
+): Promise<BasisTheory.Proxy> => {
   debug(`Creating Proxy`, JSON.stringify(model, undefined, 2));
 
   return bt.proxies.create(model);
 };
 
 const deleteProxy = async (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string,
   force = false
 ): Promise<boolean> => {
@@ -128,9 +124,9 @@ const deleteProxy = async (
 };
 
 const patchProxy = (
-  bt: IBasisTheory,
+  bt: BasisTheoryClient,
   id: string,
-  model: PatchProxy
+  model: BasisTheory.PatchProxyRequest
 ): Promise<void> => {
   debug(`Patching Proxy ${id}`, JSON.stringify(model, undefined, 2));
 

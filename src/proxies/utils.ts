@@ -1,7 +1,4 @@
-import type {
-  CreateProxy as CreateProxyModel,
-  PatchProxy as PatchProxyModel,
-} from '@basis-theory/basis-theory-js/types/models/proxies';
+import type { BasisTheory } from '@basis-theory/node-sdk';
 import { Flags } from '@oclif/core';
 import { parse } from 'dotenv';
 import { readFileContents } from '../files';
@@ -61,18 +58,22 @@ interface ProxyFlagProps {
 
 type CreateProxy = ProxyFlagProps &
   Omit<
-    CreateProxyModel,
+    BasisTheory.CreateProxyRequest,
     'application' | 'configuration' | 'requestTransform' | 'responseTransform'
   >;
 type PatchProxy = ProxyFlagProps &
   Omit<
-    PatchProxyModel,
+    BasisTheory.PatchProxyRequest,
     'application' | 'configuration' | 'requestTransform' | 'responseTransform'
   >;
 
-function createModelFromFlags(payload: CreateProxy): CreateProxyModel;
+function createModelFromFlags(
+  payload: CreateProxy
+): BasisTheory.CreateProxyRequest;
 
-function createModelFromFlags(payload: PatchProxy): PatchProxyModel;
+function createModelFromFlags(
+  payload: PatchProxy
+): BasisTheory.PatchProxyRequest;
 
 // eslint-disable-next-line get-off-my-lawn/prefer-arrow-functions
 function createModelFromFlags({
@@ -83,7 +84,9 @@ function createModelFromFlags({
   applicationId,
   configuration,
   requireAuth,
-}: CreateProxy | PatchProxy): CreateProxyModel | PatchProxyModel {
+}: CreateProxy | PatchProxy):
+  | BasisTheory.CreateProxyRequest
+  | BasisTheory.PatchProxyRequest {
   return {
     name,
     destinationUrl,
