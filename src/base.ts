@@ -53,7 +53,7 @@ export abstract class BaseCommand extends Command {
   }
 
   protected catch(err: unknown): Promise<unknown> {
-    if (err instanceof BasisTheoryError) {
+    if (err instanceof BasisTheoryError && err.body) {
       this.logJson(err.body);
     }
 
