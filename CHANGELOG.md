@@ -1,3 +1,18 @@
+# [2.0.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.13.0...v2.0.0) (2026-01-20)
+
+
+* feat!: migrate to @basis-theory/node-sdk and add unit tests (#27) ([dbced63](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/dbced631cd124830727059ce29046e346058dced)), closes [#27](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/27)
+
+
+### Features
+
+* use oidc for npmjs auth for deployment ([#29](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/29)) ([3eca69d](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/3eca69d851aaac42627fb24b49153a1f5fae5cd2))
+
+
+### BREAKING CHANGES
+
+* `bt reactorFormulas` and `bt reactorFormulas update` commands have been removed
+
 # [1.13.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.12.0...v1.13.0) (2025-04-04)
 
 
