@@ -37,8 +37,6 @@ USAGE
 * [`bt proxies delete ID`](#bt-proxies-delete-id)
 * [`bt proxies logs [ID]`](#bt-proxies-logs-id)
 * [`bt proxies update ID`](#bt-proxies-update-id)
-* [`bt reactorFormulas`](#bt-reactorformulas)
-* [`bt reactorFormulas update ID`](#bt-reactorformulas-update-id)
 * [`bt reactors`](#bt-reactors)
 * [`bt reactors create`](#bt-reactors-create)
 * [`bt reactors delete ID`](#bt-reactors-delete-id)
@@ -265,59 +263,6 @@ EXAMPLES
   $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca --request-transform-code ./myRequestTransform.js
 
   $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.proxy
-```
-
-## `bt reactorFormulas`
-
-[Deprecated] List Reactor Formulas. Requires `reactor:read` Management Application permission
-
-```
-USAGE
-  $ bt reactorFormulas -x <value> [-p <value>]
-
-FLAGS
-  -p, --page=<value>            [default: 1] Reactors formulas list page to fetch
-  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
-
-DESCRIPTION
-  [Deprecated] List Reactor Formulas. Requires `reactor:read` Management Application permission
-
-EXAMPLES
-  $ bt reactorFormulas
-```
-
-_See code: [dist/commands/reactorFormulas/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v1.13.0/dist/commands/reactorFormulas/index.ts)_
-
-## `bt reactorFormulas update ID`
-
-[Deprecated] Updates an existing Reactor Formula. Requires `reactor:update` Management Application permission
-
-```
-USAGE
-  $ bt reactorFormulas update ID -x <value> -n <value> -s <value> -c <value> -p <value> [-d <value>] [-i <value>] [-w]
-
-ARGUMENTS
-  ID  Reactor Formula id to update
-
-FLAGS
-  -c, --configuration=<value>       (required) path to configuration definition to use in the Reactor Formula
-  -d, --description=<value>         description of the Reactor Formula
-  -i, --icon=<value>                icon of the Reactor Formula
-  -n, --name=<value>                (required) name of the Reactor Formula
-  -p, --request-parameters=<value>  (required) path to request params definition to use in the Reactor Formula
-  -s, --code=<value>                (required) path to JavaScript file containing code
-  -w, --watch                       Watch for changes in informed files
-  -x, --management-key=<value>      (required) management key used for connecting with the reactor / proxy
-
-DESCRIPTION
-  [Deprecated] Updates an existing Reactor Formula. Requires `reactor:update` Management Application permission
-
-EXAMPLES
-  $ bt reactorFormulas update 03858bf5-32d3-4a2e-b74b-daeea0883bca
-
-  $ bt reactorFormulas update 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./formula.js
-
-  $ bt reactorFormulas update 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./formula.js -w
 ```
 
 ## `bt reactors`
