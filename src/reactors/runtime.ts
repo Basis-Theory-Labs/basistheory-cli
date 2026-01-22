@@ -37,6 +37,19 @@ const validateConfigurableRuntimeFlags = (
   }
 };
 
+const validateReactorApplicationId = (
+  applicationId: string | undefined,
+  image: string | undefined
+): void => {
+  if (applicationId && !isLegacyRuntimeImage(image)) {
+    throw new Error(
+      `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
+        ', '
+      )}). Use --permissions to grant specific access instead.`
+    );
+  }
+};
+
 interface ReactorRuntimeResult {
   image: string;
   runtime: BasisTheory.Runtime | undefined;
@@ -80,6 +93,7 @@ const promptReactorRuntime = async (
 
 export {
   validateConfigurableRuntimeFlags,
+  validateReactorApplicationId,
   REACTOR_CONFIGURABLE_FLAGS,
   promptReactorRuntime,
   type ReactorRuntimeResult,

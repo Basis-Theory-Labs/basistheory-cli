@@ -551,6 +551,58 @@ describe('proxies create', () => {
       );
     });
 
+    it('errors when --application-id used with only configurable transforms', async () => {
+      const result = await runCommand([
+        'proxies:create',
+        '--name',
+        'Test Proxy',
+        '--destination-url',
+        'https://example.com/api',
+        '--request-transform-code',
+        './test/unit/fixtures/code.js',
+        '--request-transform-image',
+        'node22',
+        '--application-id',
+        'app-123',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        '--application-id is only valid when at least one transform uses a legacy runtime (node-bt)'
+      );
+    });
+
+    it('allows --application-id when at least one transform is legacy', async () => {
+      inputStub
+        .onCallResolves(
+          '(Optional) Enter the Response Transform code file path:',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Enter the configuration file path (.env format):',
+          ''
+        );
+      confirmStub.resolves(true);
+      proxiesCreateStub.resolves(proxyFixtures.created);
+
+      const result = await runCommand([
+        'proxies:create',
+        '--name',
+        'Test Proxy',
+        '--destination-url',
+        'https://example.com/api',
+        '--request-transform-code',
+        './test/unit/fixtures/code.js',
+        '--request-transform-image',
+        'node-bt',
+        '--application-id',
+        'app-123',
+      ]);
+
+      expect(result.error).to.not.exist;
+      expect(result.stdout).to.contain('Proxy created successfully!');
+    });
+
     it('does not wait when no node22 transform is configured', async () => {
       inputStub
         .onCallResolves(

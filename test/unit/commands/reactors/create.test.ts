@@ -522,10 +522,22 @@ describe('reactors create', () => {
     });
 
     it('errors when --application-id used with node22', async () => {
-      inputStub.onCallResolves(
-        '(Optional) Enter the configuration file path (.env format):',
-        ''
-      );
+      inputStub
+        .onCallResolves(
+          '(Optional) Enter the configuration file path (.env format):',
+          ''
+        )
+        .onCallResolves(
+          'Timeout in seconds (1-30, press Enter for default):',
+          ''
+        )
+        .onCallResolves('Warm concurrency (0-10, press Enter for default):', '')
+        .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
+        .onCallResolves(
+          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
+          ''
+        );
+      selectStub.onCallResolves('Resource tier:', 'standard');
 
       const result = await runCommand([
         'reactors:create',

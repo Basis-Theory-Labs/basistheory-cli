@@ -4,7 +4,8 @@ import { watchForChanges } from '../../files';
 import { showProxyLogs } from '../../logs';
 import { patchProxy } from '../../proxies/management';
 import {
-  hasConfigurableTransform,
+  hasTransformWithRuntime,
+  validateProxyApplicationId,
   validateProxyAsyncFlag,
   validateTransformConfigurableFlags,
 } from '../../proxies/runtime';
@@ -98,6 +99,9 @@ export default class Update extends BaseCommand {
     // Validate proxy-level async flag
     validateProxyAsyncFlag(flags as Record<string, unknown>);
 
+    // Validate application-id is only used with legacy transforms
+    validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
+
     // Watch is not compatible with configurable runtime transforms
     if (
       watch &&
@@ -149,7 +153,10 @@ export default class Update extends BaseCommand {
 
     // Wait for proxy to be ready by default for configurable transforms, unless --async is set
     if (
-      hasConfigurableTransform(flags as Record<string, unknown>) &&
+      hasTransformWithRuntime(
+        flags as Record<string, unknown>,
+        CONFIGURABLE_RUNTIME_IMAGES
+      ) &&
       !asyncFlag
     ) {
       await waitForResourceState(bt, 'proxy', id, 'Updating proxy');

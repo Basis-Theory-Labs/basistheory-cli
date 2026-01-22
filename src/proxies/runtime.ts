@@ -31,14 +31,24 @@ const validateTransformConfigurableFlags = (
   }
 };
 
-const hasConfigurableTransform = (flags: Record<string, unknown>): boolean => {
+const hasTransformWithRuntime = (
+  flags: Record<string, unknown>,
+  runtimes: string | readonly string[]
+): boolean => {
   const requestImage = flags['request-transform-image'] as string | undefined;
   const responseImage = flags['response-transform-image'] as string | undefined;
 
-  return (
-    (requestImage !== undefined && !isLegacyRuntimeImage(requestImage)) ||
-    (responseImage !== undefined && !isLegacyRuntimeImage(responseImage))
-  );
+  const isMatch = (image: string | undefined): boolean => {
+    if (image === undefined) {
+      return false;
+    }
+
+    return typeof runtimes === 'string'
+      ? image === runtimes
+      : runtimes.includes(image);
+  };
+
+  return isMatch(requestImage) || isMatch(responseImage);
 };
 
 const validateProxyAsyncFlag = (flags: Record<string, unknown>): void => {
@@ -48,11 +58,35 @@ const validateProxyAsyncFlag = (flags: Record<string, unknown>): void => {
     asyncFlag !== false &&
     !(Array.isArray(asyncFlag) && asyncFlag.length === 0);
 
-  if (isAsyncSet && !hasConfigurableTransform(flags)) {
+  if (
+    isAsyncSet &&
+    !hasTransformWithRuntime(flags, CONFIGURABLE_RUNTIME_IMAGES)
+  ) {
     throw new Error(
       `--async is only valid when at least one transform uses a configurable runtime (${CONFIGURABLE_RUNTIME_IMAGES.join(
         ', '
       )})`
+    );
+  }
+};
+
+const validateProxyApplicationId = (
+  applicationId: string | undefined,
+  flags: Record<string, unknown>
+): void => {
+  if (!applicationId) {
+    return;
+  }
+
+  const hasConfigurable = hasTransformWithRuntime(
+    flags,
+    CONFIGURABLE_RUNTIME_IMAGES
+  );
+  const hasLegacy = hasTransformWithRuntime(flags, LEGACY_RUNTIME_IMAGE);
+
+  if (hasConfigurable && !hasLegacy) {
+    throw new Error(
+      `--application-id is only valid when at least one transform uses a legacy runtime (${LEGACY_RUNTIME_IMAGE}). Use --<transform>-permissions to grant specific access for configurable runtimes instead.`
     );
   }
 };
@@ -121,6 +155,7 @@ const promptTransformRuntime = async (
 export {
   validateTransformConfigurableFlags,
   validateProxyAsyncFlag,
-  hasConfigurableTransform,
+  validateProxyApplicationId,
+  hasTransformWithRuntime,
   promptTransformRuntime,
 };

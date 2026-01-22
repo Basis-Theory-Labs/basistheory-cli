@@ -288,6 +288,40 @@ describe('proxies update', () => {
       );
     });
 
+    it('errors when --application-id used with only configurable transforms', async () => {
+      const result = await runCommand([
+        'proxies:update',
+        'proxy-123',
+        '--request-transform-code',
+        './test/unit/fixtures/code.js',
+        '--request-transform-image',
+        'node22',
+        '--application-id',
+        'app-123',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        '--application-id is only valid when at least one transform uses a legacy runtime (node-bt)'
+      );
+    });
+
+    it('allows --application-id when at least one transform is legacy', async () => {
+      const result = await runCommand([
+        'proxies:update',
+        'proxy-123',
+        '--request-transform-code',
+        './test/unit/fixtures/code.js',
+        '--request-transform-image',
+        'node-bt',
+        '--application-id',
+        'app-123',
+      ]);
+
+      expect(result.error).to.not.exist;
+      expect(result.stdout).to.contain('Proxy updated successfully!');
+    });
+
     it('does not wait when no node22 transform is configured', async () => {
       const result = await runCommand([
         'proxies:update',

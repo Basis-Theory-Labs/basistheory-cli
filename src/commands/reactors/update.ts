@@ -3,7 +3,10 @@ import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { showReactorLogs } from '../../logs';
 import { patchReactor } from '../../reactors/management';
-import { validateConfigurableRuntimeFlags } from '../../reactors/runtime';
+import {
+  validateConfigurableRuntimeFlags,
+  validateReactorApplicationId,
+} from '../../reactors/runtime';
 import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
 import {
   buildRuntime,
@@ -71,14 +74,8 @@ export default class Update extends BaseCommand {
     // Validate configurable runtime flags
     validateConfigurableRuntimeFlags(flags as Record<string, unknown>, image);
 
-    // Application ID is not allowed with configurable runtimes
-    if (applicationId && !isLegacyRuntimeImage(image)) {
-      throw new Error(
-        `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ', '
-        )}). Use --permissions to grant specific access instead.`
-      );
-    }
+    // Validate application-id is not used with configurable runtimes
+    validateReactorApplicationId(applicationId, image);
 
     // Watch is not compatible with configurable runtimes
     if (watch && !isLegacyRuntimeImage(image)) {

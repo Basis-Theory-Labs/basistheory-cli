@@ -1,13 +1,17 @@
 import { BaseCommand } from '../../base';
 import { createProxy } from '../../proxies/management';
 import {
-  hasConfigurableTransform,
+  hasTransformWithRuntime,
   promptTransformRuntime,
+  validateProxyApplicationId,
   validateProxyAsyncFlag,
   validateTransformConfigurableFlags,
 } from '../../proxies/runtime';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
-import { waitForResourceState } from '../../runtime';
+import {
+  CONFIGURABLE_RUNTIME_IMAGES,
+  waitForResourceState,
+} from '../../runtime';
 import {
   promptBooleanIfUndefined,
   promptStringIfUndefined,
@@ -83,6 +87,9 @@ export default class Create extends BaseCommand {
     // Validate proxy-level async flag
     validateProxyAsyncFlag(flags as Record<string, unknown>);
 
+    // Validate application-id is only used with legacy transforms
+    validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
+
     // Build transform runtimes using shared prompts
     const requestTransformRuntime = await promptTransformRuntime(
       'request',
@@ -111,7 +118,10 @@ export default class Create extends BaseCommand {
 
     // Wait for proxy to be ready by default for configurable transforms, unless --async is set
     if (
-      hasConfigurableTransform(flags as Record<string, unknown>) &&
+      hasTransformWithRuntime(
+        flags as Record<string, unknown>,
+        CONFIGURABLE_RUNTIME_IMAGES
+      ) &&
       !flags.async &&
       proxy.id
     ) {
@@ -124,7 +134,9 @@ export default class Create extends BaseCommand {
         this.log('Proxy created but failed to become ready.');
         this.log(`id: ${proxy.id}`);
         this.log(`key: ${proxy.key}`);
-        this.log(`You can retry by running: bt proxies update ${proxy.id}`);
+        this.log(
+          `You can retry by running: bt proxies update ${proxy.id} [OPTIONS]`
+        );
         throw error;
       }
     } else {
