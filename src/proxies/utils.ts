@@ -2,6 +2,7 @@ import type { BasisTheory } from '@basis-theory/node-sdk';
 import { Flags } from '@oclif/core';
 import { parse } from 'dotenv';
 import { readFileContents } from '../files';
+import { VALID_RUNTIME_IMAGES } from '../runtime';
 
 const PROXY_FLAGS = {
   name: Flags.string({
@@ -35,6 +36,71 @@ const PROXY_FLAGS = {
     allowNo: true,
     default: true,
   }),
+  // Request transform runtime flags
+  'request-transform-image': Flags.string({
+    description: `request-transform runtime image (${VALID_RUNTIME_IMAGES.join(
+      '|'
+    )})`,
+    options: [...VALID_RUNTIME_IMAGES],
+  }),
+  'request-transform-dependencies': Flags.file({
+    description:
+      'path to JSON file with request-transform npm dependencies (node22 only)',
+  }),
+  'request-transform-timeout': Flags.integer({
+    description: 'request-transform timeout in seconds, 1-30 (node22 only)',
+    min: 1,
+    max: 30,
+  }),
+  'request-transform-warm-concurrency': Flags.integer({
+    description: 'request-transform warm concurrency, 0-10 (node22 only)',
+    min: 0,
+    max: 10,
+  }),
+  'request-transform-resources': Flags.string({
+    description: 'request-transform resource tier (node22 only)',
+    options: ['standard', 'large', 'xlarge'],
+  }),
+  'request-transform-permissions': Flags.string({
+    description:
+      'request-transform permission to grant, repeatable (node22 only)',
+    multiple: true,
+  }),
+  // Response transform runtime flags
+  'response-transform-image': Flags.string({
+    description: `response-transform runtime image (${VALID_RUNTIME_IMAGES.join(
+      '|'
+    )})`,
+    options: [...VALID_RUNTIME_IMAGES],
+  }),
+  'response-transform-dependencies': Flags.file({
+    description:
+      'path to JSON file with response-transform npm dependencies (node22 only)',
+  }),
+  'response-transform-timeout': Flags.integer({
+    description: 'response-transform timeout in seconds, 1-30 (node22 only)',
+    min: 1,
+    max: 30,
+  }),
+  'response-transform-warm-concurrency': Flags.integer({
+    description: 'response-transform warm concurrency, 0-10 (node22 only)',
+    min: 0,
+    max: 10,
+  }),
+  'response-transform-resources': Flags.string({
+    description: 'response-transform resource tier (node22 only)',
+    options: ['standard', 'large', 'xlarge'],
+  }),
+  'response-transform-permissions': Flags.string({
+    description:
+      'response-transform permission to grant, repeatable (node22 only)',
+    multiple: true,
+  }),
+  async: Flags.boolean({
+    description:
+      'do not wait for proxy to be ready (requires at least one transform with node22)',
+    default: false,
+  }),
 };
 
 interface ProxyFlagProps {
@@ -54,6 +120,14 @@ interface ProxyFlagProps {
    * Path to .env file
    */
   configuration?: string;
+  /**
+   * Request transform runtime
+   */
+  requestTransformRuntime?: BasisTheory.Runtime;
+  /**
+   * Response transform runtime
+   */
+  responseTransformRuntime?: BasisTheory.Runtime;
 }
 
 type CreateProxy = ProxyFlagProps &
@@ -84,18 +158,42 @@ function createModelFromFlags({
   applicationId,
   configuration,
   requireAuth,
+  requestTransformRuntime,
+  responseTransformRuntime,
 }: CreateProxy | PatchProxy):
   | BasisTheory.CreateProxyRequest
   | BasisTheory.PatchProxyRequest {
+  // Build request transform with optional runtime
+  let requestTransform: BasisTheory.ProxyTransform | undefined;
+
+  if (requestTransformCode) {
+    requestTransform = {
+      code: readFileContents(requestTransformCode),
+    };
+
+    if (requestTransformRuntime) {
+      requestTransform.options = { runtime: requestTransformRuntime };
+    }
+  }
+
+  // Build response transform with optional runtime
+  let responseTransform: BasisTheory.ProxyTransform | undefined;
+
+  if (responseTransformCode) {
+    responseTransform = {
+      code: readFileContents(responseTransformCode),
+    };
+
+    if (responseTransformRuntime) {
+      responseTransform.options = { runtime: responseTransformRuntime };
+    }
+  }
+
   return {
     name,
     destinationUrl,
-    requestTransform: requestTransformCode
-      ? { code: readFileContents(requestTransformCode) }
-      : undefined,
-    responseTransform: responseTransformCode
-      ? { code: readFileContents(responseTransformCode) }
-      : undefined,
+    requestTransform,
+    responseTransform,
     application: applicationId ? { id: applicationId } : undefined,
     configuration: configuration
       ? parse(readFileContents(configuration))

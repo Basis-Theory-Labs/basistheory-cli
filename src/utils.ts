@@ -123,6 +123,62 @@ const promptBooleanIfUndefined = (
   return confirm(options);
 };
 
+const promptIntegerIfUndefined = async (
+  value: number | undefined,
+  options: { message: string; min?: number; max?: number }
+): Promise<number | undefined> => {
+  if (value !== undefined) {
+    return value;
+  }
+
+  const result = await input({
+    message: options.message,
+    validate: (val) => {
+      if (!val.trim()) {
+        return true;
+      } // Allow empty for optional
+
+      const num = Number(val);
+
+      if (Number.isNaN(num) || !Number.isInteger(num)) {
+        return 'Please enter a valid integer';
+      }
+
+      if (options.min !== undefined && num < options.min) {
+        return `Value must be at least ${options.min}`;
+      }
+
+      if (options.max !== undefined && num > options.max) {
+        return `Value must be at most ${options.max}`;
+      }
+
+      return true;
+    },
+  });
+
+  return result.trim() ? Number(result) : undefined;
+};
+
+const promptCommaSeparatedIfUndefined = async (
+  value: string[] | undefined,
+  options: Parameters<typeof input>[0]
+): Promise<string[] | undefined> => {
+  if (value && value.length > 0) {
+    return value;
+  }
+
+  const result = await input(options);
+
+  if (!result.trim()) {
+    return undefined;
+  }
+
+  return result
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+};
+
 const cleanUpOnExit = (action: () => unknown): typeof process =>
   process.on('SIGINT', async () => {
     await action();
@@ -137,6 +193,8 @@ export {
   promptCheckboxIfUndefined,
   promptUrlIfUndefined,
   promptBooleanIfUndefined,
+  promptIntegerIfUndefined,
+  promptCommaSeparatedIfUndefined,
   cleanUpOnExit,
   PaginatedList,
 };

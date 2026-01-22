@@ -37,6 +37,94 @@ export const reactorFixtures: Record<string, BasisTheory.Reactor> = {
     createdAt: testDate,
     modifiedAt: testDate,
   },
+  withRuntime: {
+    id: 'reactor-4',
+    name: 'Reactor with Runtime',
+    code: 'module.exports = async (req) => req;',
+    runtime: {
+      image: 'node22',
+      timeout: 30,
+      resources: 'large',
+    },
+    state: 'active',
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
+  pending: {
+    id: 'reactor-5',
+    name: 'Pending Reactor',
+    code: 'module.exports = async (req) => req;',
+    state: 'pending',
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
+  active: {
+    id: 'reactor-6',
+    name: 'Active Reactor',
+    code: 'module.exports = async (req) => req;',
+    state: 'active',
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
+  failed: {
+    id: 'reactor-7',
+    name: 'Failed Reactor',
+    code: 'module.exports = async (req) => req;',
+    state: 'failed',
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
+  failedWithDetails: {
+    id: 'reactor-8',
+    name: 'Failed Reactor with Details',
+    code: 'module.exports = async (req) => req;',
+    state: 'failed',
+    runtime: {
+      image: 'node22',
+      dependencies: {},
+    },
+    requested: {
+      reactor: {
+        code: 'module.exports = async (req) => req;',
+        runtime: {
+          image: 'node22',
+          dependencies: {
+            qs: '4.0.0',
+            axios: '0.27.2',
+          },
+          warmConcurrency: 0,
+          timeout: 5,
+          resources: 'standard',
+        },
+        configuration: {
+          BT_API_KEY: 'key_test',
+        },
+      },
+      errorCode: 'vulnerabilities_detected',
+      errorMessage:
+        'Please update the dependencies listed to resolve security vulnerabilities.',
+      errorDetails: {
+        vulnerabilities: [
+          {
+            dependencyPath: ['axios'],
+            id: 'CVE-2025-27152',
+            name: 'axios',
+            severity: 'HIGH',
+            version: '0.27.2',
+          },
+          {
+            dependencyPath: ['qs'],
+            id: 'CVE-2017-1000048',
+            name: 'qs',
+            severity: 'HIGH',
+            version: '4.0.0',
+          },
+        ],
+      },
+    },
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
 };
 
 export const reactorPaginatedList: BasisTheory.ReactorPaginatedList = {

@@ -34,6 +34,7 @@ const listProxies = async (
       id: {},
       name: {},
       key: {},
+      state: {},
       /* eslint-disable camelcase */
       destination_url: {
         header: 'Destination URL',

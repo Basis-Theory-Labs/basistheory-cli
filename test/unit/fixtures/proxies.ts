@@ -46,6 +46,97 @@ export const proxyFixtures: Record<string, BasisTheory.Proxy> = {
     createdAt: testDate,
     modifiedAt: testDate,
   },
+  withTransformRuntime: {
+    id: 'proxy-4',
+    name: 'Proxy with Transform Runtime',
+    key: 'key_test_proxy_4',
+    destinationUrl: 'https://example.com/api',
+    requireAuth: true,
+    requestTransform: {
+      code: 'module.exports = async (req) => req;',
+      options: {
+        runtime: {
+          image: 'node22',
+          timeout: 15,
+        },
+      },
+    },
+    state: 'active',
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
+  pending: {
+    id: 'proxy-5',
+    name: 'Pending Proxy',
+    key: 'key_test_proxy_5',
+    destinationUrl: 'https://example.com/api',
+    requireAuth: true,
+    state: 'pending',
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
+  active: {
+    id: 'proxy-6',
+    name: 'Active Proxy',
+    key: 'key_test_proxy_6',
+    destinationUrl: 'https://example.com/api',
+    requireAuth: true,
+    state: 'active',
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
+  failed: {
+    id: 'proxy-7',
+    name: 'Failed Proxy',
+    key: 'key_test_proxy_7',
+    destinationUrl: 'https://example.com/api',
+    requireAuth: true,
+    state: 'failed',
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
+  failedWithDetails: {
+    id: 'proxy-8',
+    name: 'Failed Proxy with Details',
+    key: 'key_test_proxy_8',
+    destinationUrl: 'https://example.com/api',
+    requireAuth: true,
+    state: 'failed',
+    requested: {
+      proxy: {
+        destinationUrl: 'https://example.com/api',
+        requestTransforms: [
+          {
+            code: 'module.exports = async (req) => req;',
+            options: {
+              runtime: {
+                image: 'node22',
+                dependencies: {
+                  axios: '0.27.2',
+                },
+              },
+            },
+          },
+        ],
+      },
+      errorCode: 'vulnerabilities_detected',
+      errorMessage:
+        'Please update the dependencies listed to resolve security vulnerabilities.',
+      errorDetails: {
+        vulnerabilities: [
+          {
+            dependencyPath: ['axios'],
+            id: 'CVE-2025-27152',
+            name: 'axios',
+            severity: 'HIGH',
+            version: '0.27.2',
+          },
+        ],
+      },
+    },
+    createdAt: testDate,
+    modifiedAt: testDate,
+  },
 };
 
 export const proxyPaginatedList: BasisTheory.ProxyPaginatedList = {

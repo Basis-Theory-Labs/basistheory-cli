@@ -3,7 +3,18 @@ import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { showProxyLogs } from '../../logs';
 import { patchProxy } from '../../proxies/management';
+import {
+  hasConfigurableTransform,
+  validateProxyAsyncFlag,
+  validateTransformConfigurableFlags,
+} from '../../proxies/runtime';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
+import {
+  buildRuntime,
+  CONFIGURABLE_RUNTIME_IMAGES,
+  isLegacyRuntimeImage,
+  waitForResourceState,
+} from '../../runtime';
 
 export default class Update extends BaseCommand {
   public static description =
@@ -43,19 +54,82 @@ export default class Update extends BaseCommand {
     const {
       bt,
       args: { id },
-      flags: {
-        name,
-        'destination-url': destinationUrl,
-        'response-transform-code': responseTransformCode,
-        'request-transform-code': requestTransformCode,
-        'application-id': applicationId,
-        configuration,
-        'require-auth': requireAuth,
-        watch,
-        logs,
-      },
+      flags,
       metadata,
     } = await this.parse(Update);
+
+    const {
+      name,
+      'destination-url': destinationUrl,
+      'response-transform-code': responseTransformCode,
+      'request-transform-code': requestTransformCode,
+      'application-id': applicationId,
+      configuration,
+      'require-auth': requireAuth,
+      'request-transform-image': requestTransformImage,
+      'request-transform-dependencies': requestTransformDependencies,
+      'request-transform-timeout': requestTransformTimeout,
+      'request-transform-warm-concurrency': requestTransformWarmConcurrency,
+      'request-transform-resources': requestTransformResources,
+      'request-transform-permissions': requestTransformPermissions,
+      'response-transform-image': responseTransformImage,
+      'response-transform-dependencies': responseTransformDependencies,
+      'response-transform-timeout': responseTransformTimeout,
+      'response-transform-warm-concurrency': responseTransformWarmConcurrency,
+      'response-transform-resources': responseTransformResources,
+      'response-transform-permissions': responseTransformPermissions,
+      async: asyncFlag,
+      watch,
+      logs,
+    } = flags;
+
+    // Validate configurable runtime flags for transforms
+    validateTransformConfigurableFlags(
+      'request-transform',
+      flags as Record<string, unknown>,
+      requestTransformImage
+    );
+    validateTransformConfigurableFlags(
+      'response-transform',
+      flags as Record<string, unknown>,
+      responseTransformImage
+    );
+
+    // Validate proxy-level async flag
+    validateProxyAsyncFlag(flags as Record<string, unknown>);
+
+    // Watch is not compatible with configurable runtime transforms
+    if (
+      watch &&
+      (!isLegacyRuntimeImage(requestTransformImage) ||
+        !isLegacyRuntimeImage(responseTransformImage))
+    ) {
+      throw new Error(
+        `--watch is not compatible with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ', '
+        )})`
+      );
+    }
+
+    // Build request transform runtime only if any runtime field is provided
+    const requestTransformRuntime = buildRuntime({
+      image: requestTransformImage,
+      dependencies: requestTransformDependencies,
+      timeout: requestTransformTimeout,
+      warmConcurrency: requestTransformWarmConcurrency,
+      resources: requestTransformResources,
+      permissions: requestTransformPermissions,
+    });
+
+    // Build response transform runtime only if any runtime field is provided
+    const responseTransformRuntime = buildRuntime({
+      image: responseTransformImage,
+      dependencies: responseTransformDependencies,
+      timeout: responseTransformTimeout,
+      warmConcurrency: responseTransformWarmConcurrency,
+      resources: responseTransformResources,
+      permissions: responseTransformPermissions,
+    });
 
     const model = createModelFromFlags({
       name,
@@ -67,9 +141,19 @@ export default class Update extends BaseCommand {
       requireAuth: metadata.flags?.['require-auth']?.setFromDefault
         ? undefined
         : requireAuth,
+      requestTransformRuntime,
+      responseTransformRuntime,
     });
 
     await patchProxy(bt, id, model);
+
+    // Wait for proxy to be ready by default for configurable transforms, unless --async is set
+    if (
+      hasConfigurableTransform(flags as Record<string, unknown>) &&
+      !asyncFlag
+    ) {
+      await waitForResourceState(bt, 'proxy', id, 'Updating proxy');
+    }
 
     this.log('Proxy updated successfully!');
 

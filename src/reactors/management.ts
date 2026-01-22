@@ -33,6 +33,7 @@ const listReactors = async (
       '#': {},
       id: {},
       name: {},
+      state: {},
     });
   } else {
     ux.log('No reactors found.');
