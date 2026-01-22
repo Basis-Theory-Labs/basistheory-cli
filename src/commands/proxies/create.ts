@@ -22,7 +22,22 @@ export default class Create extends BaseCommand {
   public static description =
     'Creates a new Pre-Configured Proxy. Requires `proxy:create` Management Application permission';
 
-  public static examples = ['<%= config.bin %> <%= command.id %> '];
+  public static examples = [
+    '<%= config.bin %> <%= command.id %> --name "My Proxy" --destination-url https://api.example.com',
+    `<%= config.bin %> <%= command.id %> \\
+    --name "My Proxy" \\
+    --destination-url https://api.example.com \\
+    --request-transform-code ./transform.js \\
+    --request-transform-image node22`,
+    `<%= config.bin %> <%= command.id %> \\
+    --name "My Proxy" \\
+    --destination-url https://api.example.com \\
+    --request-transform-code ./transform.js \\
+    --request-transform-image node22 \\
+    --request-transform-timeout 10 \\
+    --request-transform-resources standard \\
+    --request-transform-dependencies ./deps.json`,
+  ];
 
   public static flags = {
     ...PROXY_FLAGS,

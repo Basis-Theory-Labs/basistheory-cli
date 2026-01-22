@@ -22,10 +22,16 @@ export default class Update extends BaseCommand {
     'Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --destination-url https://echo.basistheory.com',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --request-transform-code ./myRequestTransform.js',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.proxy',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --destination-url https://api.example.com',
+    `<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca \\
+    --request-transform-code ./transform.js \\
+    --request-transform-image node22`,
+    `<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca \\
+    --request-transform-code ./transform.js \\
+    --request-transform-image node22 \\
+    --request-transform-timeout 10 \\
+    --request-transform-resources standard \\
+    --request-transform-dependencies ./deps.json`,
   ];
 
   public static flags = {

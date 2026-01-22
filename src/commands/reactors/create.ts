@@ -13,7 +13,17 @@ export default class Create extends BaseCommand {
   public static description =
     'Creates a new Reactor. Requires `reactor:create` Management Application permission';
 
-  public static examples = ['<%= config.bin %> <%= command.id %> '];
+  public static examples = [
+    '<%= config.bin %> <%= command.id %> --name "My Reactor" --code ./reactor.js --image node-bt',
+    '<%= config.bin %> <%= command.id %> --name "My Reactor" --code ./reactor.js --image node22',
+    `<%= config.bin %> <%= command.id %> \\
+    --name "My Reactor" \\
+    --code ./reactor.js \\
+    --image node22 \\
+    --timeout 10 \\
+    --resources standard \\
+    --dependencies ./deps.json`,
+  ];
 
   public static flags = {
     ...REACTOR_FLAGS,

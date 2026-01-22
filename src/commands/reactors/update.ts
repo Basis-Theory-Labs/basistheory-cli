@@ -20,9 +20,14 @@ export default class Update extends BaseCommand {
     'Updates an existing Reactor. Requires `reactor:update` Management Application permission';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
     '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./reactor.js',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.reactor',
+    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./reactor.js --image node22',
+    `<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca \\
+    --code ./reactor.js \\
+    --image node22 \\
+    --timeout 10 \\
+    --resources standard \\
+    --dependencies ./deps.json`,
   ];
 
   public static flags = {
