@@ -7,13 +7,10 @@ import {
   promptStringIfUndefined,
 } from '../utils';
 
-// Legacy runtime
 const LEGACY_RUNTIME_IMAGE = 'node-bt';
 
-// Configurable runtimes (node22, future python3.19, go, etc.)
 const CONFIGURABLE_RUNTIME_IMAGES = ['node22'] as const;
 
-// All valid runtimes
 const VALID_RUNTIME_IMAGES = [
   LEGACY_RUNTIME_IMAGE,
   ...CONFIGURABLE_RUNTIME_IMAGES,
@@ -23,10 +20,10 @@ const VALID_RUNTIME_IMAGES = [
 const isLegacyRuntimeImage = (image: string | undefined): boolean =>
   image === undefined || image === LEGACY_RUNTIME_IMAGE;
 
-// Validate that an image is a valid runtime (undefined = legacy, which is valid)
+// Validate that an image is a valid runtime
 const validateRuntimeImage = (image: string | undefined): void => {
   if (image === undefined) {
-    return; // No --image means legacy, which is valid
+    return; // No --image means legacy for backward compatibility
   }
 
   if (
@@ -77,7 +74,7 @@ interface ConfigurableRuntimeOptions {
   permissions?: string[];
 }
 
-// Build runtime object only if any runtime field is set
+// Build runtime object only for configurable runtimes
 const buildRuntime = (
   props: RuntimeFlagProps
 ): BasisTheory.Runtime | undefined => {
