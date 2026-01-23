@@ -44,17 +44,17 @@ describe('reactor state utilities', () => {
     it('resolves after polling when reactor transitions to active', async () => {
       reactorsGetStub
         .onFirstCall()
-        .resolves(reactorFixtures.pending)
+        .resolves(reactorFixtures.creating)
         .onSecondCall()
-        .resolves(reactorFixtures.pending)
+        .resolves(reactorFixtures.creating)
         .onThirdCall()
         .resolves(reactorFixtures.active);
 
       const promise = waitForResourceState(btClient, 'reactor', 'reactor-123');
 
-      // First poll - pending
+      // First poll - creating
       await clock.tickAsync(POLL_INTERVAL);
-      // Second poll - pending
+      // Second poll - creating
       await clock.tickAsync(POLL_INTERVAL);
       // Third poll - active
       await clock.tickAsync(POLL_INTERVAL);
@@ -145,7 +145,7 @@ describe('reactor state utilities', () => {
     });
 
     it('throws on polling timeout', async () => {
-      reactorsGetStub.resolves(reactorFixtures.pending);
+      reactorsGetStub.resolves(reactorFixtures.creating);
 
       const promise = waitForResourceState(btClient, 'reactor', 'reactor-123');
 

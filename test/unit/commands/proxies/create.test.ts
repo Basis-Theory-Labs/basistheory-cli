@@ -30,7 +30,7 @@ describe('proxies create', () => {
       get: proxiesGetStub,
     }));
 
-    proxiesCreateStub.resolves(proxyFixtures.created);
+    proxiesCreateStub.resolves(proxyFixtures.active);
     proxiesGetStub.resolves(proxyFixtures.active);
     readFileStub.returns('module.exports = async (req) => req;');
     confirmStub.resolves(true);
@@ -51,8 +51,8 @@ describe('proxies create', () => {
       ]);
 
       expect(result.stdout).to.contain('Proxy created successfully!');
-      expect(result.stdout).to.contain('id: proxy-new');
-      expect(result.stdout).to.contain('key: key_test_proxy_new');
+      expect(result.stdout).to.contain(`id: ${proxyFixtures.active.id}`);
+      expect(result.stdout).to.contain(`key: ${proxyFixtures.active.key}`);
       expect(proxiesCreateStub.calledOnce).to.be.true;
       const [createArg] = proxiesCreateStub.firstCall.args;
 
@@ -60,12 +60,7 @@ describe('proxies create', () => {
       expect(createArg.destinationUrl).to.equal('https://example.com/api');
     });
 
-    it('creates proxy with request-transform-code flag', async () => {
-      selectStub.onCallResolves(
-        'Which runtime do you want for the request transform?',
-        'node-bt'
-      );
-
+    it('creates proxy with request-transform-code and image flags', async () => {
       const result = await runCommand([
         'proxies:create',
         '--name',
@@ -74,6 +69,8 @@ describe('proxies create', () => {
         'https://example.com/api',
         '--request-transform-code',
         './request.js',
+        '--request-transform-image',
+        'node-bt',
       ]);
 
       expect(result.stdout).to.contain('Proxy created successfully!');
@@ -84,12 +81,7 @@ describe('proxies create', () => {
       });
     });
 
-    it('creates proxy with response-transform-code flag', async () => {
-      selectStub.onCallResolves(
-        'Which runtime do you want for the response transform?',
-        'node-bt'
-      );
-
+    it('creates proxy with response-transform-code and image flags', async () => {
       const result = await runCommand([
         'proxies:create',
         '--name',
@@ -98,6 +90,8 @@ describe('proxies create', () => {
         'https://example.com/api',
         '--response-transform-code',
         './response.js',
+        '--response-transform-image',
+        'node-bt',
       ]);
 
       expect(result.stdout).to.contain('Proxy created successfully!');
@@ -288,7 +282,7 @@ describe('proxies create', () => {
         );
       confirmStub.resolves(true);
       proxiesCreateStub.resolves({
-        ...proxyFixtures.created,
+        ...proxyFixtures.creating,
         id: 'proxy-wait',
       });
       proxiesGetStub.resolves(proxyFixtures.active);
@@ -343,7 +337,7 @@ describe('proxies create', () => {
         );
       confirmStub.resolves(true);
       proxiesCreateStub.resolves({
-        ...proxyFixtures.created,
+        ...proxyFixtures.active,
         id: 'proxy-async',
       });
 
@@ -443,16 +437,12 @@ describe('proxies create', () => {
       inputStub.verifyExpectations();
     });
 
-    it('prompts for request transform runtime when code is provided', async () => {
+    it('prompts for request transform runtime options when code and node22 image provided', async () => {
       inputStub
         .onCallResolves('What is the Proxy name?', 'Prompted Proxy')
         .onCallResolves(
           'What is the Proxy destination URL?',
           'https://example.com/api'
-        )
-        .onCallResolves(
-          '(Optional) Enter the Request Transform code file path:',
-          './request.js'
         )
         .onCallResolves(
           '(Optional) Enter the Response Transform code file path:',
@@ -483,14 +473,15 @@ describe('proxies create', () => {
           ''
         );
       confirmStub.resolves(true);
-      selectStub
-        .onCallResolves(
-          'Which runtime do you want for the request transform?',
-          'node22'
-        )
-        .onCallResolves('Request transform resource tier:', 'large');
+      selectStub.onCallResolves('Request transform: Resource tier:', 'large');
 
-      const result = await runCommand(['proxies:create']);
+      const result = await runCommand([
+        'proxies:create',
+        '--request-transform-code',
+        './request.js',
+        '--request-transform-image',
+        'node22',
+      ]);
 
       expect(result.stdout).to.contain('Proxy created successfully!');
       const [createArg] = proxiesCreateStub.firstCall.args;
@@ -509,6 +500,54 @@ describe('proxies create', () => {
   });
 
   describe('validation', () => {
+    it('prompts for request-transform-image when code provided without image', async () => {
+      selectStub.onCallResolves(
+        'Which runtime do you want for the request transform?',
+        'node-bt'
+      );
+      confirmStub.resolves(true);
+
+      const result = await runCommand([
+        'proxies:create',
+        '--name',
+        'Test Proxy',
+        '--destination-url',
+        'https://example.com/api',
+        '--request-transform-code',
+        './request.js',
+      ]);
+
+      expect(result.error).to.not.exist;
+      expect(result.stdout).to.contain('Proxy created successfully!');
+      selectStub.expectCalledWith(
+        'Which runtime do you want for the request transform?'
+      );
+    });
+
+    it('prompts for response-transform-image when code provided without image', async () => {
+      selectStub.onCallResolves(
+        'Which runtime do you want for the response transform?',
+        'node-bt'
+      );
+      confirmStub.resolves(true);
+
+      const result = await runCommand([
+        'proxies:create',
+        '--name',
+        'Test Proxy',
+        '--destination-url',
+        'https://example.com/api',
+        '--response-transform-code',
+        './response.js',
+      ]);
+
+      expect(result.error).to.not.exist;
+      expect(result.stdout).to.contain('Proxy created successfully!');
+      selectStub.expectCalledWith(
+        'Which runtime do you want for the response transform?'
+      );
+    });
+
     it('errors when --request-transform-timeout used with node-bt', async () => {
       const result = await runCommand([
         'proxies:create',
@@ -583,7 +622,7 @@ describe('proxies create', () => {
           ''
         );
       confirmStub.resolves(true);
-      proxiesCreateStub.resolves(proxyFixtures.created);
+      proxiesCreateStub.resolves(proxyFixtures.active);
 
       const result = await runCommand([
         'proxies:create',
@@ -622,7 +661,7 @@ describe('proxies create', () => {
           ''
         );
       confirmStub.resolves(true);
-      proxiesCreateStub.resolves(proxyFixtures.created);
+      proxiesCreateStub.resolves(proxyFixtures.active);
 
       const result = await runCommand([
         'proxies:create',

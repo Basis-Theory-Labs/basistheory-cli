@@ -192,6 +192,50 @@ describe('reactors update', () => {
   });
 
   describe('validation', () => {
+    it('errors when --timeout used without --image', async () => {
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--timeout',
+        '30',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        '--timeout requires --image to be specified'
+      );
+    });
+
+    it('errors when --resources used without --image', async () => {
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--resources',
+        'large',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        '--resources requires --image to be specified'
+      );
+    });
+
+    it('errors when multiple runtime flags used without --image', async () => {
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--timeout',
+        '30',
+        '--resources',
+        'large',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        '--timeout, --resources requires --image to be specified'
+      );
+    });
+
     it('errors when --timeout used with node-bt', async () => {
       const result = await runCommand([
         'reactors:update',
@@ -221,21 +265,6 @@ describe('reactors update', () => {
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
         '--resources is only valid with configurable runtimes (node22)'
-      );
-    });
-
-    it('errors when --async used with node-bt', async () => {
-      const result = await runCommand([
-        'reactors:update',
-        'reactor-123',
-        '--image',
-        'node-bt',
-        '--async',
-      ]);
-
-      expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        '--async is only valid with configurable runtimes (node22)'
       );
     });
   });

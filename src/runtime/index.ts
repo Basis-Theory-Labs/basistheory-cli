@@ -7,6 +7,7 @@ export {
   validateRuntimeImage,
   buildRuntime,
   promptRuntimeOptions,
+  promptRuntimeImage,
   type ConfigurableRuntimeOptions,
   type RuntimeFlagProps,
   type RuntimeFlags,

@@ -1,17 +1,12 @@
 import { BaseCommand } from '../../base';
 import { createProxy } from '../../proxies/management';
 import {
-  hasTransformWithRuntime,
   promptTransformRuntime,
   validateProxyApplicationId,
-  validateProxyAsyncFlag,
-  validateTransformConfigurableFlags,
+  validateTransformRuntimeFlags,
 } from '../../proxies/runtime';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
-import {
-  CONFIGURABLE_RUNTIME_IMAGES,
-  waitForResourceState,
-} from '../../runtime';
+import { promptRuntimeImage, waitForResourceState } from '../../runtime';
 import {
   promptBooleanIfUndefined,
   promptStringIfUndefined,
@@ -53,6 +48,17 @@ export default class Create extends BaseCommand {
   public async run(): Promise<void> {
     const { flags, metadata, bt } = await this.parse(Create);
 
+    validateTransformRuntimeFlags(
+      'request-transform',
+      flags as Record<string, unknown>,
+      flags['request-transform-image']
+    );
+    validateTransformRuntimeFlags(
+      'response-transform',
+      flags as Record<string, unknown>,
+      flags['response-transform-image']
+    );
+
     const name = await promptStringIfUndefined(flags.name, {
       message: 'What is the Proxy name?',
       validate: (value) => Boolean(value),
@@ -68,12 +74,28 @@ export default class Create extends BaseCommand {
         message: '(Optional) Enter the Request Transform code file path:',
       }
     );
+
+    const requestTransformImage = requestTransformCode
+      ? await promptRuntimeImage(
+          flags['request-transform-image'],
+          'Which runtime do you want for the request transform?'
+        )
+      : flags['request-transform-image'];
+
     const responseTransformCode = await promptStringIfUndefined(
       flags['response-transform-code'],
       {
         message: '(Optional) Enter the Response Transform code file path:',
       }
     );
+
+    const responseTransformImage = responseTransformCode
+      ? await promptRuntimeImage(
+          flags['response-transform-image'],
+          'Which runtime do you want for the response transform?'
+        )
+      : flags['response-transform-image'];
+
     const applicationId = await promptStringIfUndefined(
       flags['application-id'],
       {
@@ -94,28 +116,28 @@ export default class Create extends BaseCommand {
       }
     );
 
-    validateTransformConfigurableFlags(
-      'request-transform',
-      flags as Record<string, unknown>,
-      flags['request-transform-image']
+    const updatedFlags = {
+      ...flags,
+      'request-transform-image': requestTransformImage,
+      'response-transform-image': responseTransformImage,
+    };
+
+    validateProxyApplicationId(
+      applicationId,
+      updatedFlags as Record<string, unknown>
     );
-    validateTransformConfigurableFlags(
-      'response-transform',
-      flags as Record<string, unknown>,
-      flags['response-transform-image']
-    );
-    validateProxyAsyncFlag(flags as Record<string, unknown>);
-    validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
 
     const requestTransformRuntime = await promptTransformRuntime(
       'request',
       flags as Record<string, unknown>,
-      requestTransformCode
+      requestTransformCode,
+      requestTransformImage
     );
     const responseTransformRuntime = await promptTransformRuntime(
       'response',
       flags as Record<string, unknown>,
-      responseTransformCode
+      responseTransformCode,
+      responseTransformImage
     );
 
     const model = createModelFromFlags({
@@ -132,16 +154,15 @@ export default class Create extends BaseCommand {
 
     const proxy = await createProxy(bt, model);
 
-    if (
-      hasTransformWithRuntime(
-        flags as Record<string, unknown>,
-        CONFIGURABLE_RUNTIME_IMAGES
-      ) &&
-      !flags.async &&
-      proxy.id
-    ) {
+    if (!flags.async && proxy.id) {
       try {
-        await waitForResourceState(bt, 'proxy', proxy.id);
+        await waitForResourceState(
+          bt,
+          'proxy',
+          proxy.id,
+          'Creating proxy',
+          proxy.state
+        );
         this.log('Proxy created successfully!');
         this.log(`id: ${proxy.id}`);
         this.log(`key: ${proxy.key}`);

@@ -2,21 +2,37 @@ import type { BasisTheory } from '@basis-theory/node-sdk';
 
 const testDate = new Date('2024-01-01T00:00:00Z');
 
-export const proxyFixtures: Record<string, BasisTheory.Proxy> = {
-  basic: {
-    id: 'proxy-1',
-    name: 'Test Proxy 1',
-    key: 'key_test_proxy_1',
-    destinationUrl: 'https://example.com/api',
-    requireAuth: true,
-    createdAt: testDate,
-    modifiedAt: testDate,
+const PROXY_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+const baseProxy = {
+  name: 'Test Proxy',
+  key: 'key_test_proxy',
+  destinationUrl: 'https://example.com/api',
+  requireAuth: true,
+  createdAt: testDate,
+  modifiedAt: testDate,
+};
+
+const baseFixtures = {
+  active: {
+    ...baseProxy,
+    state: 'active',
+  },
+  creating: {
+    ...baseProxy,
+    state: 'creating',
+  },
+  updating: {
+    ...baseProxy,
+    state: 'updating',
+  },
+  failed: {
+    ...baseProxy,
+    state: 'failed',
   },
   withTransforms: {
-    id: 'proxy-2',
-    name: 'Test Proxy 2',
-    key: 'key_test_proxy_2',
-    destinationUrl: 'https://example.com/api',
+    ...baseProxy,
+    state: 'active',
     requireAuth: false,
     requestTransform: {
       code: 'module.exports = async (req) => req;',
@@ -24,34 +40,15 @@ export const proxyFixtures: Record<string, BasisTheory.Proxy> = {
     responseTransform: {
       code: 'module.exports = async (req) => req;',
     },
-    createdAt: testDate,
-    modifiedAt: testDate,
   },
   withApplication: {
-    id: 'proxy-3',
-    name: 'Test Proxy 3',
-    key: 'key_test_proxy_3',
-    destinationUrl: 'https://example.com/api',
-    requireAuth: true,
+    ...baseProxy,
+    state: 'active',
     applicationId: 'app-1',
-    createdAt: testDate,
-    modifiedAt: testDate,
-  },
-  created: {
-    id: 'proxy-new',
-    name: 'New Proxy',
-    key: 'key_test_proxy_new',
-    destinationUrl: 'https://example.com/api',
-    requireAuth: true,
-    createdAt: testDate,
-    modifiedAt: testDate,
   },
   withTransformRuntime: {
-    id: 'proxy-4',
-    name: 'Proxy with Transform Runtime',
-    key: 'key_test_proxy_4',
-    destinationUrl: 'https://example.com/api',
-    requireAuth: true,
+    ...baseProxy,
+    state: 'active',
     requestTransform: {
       code: 'module.exports = async (req) => req;',
       options: {
@@ -61,46 +58,9 @@ export const proxyFixtures: Record<string, BasisTheory.Proxy> = {
         },
       },
     },
-    state: 'active',
-    createdAt: testDate,
-    modifiedAt: testDate,
-  },
-  pending: {
-    id: 'proxy-5',
-    name: 'Pending Proxy',
-    key: 'key_test_proxy_5',
-    destinationUrl: 'https://example.com/api',
-    requireAuth: true,
-    state: 'pending',
-    createdAt: testDate,
-    modifiedAt: testDate,
-  },
-  active: {
-    id: 'proxy-6',
-    name: 'Active Proxy',
-    key: 'key_test_proxy_6',
-    destinationUrl: 'https://example.com/api',
-    requireAuth: true,
-    state: 'active',
-    createdAt: testDate,
-    modifiedAt: testDate,
-  },
-  failed: {
-    id: 'proxy-7',
-    name: 'Failed Proxy',
-    key: 'key_test_proxy_7',
-    destinationUrl: 'https://example.com/api',
-    requireAuth: true,
-    state: 'failed',
-    createdAt: testDate,
-    modifiedAt: testDate,
   },
   failedWithDetails: {
-    id: 'proxy-8',
-    name: 'Failed Proxy with Details',
-    key: 'key_test_proxy_8',
-    destinationUrl: 'https://example.com/api',
-    requireAuth: true,
+    ...baseProxy,
     state: 'failed',
     requested: {
       proxy: {
@@ -134,31 +94,32 @@ export const proxyFixtures: Record<string, BasisTheory.Proxy> = {
         ],
       },
     },
-    createdAt: testDate,
-    modifiedAt: testDate,
   },
-};
+} as const;
 
-export const proxyPaginatedList: BasisTheory.ProxyPaginatedList = {
-  pagination: {
-    pageNumber: 1,
-    pageSize: 5,
-    totalItems: 3,
-    totalPages: 1,
-  },
-  data: [
-    proxyFixtures.basic,
-    proxyFixtures.withTransforms,
-    proxyFixtures.withApplication,
-  ],
-};
+const withId = <T extends Record<string, unknown>>(
+  fixture: T,
+  id: string
+): T & { id: string } => ({
+  ...fixture,
+  id,
+});
 
-export const emptyProxyPaginatedList: BasisTheory.ProxyPaginatedList = {
-  pagination: {
-    pageNumber: 1,
-    pageSize: 5,
-    totalItems: 0,
-    totalPages: 0,
-  },
-  data: [],
-};
+const proxyFixtures: Record<string, BasisTheory.Proxy> = Object.fromEntries(
+  Object.entries(baseFixtures).map(([key, value]) => [
+    key,
+    withId(value, PROXY_ID),
+  ])
+) as Record<string, BasisTheory.Proxy>;
+
+const createProxyList = (
+  keys: (keyof typeof baseFixtures)[]
+): BasisTheory.Proxy[] =>
+  keys.map((key, index) => ({
+    ...baseFixtures[key],
+    id: `c3d4e5f6-0001-0000-0000-00000000000${index + 1}`,
+    name: `Test Proxy ${index + 1}`,
+    key: `key_test_proxy_${index + 1}`,
+  })) as BasisTheory.Proxy[];
+
+export { proxyFixtures, createProxyList };

@@ -124,14 +124,23 @@ const deleteProxy = async (
   return true;
 };
 
-const patchProxy = (
+const patchProxy = async (
   bt: BasisTheoryClient,
   id: string,
   model: BasisTheory.PatchProxyRequest
 ): Promise<void> => {
   debug(`Patching Proxy ${id}`, JSON.stringify(model, undefined, 2));
 
-  return bt.proxies.patch(id, model);
+  await bt.proxies.patch(id, model);
 };
 
-export { selectProxy, createProxy, patchProxy, deleteProxy };
+const getProxy = (
+  bt: BasisTheoryClient,
+  id: string
+): Promise<BasisTheory.Proxy> => {
+  debug(`Getting Proxy ${id}`);
+
+  return bt.proxies.get(id);
+};
+
+export { selectProxy, createProxy, patchProxy, deleteProxy, getProxy };

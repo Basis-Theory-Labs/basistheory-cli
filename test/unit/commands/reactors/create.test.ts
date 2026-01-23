@@ -27,7 +27,7 @@ describe('reactors create', () => {
       get: reactorsGetStub,
     }));
 
-    reactorsCreateStub.resolves(reactorFixtures.created);
+    reactorsCreateStub.resolves(reactorFixtures.active);
     reactorsGetStub.resolves(reactorFixtures.active);
     readFileStub.returns('module.exports = async (req) => req;');
   });
@@ -49,7 +49,7 @@ describe('reactors create', () => {
       ]);
 
       expect(result.stdout).to.contain('Reactor created successfully!');
-      expect(result.stdout).to.contain('id: reactor-new');
+      expect(result.stdout).to.contain(`id: ${reactorFixtures.active.id}`);
       expect(reactorsCreateStub.calledOnce).to.be.true;
       const [createArg] = reactorsCreateStub.firstCall.args;
 
@@ -195,7 +195,7 @@ describe('reactors create', () => {
           ''
         );
       reactorsCreateStub.resolves({
-        ...reactorFixtures.created,
+        ...reactorFixtures.creating,
         id: 'reactor-wait',
       });
       reactorsGetStub.resolves(reactorFixtures.active);
@@ -236,7 +236,7 @@ describe('reactors create', () => {
           ''
         );
       reactorsCreateStub.resolves({
-        ...reactorFixtures.created,
+        ...reactorFixtures.active,
         id: 'reactor-async',
       });
 
@@ -259,19 +259,19 @@ describe('reactors create', () => {
   });
 
   describe('with prompts', () => {
-    it('prompts for name and code when not provided', async () => {
+    it('prompts for image first, then name and code', async () => {
+      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
       inputStub
         .onCallResolves('What is the Reactor name?', 'Prompted Reactor')
         .onCallResolves('Enter the Reactor code file path:', './reactor.js')
         .onCallResolves(
-          '(Optional) Enter the Application ID to use in the Reactor:',
+          '(Optional) Enter the configuration file path (.env format):',
           ''
         )
         .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
+          '(Optional) Enter the Application ID to use in the Reactor:',
           ''
         );
-      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
 
       const result = await runCommand(['reactors:create']);
 
@@ -279,27 +279,28 @@ describe('reactors create', () => {
       expect(reactorsCreateStub.firstCall.args[0].name).to.equal(
         'Prompted Reactor'
       );
-      inputStub.verifyExpectations();
       selectStub.verifyExpectations();
+      inputStub.verifyExpectations();
     });
 
     it('only prompts for missing fields', async () => {
       inputStub
         .onCallResolves('Enter the Reactor code file path:', './reactor.js')
         .onCallResolves(
-          '(Optional) Enter the Application ID to use in the Reactor:',
+          '(Optional) Enter the configuration file path (.env format):',
           ''
         )
         .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
+          '(Optional) Enter the Application ID to use in the Reactor:',
           ''
         );
-      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
 
       const result = await runCommand([
         'reactors:create',
         '--name',
         'Test Reactor',
+        '--image',
+        'node-bt',
       ]);
 
       expect(result.stdout).to.contain('Reactor created successfully!');
@@ -309,10 +310,13 @@ describe('reactors create', () => {
 
       // Name was provided via flag, so should NOT prompt for it
       inputStub.expectNotCalledWith('What is the Reactor name?');
+      // Image was provided via flag, so should NOT prompt for it
+      selectStub.expectNotCalledWith('Which runtime do you want to use?');
       inputStub.verifyExpectations();
     });
 
     it('prompts for optional application-id when node-bt selected', async () => {
+      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
       inputStub
         .onCallResolves('What is the Reactor name?', 'Prompted Reactor')
         .onCallResolves('Enter the Reactor code file path:', './reactor.js')
@@ -324,7 +328,6 @@ describe('reactors create', () => {
           '(Optional) Enter the Application ID to use in the Reactor:',
           'app-456'
         );
-      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
 
       const result = await runCommand(['reactors:create']);
 
@@ -332,10 +335,14 @@ describe('reactors create', () => {
       expect(reactorsCreateStub.firstCall.args[0].application).to.deep.equal({
         id: 'app-456',
       });
+      selectStub.verifyExpectations();
       inputStub.verifyExpectations();
     });
 
     it('prompts for node22 options when node22 selected', async () => {
+      selectStub
+        .onCallResolves('Which runtime do you want to use?', 'node22')
+        .onCallResolves('Resource tier:', 'large');
       inputStub
         .onCallResolves('What is the Reactor name?', 'Node22 Reactor')
         .onCallResolves('Enter the Reactor code file path:', './reactor.js')
@@ -356,9 +363,6 @@ describe('reactors create', () => {
           '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
           ''
         );
-      selectStub
-        .onCallResolves('Which runtime do you want to use?', 'node22')
-        .onCallResolves('Resource tier:', 'large');
 
       const result = await runCommand(['reactors:create']);
 
@@ -378,6 +382,7 @@ describe('reactors create', () => {
     });
 
     it('skips node22 options when node-bt selected', async () => {
+      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
       inputStub
         .onCallResolves('What is the Reactor name?', 'Legacy Reactor')
         .onCallResolves('Enter the Reactor code file path:', './reactor.js')
@@ -389,7 +394,6 @@ describe('reactors create', () => {
           '(Optional) Enter the Application ID to use in the Reactor:',
           ''
         );
-      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
 
       const result = await runCommand(['reactors:create']);
 
@@ -441,24 +445,6 @@ describe('reactors create', () => {
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
         '--resources is only valid with configurable runtimes (node22)'
-      );
-    });
-
-    it('errors when --async used with node-bt', async () => {
-      const result = await runCommand([
-        'reactors:create',
-        '--name',
-        'Test Reactor',
-        '--code',
-        './reactor.js',
-        '--image',
-        'node-bt',
-        '--async',
-      ]);
-
-      expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        '--async is only valid with configurable runtimes (node22)'
       );
     });
 

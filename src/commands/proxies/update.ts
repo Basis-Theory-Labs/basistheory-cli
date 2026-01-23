@@ -2,12 +2,10 @@ import { Args, Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { showProxyLogs } from '../../logs';
-import { patchProxy } from '../../proxies/management';
+import { getProxy, patchProxy } from '../../proxies/management';
 import {
-  hasTransformWithRuntime,
   validateProxyApplicationId,
-  validateProxyAsyncFlag,
-  validateTransformConfigurableFlags,
+  validateTransformRuntimeFlags,
 } from '../../proxies/runtime';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
 import {
@@ -97,17 +95,16 @@ export default class Update extends BaseCommand {
       logs,
     } = flags;
 
-    validateTransformConfigurableFlags(
+    validateTransformRuntimeFlags(
       'request-transform',
       flags as Record<string, unknown>,
       requestTransformImage
     );
-    validateTransformConfigurableFlags(
+    validateTransformRuntimeFlags(
       'response-transform',
       flags as Record<string, unknown>,
       responseTransformImage
     );
-    validateProxyAsyncFlag(flags as Record<string, unknown>);
     validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
 
     if (
@@ -156,14 +153,16 @@ export default class Update extends BaseCommand {
 
     await patchProxy(bt, id, model);
 
-    if (
-      hasTransformWithRuntime(
-        flags as Record<string, unknown>,
-        CONFIGURABLE_RUNTIME_IMAGES
-      ) &&
-      !asyncFlag
-    ) {
-      await waitForResourceState(bt, 'proxy', id, 'Updating proxy');
+    if (!asyncFlag) {
+      const proxy = await getProxy(bt, id);
+
+      await waitForResourceState(
+        bt,
+        'proxy',
+        id,
+        'Updating proxy',
+        proxy.state
+      );
     }
 
     this.log('Proxy updated successfully!');

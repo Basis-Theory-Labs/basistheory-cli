@@ -8,26 +8,43 @@ import {
   promptRuntimeOptions,
   type RuntimeFlags,
 } from '../runtime';
-import { promptSelectIfUndefined } from '../utils';
 
-const validateTransformConfigurableFlags = (
+const validateTransformRuntimeFlags = (
   prefix: 'request-transform' | 'response-transform',
   flags: Record<string, unknown>,
   image: string | undefined
 ): void => {
+  const setFlags: string[] = [];
+
   for (const flag of CONFIGURABLE_RUNTIME_FLAGS) {
     const fullFlag = `${prefix}-${flag}`;
     const value = flags[fullFlag];
     const isSet =
       value !== undefined && !(Array.isArray(value) && value.length === 0);
 
-    if (isSet && isLegacyRuntimeImage(image)) {
-      throw new Error(
-        `--${fullFlag} is only valid with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ', '
-        )})`
-      );
+    if (isSet) {
+      setFlags.push(fullFlag);
     }
+  }
+
+  if (!setFlags.length) {
+    return;
+  }
+
+  if (!image) {
+    const flagNames = setFlags.map((f) => `--${f}`).join(', ');
+
+    throw new Error(`${flagNames} requires --${prefix}-image to be specified`);
+  }
+
+  if (isLegacyRuntimeImage(image)) {
+    const flagNames = setFlags.map((f) => `--${f}`).join(', ');
+
+    throw new Error(
+      `${flagNames} is only valid with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
+        ', '
+      )})`
+    );
   }
 };
 
@@ -49,25 +66,6 @@ const hasTransformWithRuntime = (
   };
 
   return isMatch(requestImage) || isMatch(responseImage);
-};
-
-const validateProxyAsyncFlag = (flags: Record<string, unknown>): void => {
-  const asyncFlag = flags.async;
-  const isAsyncSet =
-    asyncFlag !== undefined &&
-    asyncFlag !== false &&
-    !(Array.isArray(asyncFlag) && asyncFlag.length === 0);
-
-  if (
-    isAsyncSet &&
-    !hasTransformWithRuntime(flags, CONFIGURABLE_RUNTIME_IMAGES)
-  ) {
-    throw new Error(
-      `--async is only valid when at least one transform uses a configurable runtime (${CONFIGURABLE_RUNTIME_IMAGES.join(
-        ', '
-      )})`
-    );
-  }
 };
 
 const validateProxyApplicationId = (
@@ -94,29 +92,12 @@ const validateProxyApplicationId = (
 const promptTransformRuntime = async (
   prefix: 'request' | 'response',
   flags: Record<string, unknown>,
-  transformCode: string | undefined
+  transformCode: string | undefined,
+  image: string | undefined
 ): Promise<BasisTheory.Runtime | undefined> => {
   if (!transformCode) {
     return undefined;
   }
-
-  const imageFlag = `${prefix}-transform-image`;
-  const image = await promptSelectIfUndefined(
-    flags[imageFlag] as string | undefined,
-    {
-      message: `Which runtime do you want for the ${prefix} transform?`,
-      choices: [
-        {
-          value: LEGACY_RUNTIME_IMAGE,
-          name: `${LEGACY_RUNTIME_IMAGE} (legacy)`,
-        },
-        ...CONFIGURABLE_RUNTIME_IMAGES.map((runtime) => ({
-          value: runtime,
-          name: `${runtime} (configurable)`,
-        })),
-      ],
-    }
-  );
 
   if (isLegacyRuntimeImage(image)) {
     return undefined;
@@ -151,9 +132,7 @@ const promptTransformRuntime = async (
 };
 
 export {
-  validateTransformConfigurableFlags,
-  validateProxyAsyncFlag,
+  validateTransformRuntimeFlags,
   validateProxyApplicationId,
-  hasTransformWithRuntime,
   promptTransformRuntime,
 };

@@ -27,15 +27,26 @@ const formatErrorMessage = (
   return parts.join('\n');
 };
 
+const needsPolling = (state: string | undefined): boolean =>
+  state === 'creating' || state === 'updating';
+
 const waitForResourceState = async (
   bt: BasisTheoryClient,
   resourceType: 'reactor' | 'proxy',
   id: string,
-  message = 'Creating resource'
+  message?: string,
+  initialState?: string
 ): Promise<void> => {
+  const displayMessage = message ?? 'Creating resource';
+
+  // If initial state is provided and doesn't need polling, return immediately
+  if (initialState !== undefined && !needsPolling(initialState)) {
+    return;
+  }
+
   const deadline = Date.now() + POLL_TIMEOUT;
 
-  ux.action.start(message);
+  ux.action.start(displayMessage);
 
   /* eslint-disable no-await-in-loop */
   while (Date.now() < deadline) {

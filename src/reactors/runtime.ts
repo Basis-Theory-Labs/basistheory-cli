@@ -1,24 +1,17 @@
-import type { BasisTheory } from '@basis-theory/node-sdk';
 import {
-  buildRuntime,
   CONFIGURABLE_RUNTIME_FLAGS,
   CONFIGURABLE_RUNTIME_IMAGES,
   isLegacyRuntimeImage,
-  LEGACY_RUNTIME_IMAGE,
-  promptRuntimeOptions,
-  type RuntimeFlags,
 } from '../runtime';
-import { promptSelectIfUndefined } from '../utils';
 
-const REACTOR_CONFIGURABLE_FLAGS = [
-  ...CONFIGURABLE_RUNTIME_FLAGS,
-  'async',
-] as const;
+const REACTOR_CONFIGURABLE_FLAGS = [...CONFIGURABLE_RUNTIME_FLAGS] as const;
 
-const validateConfigurableRuntimeFlags = (
+const validateReactorRuntimeFlags = (
   flags: Record<string, unknown>,
   image: string | undefined
 ): void => {
+  const setFlags: string[] = [];
+
   for (const flag of REACTOR_CONFIGURABLE_FLAGS) {
     const value = flags[flag];
     const isSet =
@@ -26,13 +19,29 @@ const validateConfigurableRuntimeFlags = (
       value !== false &&
       !(Array.isArray(value) && value.length === 0);
 
-    if (isSet && isLegacyRuntimeImage(image)) {
-      throw new Error(
-        `--${flag} is only valid with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ', '
-        )})`
-      );
+    if (isSet) {
+      setFlags.push(flag);
     }
+  }
+
+  if (!setFlags.length) {
+    return;
+  }
+
+  if (!image) {
+    const flagNames = setFlags.map((f) => `--${f}`).join(', ');
+
+    throw new Error(`${flagNames} requires --image to be specified`);
+  }
+
+  if (isLegacyRuntimeImage(image)) {
+    const flagNames = setFlags.map((f) => `--${f}`).join(', ');
+
+    throw new Error(
+      `${flagNames} is only valid with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
+        ', '
+      )})`
+    );
   }
 };
 
@@ -49,50 +58,8 @@ const validateReactorApplicationId = (
   }
 };
 
-interface ReactorRuntimeResult {
-  image: string;
-  runtime: BasisTheory.Runtime | undefined;
-}
-
-const promptReactorRuntime = async (
-  flags: RuntimeFlags
-): Promise<ReactorRuntimeResult> => {
-  const image = await promptSelectIfUndefined(flags.image, {
-    message: 'Which runtime do you want to use?',
-    choices: [
-      {
-        value: LEGACY_RUNTIME_IMAGE,
-        name: `${LEGACY_RUNTIME_IMAGE} (legacy)`,
-      },
-      ...CONFIGURABLE_RUNTIME_IMAGES.map((runtime) => ({
-        value: runtime,
-        name: `${runtime} (configurable)`,
-      })),
-    ],
-  });
-
-  if (isLegacyRuntimeImage(image)) {
-    return {
-      image,
-      runtime: undefined,
-    };
-  }
-
-  const runtimeOptions = await promptRuntimeOptions(flags);
-
-  return {
-    image,
-    runtime: buildRuntime({
-      image,
-      ...runtimeOptions,
-    }),
-  };
-};
-
 export {
-  validateConfigurableRuntimeFlags,
+  validateReactorRuntimeFlags,
   validateReactorApplicationId,
   REACTOR_CONFIGURABLE_FLAGS,
-  promptReactorRuntime,
-  type ReactorRuntimeResult,
 };

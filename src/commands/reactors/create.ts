@@ -1,12 +1,17 @@
 import { BaseCommand } from '../../base';
 import { createReactor } from '../../reactors/management';
 import {
-  promptReactorRuntime,
-  validateConfigurableRuntimeFlags,
   validateReactorApplicationId,
+  validateReactorRuntimeFlags,
 } from '../../reactors/runtime';
 import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
-import { isLegacyRuntimeImage, waitForResourceState } from '../../runtime';
+import {
+  buildRuntime,
+  isLegacyRuntimeImage,
+  promptRuntimeImage,
+  promptRuntimeOptions,
+  waitForResourceState,
+} from '../../runtime';
 import { promptStringIfUndefined } from '../../utils';
 
 export default class Create extends BaseCommand {
@@ -35,6 +40,21 @@ export default class Create extends BaseCommand {
   public async run(): Promise<void> {
     const { flags, bt } = await this.parse(Create);
 
+    const {
+      timeout,
+      'warm-concurrency': warmConcurrency,
+      resources,
+      dependencies,
+      permissions,
+      'application-id': applicationId,
+      async: asyncFlag,
+    } = flags;
+
+    const image = await promptRuntimeImage(flags.image);
+
+    validateReactorRuntimeFlags(flags as Record<string, unknown>, image);
+    validateReactorApplicationId(applicationId, image);
+
     const name = await promptStringIfUndefined(flags.name, {
       message: 'What is the Reactor name?',
       validate: (value) => Boolean(value),
@@ -49,43 +69,50 @@ export default class Create extends BaseCommand {
       message: '(Optional) Enter the configuration file path (.env format):',
     });
 
-    validateConfigurableRuntimeFlags(
-      flags as Record<string, unknown>,
-      flags.image
-    );
-
-    const { image, runtime } = await promptReactorRuntime({
-      image: flags.image,
-      timeout: flags.timeout,
-      'warm-concurrency': flags['warm-concurrency'],
-      resources: flags.resources,
-      dependencies: flags.dependencies,
-      permissions: flags.permissions,
-    });
-
-    validateReactorApplicationId(flags['application-id'], image);
-
-    let applicationId: string | undefined;
+    let promptedApplicationId: string | undefined;
 
     if (isLegacyRuntimeImage(image)) {
-      applicationId = await promptStringIfUndefined(flags['application-id'], {
+      promptedApplicationId = await promptStringIfUndefined(applicationId, {
         message: '(Optional) Enter the Application ID to use in the Reactor:',
+      });
+    }
+
+    let runtime;
+
+    if (!isLegacyRuntimeImage(image)) {
+      const runtimeOptions = await promptRuntimeOptions({
+        timeout,
+        'warm-concurrency': warmConcurrency,
+        resources,
+        dependencies,
+        permissions,
+      });
+
+      runtime = buildRuntime({
+        image,
+        ...runtimeOptions,
       });
     }
 
     const model = createModelFromFlags({
       name,
       code,
-      applicationId,
+      applicationId: promptedApplicationId,
       configuration,
       runtime,
     });
 
     const reactor = await createReactor(bt, model);
 
-    if (!isLegacyRuntimeImage(image) && !flags.async && reactor.id) {
+    if (!asyncFlag && reactor.id) {
       try {
-        await waitForResourceState(bt, 'reactor', reactor.id);
+        await waitForResourceState(
+          bt,
+          'reactor',
+          reactor.id,
+          'Creating reactor',
+          reactor.state
+        );
         this.log('Reactor created successfully!');
         this.log(`id: ${reactor.id}`);
       } catch (error) {

@@ -21,7 +21,7 @@ const isLegacyRuntimeImage = (image: string | undefined): boolean =>
 
 const validateRuntimeImage = (image: string | undefined): void => {
   if (image === undefined) {
-    return; // No --image means legacy for backward compatibility
+    return;
   }
 
   if (
@@ -193,6 +193,24 @@ const promptRuntimeOptions = async (
   };
 };
 
+const promptRuntimeImage = (
+  image: string | undefined,
+  message = 'Which runtime do you want to use?'
+): Promise<string> =>
+  promptSelectIfUndefined(image, {
+    message,
+    choices: [
+      {
+        value: LEGACY_RUNTIME_IMAGE,
+        name: `${LEGACY_RUNTIME_IMAGE} (legacy)`,
+      },
+      ...CONFIGURABLE_RUNTIME_IMAGES.map((runtime) => ({
+        value: runtime,
+        name: `${runtime} (configurable)`,
+      })),
+    ],
+  });
+
 export {
   LEGACY_RUNTIME_IMAGE,
   CONFIGURABLE_RUNTIME_IMAGES,
@@ -202,6 +220,7 @@ export {
   validateRuntimeImage,
   buildRuntime,
   promptRuntimeOptions,
+  promptRuntimeImage,
   type RuntimeFlagProps,
   type RuntimeFlags,
   type ConfigurableRuntimeOptions,

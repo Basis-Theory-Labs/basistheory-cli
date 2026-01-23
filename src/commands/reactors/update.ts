@@ -2,10 +2,10 @@ import { Args, Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { showReactorLogs } from '../../logs';
-import { patchReactor } from '../../reactors/management';
+import { getReactor, patchReactor } from '../../reactors/management';
 import {
-  validateConfigurableRuntimeFlags,
   validateReactorApplicationId,
+  validateReactorRuntimeFlags,
 } from '../../reactors/runtime';
 import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
 import {
@@ -79,7 +79,7 @@ export default class Update extends BaseCommand {
       logs,
     } = flags;
 
-    validateConfigurableRuntimeFlags(flags as Record<string, unknown>, image);
+    validateReactorRuntimeFlags(flags as Record<string, unknown>, image);
     validateReactorApplicationId(applicationId, image);
 
     if (watch && !isLegacyRuntimeImage(image)) {
@@ -109,8 +109,16 @@ export default class Update extends BaseCommand {
 
     await patchReactor(bt, id, model);
 
-    if (!isLegacyRuntimeImage(image) && !asyncFlag) {
-      await waitForResourceState(bt, 'reactor', id, 'Updating reactor');
+    if (!asyncFlag) {
+      const reactor = await getReactor(bt, id);
+
+      await waitForResourceState(
+        bt,
+        'reactor',
+        id,
+        'Updating reactor',
+        reactor.state
+      );
     }
 
     this.log('Reactor updated successfully!');
