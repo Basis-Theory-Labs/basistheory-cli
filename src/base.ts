@@ -16,6 +16,7 @@ const formatApiError = (
 
   if (body.title) {
     const status = body.status ? ` [${body.status}]` : '';
+
     parts.push(`${body.title}${status}`);
   }
 

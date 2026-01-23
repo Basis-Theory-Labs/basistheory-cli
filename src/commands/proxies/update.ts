@@ -24,14 +24,21 @@ export default class Update extends BaseCommand {
   public static examples = [
     '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --destination-url https://api.example.com',
     `<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca \\
-    --request-transform-code ./transform.js \\
-    --request-transform-image node22`,
+    --request-transform-code ./request.js \\
+    --request-transform-image node22 \\
+    --response-transform-code ./response.js \\
+    --response-transform-image node22`,
     `<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca \\
-    --request-transform-code ./transform.js \\
+    --request-transform-code ./request.js \\
     --request-transform-image node22 \\
     --request-transform-timeout 10 \\
     --request-transform-resources standard \\
-    --request-transform-dependencies ./deps.json`,
+    --request-transform-dependencies ./deps.json \\
+    --response-transform-code ./response.js \\
+    --response-transform-image node22 \\
+    --response-transform-timeout 10 \\
+    --response-transform-resources standard \\
+    --response-transform-dependencies ./deps.json`,
   ];
 
   public static flags = {

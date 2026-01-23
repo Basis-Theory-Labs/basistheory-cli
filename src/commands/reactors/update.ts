@@ -26,8 +26,11 @@ export default class Update extends BaseCommand {
     --code ./reactor.js \\
     --image node22 \\
     --timeout 10 \\
+    --warm-concurrency 0 \\
     --resources standard \\
-    --dependencies ./deps.json`,
+    --dependencies ./deps.json \\
+    --permissions token:read \\
+    --permissions token:create`,
   ];
 
   public static flags = {

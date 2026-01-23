@@ -27,16 +27,23 @@ export default class Create extends BaseCommand {
     `<%= config.bin %> <%= command.id %> \\
     --name "My Proxy" \\
     --destination-url https://api.example.com \\
-    --request-transform-code ./transform.js \\
-    --request-transform-image node22`,
+    --request-transform-code ./request.js \\
+    --request-transform-image node22 \\
+    --response-transform-code ./response.js \\
+    --response-transform-image node22`,
     `<%= config.bin %> <%= command.id %> \\
     --name "My Proxy" \\
     --destination-url https://api.example.com \\
-    --request-transform-code ./transform.js \\
+    --request-transform-code ./request.js \\
     --request-transform-image node22 \\
     --request-transform-timeout 10 \\
     --request-transform-resources standard \\
-    --request-transform-dependencies ./deps.json`,
+    --request-transform-dependencies ./deps.json \\
+    --response-transform-code ./response.js \\
+    --response-transform-image node22 \\
+    --response-transform-timeout 10 \\
+    --response-transform-resources standard \\
+    --response-transform-dependencies ./deps.json`,
   ];
 
   public static flags = {
