@@ -38,7 +38,7 @@ export default class Create extends BaseCommand {
         '<%= config.bin %> <%= command.id %> --name "My Proxy" --destination-url https://api.example.com --request-transform-code ./request.js --request-transform-image node22 --response-transform-code ./response.js --response-transform-image node22',
     },
     {
-      description: 'Create a proxy with node22 transforms and all options',
+      description: 'Create a proxy with node22 transforms and all runtime options',
       command:
         '<%= config.bin %> <%= command.id %> ' +
         '--name "My Proxy" ' +

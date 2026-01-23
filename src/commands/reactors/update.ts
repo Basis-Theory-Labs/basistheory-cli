@@ -28,7 +28,7 @@ export default class Update extends BaseCommand {
         '<%= config.bin %> <%= command.id %> <reactor-id> --code ./reactor.js --image node22',
     },
     {
-      description: 'Update a reactor with node22 runtime and all options',
+      description: 'Update a reactor with node22 and all runtime options',
       command:
         '<%= config.bin %> <%= command.id %> <reactor-id> ' +
         '--name "My Reactor" ' +

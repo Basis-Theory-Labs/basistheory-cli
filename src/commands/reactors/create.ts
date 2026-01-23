@@ -30,7 +30,7 @@ export default class Create extends BaseCommand {
         '<%= config.bin %> <%= command.id %> --name "My Reactor" --code ./reactor.js --image node22',
     },
     {
-      description: 'Create a reactor with node22 runtime and all options',
+      description: 'Create a reactor with node22 and all runtime options',
       command:
         '<%= config.bin %> <%= command.id %> ' +
         '--name "My Reactor" ' +
