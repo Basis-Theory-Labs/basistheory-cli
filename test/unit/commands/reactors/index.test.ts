@@ -4,7 +4,7 @@ import * as input from '@inquirer/input';
 import * as select from '@inquirer/select';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { reactorFixtures } from '../../fixtures/reactors';
+import { createReactorList } from '../../fixtures/reactors';
 import { createPaginatedResponse } from '../../helpers/pagination';
 import { runCommand } from '../../helpers/run-command';
 import { PromptStub } from '../../helpers/types';
@@ -15,6 +15,9 @@ describe('reactors list', () => {
   let confirmStub: PromptStub;
   let reactorsListStub: sinon.SinonStub;
   let reactorsDeleteStub: sinon.SinonStub;
+
+  // List with unique IDs for list tests
+  const listFixtures = createReactorList(['active', 'withApplication']);
 
   beforeEach(() => {
     inputStub = new PromptStub(sinon.stub(input, 'default'));
@@ -35,20 +38,14 @@ describe('reactors list', () => {
 
   describe('listing reactors', () => {
     it('displays reactors and shows details when selected', async () => {
-      reactorsListStub.resolves(
-        createPaginatedResponse([
-          reactorFixtures.basic,
-          reactorFixtures.withApplication,
-        ])
-      );
-      // selectOrNavigate uses input with message "Select one (#)"
+      reactorsListStub.resolves(createPaginatedResponse(listFixtures));
       inputStub.onCallResolves('Select one (#)', '1');
       selectStub.onCallResolves('Select action to perform', 'details');
 
       const result = await runCommand(['reactors']);
 
-      expect(result.stdout).to.contain('reactor-1');
-      expect(result.stdout).to.contain('Test Reactor 1');
+      expect(result.stdout).to.contain(listFixtures[0].id);
+      expect(result.stdout).to.contain(listFixtures[0].name);
       expect(reactorsListStub.calledOnce).to.be.true;
       inputStub.verifyExpectations();
       selectStub.verifyExpectations();
@@ -63,7 +60,6 @@ describe('reactors list', () => {
     });
 
     it('supports pagination with --page flag', async () => {
-      // Return empty to avoid selectOrNavigate recursion
       reactorsListStub.resolves(createPaginatedResponse([]));
 
       await runCommand(['reactors', '--page', '2']);
@@ -79,9 +75,7 @@ describe('reactors list', () => {
 
   describe('reactor actions', () => {
     beforeEach(() => {
-      reactorsListStub.resolves(
-        createPaginatedResponse([reactorFixtures.basic])
-      );
+      reactorsListStub.resolves(createPaginatedResponse([listFixtures[0]]));
     });
 
     it('shows reactor details as JSON', async () => {
@@ -90,8 +84,8 @@ describe('reactors list', () => {
 
       const result = await runCommand(['reactors']);
 
-      expect(result.stdout).to.contain('"id": "reactor-1"');
-      expect(result.stdout).to.contain('"name": "Test Reactor 1"');
+      expect(result.stdout).to.contain(`"id": "${listFixtures[0].id}"`);
+      expect(result.stdout).to.contain(`"name": "${listFixtures[0].name}"`);
     });
 
     it('deletes reactor when confirmed', async () => {
@@ -103,7 +97,7 @@ describe('reactors list', () => {
       const result = await runCommand(['reactors']);
 
       expect(result.stdout).to.contain('Reactor deleted successfully');
-      expect(reactorsDeleteStub.calledWith('reactor-1')).to.be.true;
+      expect(reactorsDeleteStub.calledWith(listFixtures[0].id)).to.be.true;
     });
 
     it('does not delete reactor when not confirmed', async () => {

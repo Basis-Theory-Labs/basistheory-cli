@@ -33,6 +33,7 @@ const listReactors = async (
       '#': {},
       id: {},
       name: {},
+      state: {},
     });
   } else {
     ux.log('No reactors found.');
@@ -100,14 +101,29 @@ const deleteReactor = async (
   return true;
 };
 
-const patchReactor = (
+const patchReactor = async (
   bt: BasisTheoryClient,
   id: string,
   model: BasisTheory.PatchReactorRequest
 ): Promise<void> => {
   debug(`Patching Reactor ${id}`, JSON.stringify(model, undefined, 2));
 
-  return bt.reactors.patch(id, model);
+  await bt.reactors.patch(id, model);
 };
 
-export { selectReactor, createReactor, patchReactor, deleteReactor };
+const getReactor = (
+  bt: BasisTheoryClient,
+  id: string
+): Promise<BasisTheory.Reactor> => {
+  debug(`Getting Reactor ${id}`);
+
+  return bt.reactors.get(id);
+};
+
+export {
+  selectReactor,
+  createReactor,
+  patchReactor,
+  deleteReactor,
+  getReactor,
+};

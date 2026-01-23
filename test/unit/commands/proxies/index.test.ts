@@ -4,7 +4,7 @@ import * as input from '@inquirer/input';
 import * as select from '@inquirer/select';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { proxyFixtures } from '../../fixtures/proxies';
+import { createProxyList } from '../../fixtures/proxies';
 import { createPaginatedResponse } from '../../helpers/pagination';
 import { runCommand } from '../../helpers/run-command';
 import { PromptStub } from '../../helpers/types';
@@ -15,6 +15,9 @@ describe('proxies list', () => {
   let confirmStub: PromptStub;
   let proxiesListStub: sinon.SinonStub;
   let proxiesDeleteStub: sinon.SinonStub;
+
+  // List with unique IDs for list tests
+  const listFixtures = createProxyList(['active', 'withTransforms']);
 
   beforeEach(() => {
     inputStub = new PromptStub(sinon.stub(input, 'default'));
@@ -35,19 +38,14 @@ describe('proxies list', () => {
 
   describe('listing proxies', () => {
     it('displays proxies and shows details when selected', async () => {
-      proxiesListStub.resolves(
-        createPaginatedResponse([
-          proxyFixtures.basic,
-          proxyFixtures.withTransforms,
-        ])
-      );
+      proxiesListStub.resolves(createPaginatedResponse(listFixtures));
       inputStub.onCallResolves('Select one (#)', '1');
       selectStub.onCallResolves('Select action to perform', 'details');
 
       const result = await runCommand(['proxies']);
 
-      expect(result.stdout).to.contain('proxy-1');
-      expect(result.stdout).to.contain('Test Proxy 1');
+      expect(result.stdout).to.contain(listFixtures[0].id);
+      expect(result.stdout).to.contain(listFixtures[0].name);
       expect(proxiesListStub.calledOnce).to.be.true;
       inputStub.verifyExpectations();
       selectStub.verifyExpectations();
@@ -77,7 +75,7 @@ describe('proxies list', () => {
 
   describe('proxy actions', () => {
     beforeEach(() => {
-      proxiesListStub.resolves(createPaginatedResponse([proxyFixtures.basic]));
+      proxiesListStub.resolves(createPaginatedResponse([listFixtures[0]]));
     });
 
     it('shows proxy details as JSON', async () => {
@@ -86,8 +84,8 @@ describe('proxies list', () => {
 
       const result = await runCommand(['proxies']);
 
-      expect(result.stdout).to.contain('"id": "proxy-1"');
-      expect(result.stdout).to.contain('"name": "Test Proxy 1"');
+      expect(result.stdout).to.contain(`"id": "${listFixtures[0].id}"`);
+      expect(result.stdout).to.contain(`"name": "${listFixtures[0].name}"`);
     });
 
     it('deletes proxy when confirmed', async () => {
@@ -99,7 +97,7 @@ describe('proxies list', () => {
       const result = await runCommand(['proxies']);
 
       expect(result.stdout).to.contain('Proxy deleted successfully');
-      expect(proxiesDeleteStub.calledWith('proxy-1')).to.be.true;
+      expect(proxiesDeleteStub.calledWith(listFixtures[0].id)).to.be.true;
     });
 
     it('does not delete proxy when not confirmed', async () => {

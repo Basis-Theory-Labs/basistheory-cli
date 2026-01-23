@@ -2,6 +2,7 @@ import type { BasisTheory } from '@basis-theory/node-sdk';
 import { Flags } from '@oclif/core';
 import { parse } from 'dotenv';
 import { readFileContents } from '../files';
+import { RUNTIME_FLAGS } from '../runtime';
 
 const REACTOR_FLAGS = {
   name: Flags.string({
@@ -21,6 +22,7 @@ const REACTOR_FLAGS = {
     char: 'r',
     description: 'path to JavaScript file containing the Reactor code',
   }),
+  ...RUNTIME_FLAGS,
 };
 
 interface ReactorFlagProps {
@@ -36,12 +38,22 @@ interface ReactorFlagProps {
    * Path to .env file
    */
   configuration?: string;
+  /**
+   * Runtime configuration
+   */
+  runtime?: BasisTheory.Runtime;
 }
 
 type CreateReactor = ReactorFlagProps &
-  Omit<BasisTheory.CreateReactorRequest, 'application' | 'configuration'>;
+  Omit<
+    BasisTheory.CreateReactorRequest,
+    'application' | 'configuration' | 'runtime'
+  >;
 type PatchReactor = ReactorFlagProps &
-  Omit<BasisTheory.PatchReactorRequest, 'application' | 'configuration'>;
+  Omit<
+    BasisTheory.PatchReactorRequest,
+    'application' | 'configuration' | 'runtime'
+  >;
 
 function createModelFromFlags(
   payload: CreateReactor
@@ -57,6 +69,7 @@ function createModelFromFlags({
   applicationId,
   code,
   configuration,
+  runtime,
 }: CreateReactor | PatchReactor):
   | BasisTheory.CreateReactorRequest
   | BasisTheory.PatchReactorRequest {
@@ -67,6 +80,7 @@ function createModelFromFlags({
     configuration: configuration
       ? parse(readFileContents(configuration))
       : undefined,
+    runtime,
   };
 }
 
