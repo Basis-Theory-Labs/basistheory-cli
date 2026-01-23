@@ -1,7 +1,6 @@
 import { Flags } from '@oclif/core';
 import { VALID_RUNTIME_IMAGES } from './utils';
 
-// Base runtime flags (used by reactors directly)
 const RUNTIME_FLAGS = {
   image: Flags.string({
     description: `runtime image (${VALID_RUNTIME_IMAGES.join('|')})`,

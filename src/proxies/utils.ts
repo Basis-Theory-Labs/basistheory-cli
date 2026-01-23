@@ -36,7 +36,6 @@ const PROXY_FLAGS = {
     allowNo: true,
     default: true,
   }),
-  // Request transform runtime flags
   'request-transform-image': Flags.string({
     description: `request-transform runtime image (${VALID_RUNTIME_IMAGES.join(
       '|'
@@ -66,7 +65,6 @@ const PROXY_FLAGS = {
       'request-transform permission to grant, repeatable (node22 only)',
     multiple: true,
   }),
-  // Response transform runtime flags
   'response-transform-image': Flags.string({
     description: `response-transform runtime image (${VALID_RUNTIME_IMAGES.join(
       '|'
@@ -163,7 +161,6 @@ function createModelFromFlags({
 }: CreateProxy | PatchProxy):
   | BasisTheory.CreateProxyRequest
   | BasisTheory.PatchProxyRequest {
-  // Build request transform with optional runtime
   let requestTransform: BasisTheory.ProxyTransform | undefined;
 
   if (requestTransformCode) {
@@ -176,7 +173,6 @@ function createModelFromFlags({
     }
   }
 
-  // Build response transform with optional runtime
   let responseTransform: BasisTheory.ProxyTransform | undefined;
 
   if (responseTransformCode) {

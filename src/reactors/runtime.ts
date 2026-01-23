@@ -10,7 +10,6 @@ import {
 } from '../runtime';
 import { promptSelectIfUndefined } from '../utils';
 
-// Reactor-specific configurable flags (includes 'async')
 const REACTOR_CONFIGURABLE_FLAGS = [
   ...CONFIGURABLE_RUNTIME_FLAGS,
   'async',
@@ -55,7 +54,6 @@ interface ReactorRuntimeResult {
   runtime: BasisTheory.Runtime | undefined;
 }
 
-// For reactors: prompt for image and runtime options
 const promptReactorRuntime = async (
   flags: RuntimeFlags
 ): Promise<ReactorRuntimeResult> => {

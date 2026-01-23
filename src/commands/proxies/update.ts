@@ -97,7 +97,6 @@ export default class Update extends BaseCommand {
       logs,
     } = flags;
 
-    // Validate configurable runtime flags for transforms
     validateTransformConfigurableFlags(
       'request-transform',
       flags as Record<string, unknown>,
@@ -108,14 +107,9 @@ export default class Update extends BaseCommand {
       flags as Record<string, unknown>,
       responseTransformImage
     );
-
-    // Validate proxy-level async flag
     validateProxyAsyncFlag(flags as Record<string, unknown>);
-
-    // Validate application-id is only used with legacy transforms
     validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
 
-    // Watch is not compatible with configurable runtime transforms
     if (
       watch &&
       (!isLegacyRuntimeImage(requestTransformImage) ||
@@ -128,7 +122,6 @@ export default class Update extends BaseCommand {
       );
     }
 
-    // Build request transform runtime only if any runtime field is provided
     const requestTransformRuntime = buildRuntime({
       image: requestTransformImage,
       dependencies: requestTransformDependencies,
@@ -138,7 +131,6 @@ export default class Update extends BaseCommand {
       permissions: requestTransformPermissions,
     });
 
-    // Build response transform runtime only if any runtime field is provided
     const responseTransformRuntime = buildRuntime({
       image: responseTransformImage,
       dependencies: responseTransformDependencies,
@@ -164,7 +156,6 @@ export default class Update extends BaseCommand {
 
     await patchProxy(bt, id, model);
 
-    // Wait for proxy to be ready by default for configurable transforms, unless --async is set
     if (
       hasTransformWithRuntime(
         flags as Record<string, unknown>,

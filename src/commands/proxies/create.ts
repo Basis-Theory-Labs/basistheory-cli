@@ -94,7 +94,6 @@ export default class Create extends BaseCommand {
       }
     );
 
-    // Validate configurable runtime flags for transforms
     validateTransformConfigurableFlags(
       'request-transform',
       flags as Record<string, unknown>,
@@ -105,14 +104,9 @@ export default class Create extends BaseCommand {
       flags as Record<string, unknown>,
       flags['response-transform-image']
     );
-
-    // Validate proxy-level async flag
     validateProxyAsyncFlag(flags as Record<string, unknown>);
-
-    // Validate application-id is only used with legacy transforms
     validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
 
-    // Build transform runtimes using shared prompts
     const requestTransformRuntime = await promptTransformRuntime(
       'request',
       flags as Record<string, unknown>,
@@ -138,7 +132,6 @@ export default class Create extends BaseCommand {
 
     const proxy = await createProxy(bt, model);
 
-    // Wait for proxy to be ready by default for configurable transforms, unless --async is set
     if (
       hasTransformWithRuntime(
         flags as Record<string, unknown>,

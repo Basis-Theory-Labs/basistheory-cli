@@ -79,13 +79,9 @@ export default class Update extends BaseCommand {
       logs,
     } = flags;
 
-    // Validate configurable runtime flags
     validateConfigurableRuntimeFlags(flags as Record<string, unknown>, image);
-
-    // Validate application-id is not used with configurable runtimes
     validateReactorApplicationId(applicationId, image);
 
-    // Watch is not compatible with configurable runtimes
     if (watch && !isLegacyRuntimeImage(image)) {
       throw new Error(
         `--watch is not compatible with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
@@ -94,7 +90,6 @@ export default class Update extends BaseCommand {
       );
     }
 
-    // Build runtime only if any runtime field is provided
     const runtime = buildRuntime({
       image,
       dependencies,
@@ -114,7 +109,6 @@ export default class Update extends BaseCommand {
 
     await patchReactor(bt, id, model);
 
-    // Wait for reactor to be ready by default for configurable runtime, unless --async is set
     if (!isLegacyRuntimeImage(image) && !asyncFlag) {
       await waitForResourceState(bt, 'reactor', id, 'Updating reactor');
     }

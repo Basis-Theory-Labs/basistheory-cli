@@ -91,7 +91,6 @@ const validateProxyApplicationId = (
   }
 };
 
-// For proxies: prompt for transform runtime (used for both request/response)
 const promptTransformRuntime = async (
   prefix: 'request' | 'response',
   flags: Record<string, unknown>,
@@ -123,7 +122,6 @@ const promptTransformRuntime = async (
     return undefined;
   }
 
-  // Extract prefixed flags
   const transformFlags: RuntimeFlags = {
     timeout: flags[`${prefix}-transform-timeout`] as number | undefined,
     'warm-concurrency': flags[`${prefix}-transform-warm-concurrency`] as

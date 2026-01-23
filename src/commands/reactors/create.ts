@@ -49,13 +49,11 @@ export default class Create extends BaseCommand {
       message: '(Optional) Enter the configuration file path (.env format):',
     });
 
-    // Validate configurable runtime flags
     validateConfigurableRuntimeFlags(
       flags as Record<string, unknown>,
       flags.image
     );
 
-    // Prompt for runtime (image and options)
     const { image, runtime } = await promptReactorRuntime({
       image: flags.image,
       timeout: flags.timeout,
@@ -65,7 +63,6 @@ export default class Create extends BaseCommand {
       permissions: flags.permissions,
     });
 
-    // Validate application-id is not used with configurable runtimes
     validateReactorApplicationId(flags['application-id'], image);
 
     let applicationId: string | undefined;
@@ -86,7 +83,6 @@ export default class Create extends BaseCommand {
 
     const reactor = await createReactor(bt, model);
 
-    // Wait for reactor to be ready by default for configurable runtime, unless --async is set
     if (!isLegacyRuntimeImage(image) && !flags.async && reactor.id) {
       try {
         await waitForResourceState(bt, 'reactor', reactor.id);

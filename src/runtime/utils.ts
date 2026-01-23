@@ -16,11 +16,9 @@ const VALID_RUNTIME_IMAGES = [
   ...CONFIGURABLE_RUNTIME_IMAGES,
 ] as const;
 
-// Check if an image is a legacy runtime (undefined treated as legacy)
 const isLegacyRuntimeImage = (image: string | undefined): boolean =>
   image === undefined || image === LEGACY_RUNTIME_IMAGE;
 
-// Validate that an image is a valid runtime
 const validateRuntimeImage = (image: string | undefined): void => {
   if (image === undefined) {
     return; // No --image means legacy for backward compatibility
@@ -39,7 +37,6 @@ const validateRuntimeImage = (image: string | undefined): void => {
   }
 };
 
-// Flags that are only valid for configurable runtimes
 const CONFIGURABLE_RUNTIME_FLAGS = [
   'timeout',
   'resources',
@@ -74,7 +71,6 @@ interface ConfigurableRuntimeOptions {
   permissions?: string[];
 }
 
-// Build runtime object only for configurable runtimes
 const buildRuntime = (
   props: RuntimeFlagProps
 ): BasisTheory.Runtime | undefined => {
@@ -98,7 +94,6 @@ const buildRuntime = (
     return undefined;
   }
 
-  // Parse dependencies JSON with error handling
   let parsedDependencies: Record<string, string> | undefined;
 
   if (dependencies) {
@@ -142,7 +137,6 @@ const buildRuntime = (
   return runtime;
 };
 
-// Prompt for configurable runtime options
 const promptRuntimeOptions = async (
   flags: RuntimeFlags,
   labelPrefix?: string
