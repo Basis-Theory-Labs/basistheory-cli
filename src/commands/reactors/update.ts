@@ -17,17 +17,31 @@ export default class Update extends BaseCommand {
     'Updates an existing Reactor. Requires `reactor:update` Management Application permission';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./reactor.js',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./reactor.js --image node22',
-    `<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca \\
-    --code ./reactor.js \\
-    --image node22 \\
-    --timeout 10 \\
-    --warm-concurrency 0 \\
-    --resources standard \\
-    --dependencies ./deps.json \\
-    --permissions token:read \\
-    --permissions token:create`,
+    {
+      description: 'Update a reactor with legacy runtime',
+      command:
+        '<%= config.bin %> <%= command.id %> <reactor-id> --code ./reactor.js --image node-bt --application-id <application-id>',
+    },
+    {
+      description: 'Update a reactor with node22 runtime',
+      command:
+        '<%= config.bin %> <%= command.id %> <reactor-id> --code ./reactor.js --image node22',
+    },
+    {
+      description: 'Update a reactor with node22 runtime and all options',
+      command:
+        '<%= config.bin %> <%= command.id %> <reactor-id> ' +
+        '--name "My Reactor" ' +
+        '--code ./reactor.js ' +
+        '--configuration ./config.env ' +
+        '--image node22 ' +
+        '--timeout 10 ' +
+        '--warm-concurrency 0 ' +
+        '--resources standard ' +
+        '--dependencies ./deps.json ' +
+        '--permissions token:read ' +
+        '--permissions token:create',
+    },
   ];
 
   public static flags = {

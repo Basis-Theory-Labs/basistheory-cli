@@ -19,18 +19,31 @@ export default class Create extends BaseCommand {
     'Creates a new Reactor. Requires `reactor:create` Management Application permission';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> --name "My Reactor" --code ./reactor.js --image node-bt',
-    '<%= config.bin %> <%= command.id %> --name "My Reactor" --code ./reactor.js --image node22',
-    `<%= config.bin %> <%= command.id %> \\
-    --name "My Reactor" \\
-    --code ./reactor.js \\
-    --image node22 \\
-    --timeout 10 \\
-    --warm-concurrency 0 \\
-    --resources standard \\
-    --dependencies ./deps.json \\
-    --permissions token:read \\
-    --permissions token:create`,
+    {
+      description: 'Create a reactor with legacy runtime',
+      command:
+        '<%= config.bin %> <%= command.id %> --name "My Reactor" --code ./reactor.js --image node-bt --application-id <application-id>',
+    },
+    {
+      description: 'Create a reactor with node22 runtime',
+      command:
+        '<%= config.bin %> <%= command.id %> --name "My Reactor" --code ./reactor.js --image node22',
+    },
+    {
+      description: 'Create a reactor with node22 runtime and all options',
+      command:
+        '<%= config.bin %> <%= command.id %> ' +
+        '--name "My Reactor" ' +
+        '--code ./reactor.js ' +
+        '--configuration ./config.env ' +
+        '--image node22 ' +
+        '--timeout 10 ' +
+        '--warm-concurrency 0 ' +
+        '--resources standard ' +
+        '--dependencies ./deps.json ' +
+        '--permissions token:read ' +
+        '--permissions token:create',
+    },
   ];
 
   public static flags = {

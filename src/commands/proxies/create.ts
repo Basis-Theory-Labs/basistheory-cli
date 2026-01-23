@@ -22,27 +22,44 @@ export default class Create extends BaseCommand {
     'Creates a new Pre-Configured Proxy. Requires `proxy:create` Management Application permission';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> --name "My Proxy" --destination-url https://api.example.com',
-    `<%= config.bin %> <%= command.id %> \\
-    --name "My Proxy" \\
-    --destination-url https://api.example.com \\
-    --request-transform-code ./request.js \\
-    --request-transform-image node22 \\
-    --response-transform-code ./response.js \\
-    --response-transform-image node22`,
-    `<%= config.bin %> <%= command.id %> \\
-    --name "My Proxy" \\
-    --destination-url https://api.example.com \\
-    --request-transform-code ./request.js \\
-    --request-transform-image node22 \\
-    --request-transform-timeout 10 \\
-    --request-transform-resources standard \\
-    --request-transform-dependencies ./deps.json \\
-    --response-transform-code ./response.js \\
-    --response-transform-image node22 \\
-    --response-transform-timeout 10 \\
-    --response-transform-resources standard \\
-    --response-transform-dependencies ./deps.json`,
+    {
+      description: 'Create a proxy without transforms',
+      command:
+        '<%= config.bin %> <%= command.id %> --name "My Proxy" --destination-url https://api.example.com',
+    },
+    {
+      description: 'Create a proxy with legacy runtime transforms',
+      command:
+        '<%= config.bin %> <%= command.id %> --name "My Proxy" --destination-url https://api.example.com --request-transform-code ./request.js --request-transform-image node-bt --application-id <application-id>',
+    },
+    {
+      description: 'Create a proxy with node22 transforms',
+      command:
+        '<%= config.bin %> <%= command.id %> --name "My Proxy" --destination-url https://api.example.com --request-transform-code ./request.js --request-transform-image node22 --response-transform-code ./response.js --response-transform-image node22',
+    },
+    {
+      description: 'Create a proxy with node22 transforms and all options',
+      command:
+        '<%= config.bin %> <%= command.id %> ' +
+        '--name "My Proxy" ' +
+        '--destination-url https://api.example.com ' +
+        '--configuration ./config.env ' +
+        '--require-auth ' +
+        '--request-transform-code ./request.js ' +
+        '--request-transform-image node22 ' +
+        '--request-transform-timeout 10 ' +
+        '--request-transform-warm-concurrency 0 ' +
+        '--request-transform-resources standard ' +
+        '--request-transform-dependencies ./deps.json ' +
+        '--request-transform-permissions token:read ' +
+        '--response-transform-code ./response.js ' +
+        '--response-transform-image node22 ' +
+        '--response-transform-timeout 10 ' +
+        '--response-transform-warm-concurrency 0 ' +
+        '--response-transform-resources standard ' +
+        '--response-transform-dependencies ./deps.json ' +
+        '--response-transform-permissions token:read',
+    },
   ];
 
   public static flags = {

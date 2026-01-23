@@ -17,23 +17,44 @@ export default class Update extends BaseCommand {
     'Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --destination-url https://api.example.com',
-    `<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca \\
-    --request-transform-code ./request.js \\
-    --request-transform-image node22 \\
-    --response-transform-code ./response.js \\
-    --response-transform-image node22`,
-    `<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca \\
-    --request-transform-code ./request.js \\
-    --request-transform-image node22 \\
-    --request-transform-timeout 10 \\
-    --request-transform-resources standard \\
-    --request-transform-dependencies ./deps.json \\
-    --response-transform-code ./response.js \\
-    --response-transform-image node22 \\
-    --response-transform-timeout 10 \\
-    --response-transform-resources standard \\
-    --response-transform-dependencies ./deps.json`,
+    {
+      description: 'Update a proxy destination URL',
+      command:
+        '<%= config.bin %> <%= command.id %> <proxy-id> --destination-url https://api.example.com',
+    },
+    {
+      description: 'Update a proxy with legacy runtime transforms',
+      command:
+        '<%= config.bin %> <%= command.id %> <proxy-id> --request-transform-code ./request.js --request-transform-image node-bt --application-id <application-id>',
+    },
+    {
+      description: 'Update a proxy with node22 transforms',
+      command:
+        '<%= config.bin %> <%= command.id %> <proxy-id> --request-transform-code ./request.js --request-transform-image node22 --response-transform-code ./response.js --response-transform-image node22',
+    },
+    {
+      description: 'Update a proxy with node22 transforms and all options',
+      command:
+        '<%= config.bin %> <%= command.id %> <proxy-id> ' +
+        '--name "My Proxy" ' +
+        '--destination-url https://api.example.com ' +
+        '--configuration ./config.env ' +
+        '--require-auth ' +
+        '--request-transform-code ./request.js ' +
+        '--request-transform-image node22 ' +
+        '--request-transform-timeout 10 ' +
+        '--request-transform-warm-concurrency 0 ' +
+        '--request-transform-resources standard ' +
+        '--request-transform-dependencies ./deps.json ' +
+        '--request-transform-permissions token:read ' +
+        '--response-transform-code ./response.js ' +
+        '--response-transform-image node22 ' +
+        '--response-transform-timeout 10 ' +
+        '--response-transform-warm-concurrency 0 ' +
+        '--response-transform-resources standard ' +
+        '--response-transform-dependencies ./deps.json ' +
+        '--response-transform-permissions token:read',
+    },
   ];
 
   public static flags = {
