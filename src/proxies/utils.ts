@@ -44,7 +44,7 @@ const PROXY_FLAGS = {
   }),
   'request-transform-dependencies': Flags.file({
     description:
-      'path to JSON file with request-transform npm dependencies (node22 only)',
+      'path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"} (node22 only)',
   }),
   'request-transform-timeout': Flags.integer({
     description: 'request-transform timeout in seconds, 1-30 (node22 only)',
@@ -73,7 +73,7 @@ const PROXY_FLAGS = {
   }),
   'response-transform-dependencies': Flags.file({
     description:
-      'path to JSON file with response-transform npm dependencies (node22 only)',
+      'path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"} (node22 only)',
   }),
   'response-transform-timeout': Flags.integer({
     description: 'response-transform timeout in seconds, 1-30 (node22 only)',

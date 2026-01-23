@@ -33,7 +33,8 @@ export default class Update extends BaseCommand {
         '<%= config.bin %> <%= command.id %> <proxy-id> --request-transform-code ./request.js --request-transform-image node22 --response-transform-code ./response.js --response-transform-image node22',
     },
     {
-      description: 'Update a proxy with node22 transforms and all runtime options',
+      description:
+        'Update a proxy with node22 transforms and all runtime options',
       command:
         '<%= config.bin %> <%= command.id %> <proxy-id> ' +
         '--name "My Proxy" ' +

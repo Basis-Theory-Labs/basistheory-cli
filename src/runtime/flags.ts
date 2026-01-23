@@ -7,7 +7,8 @@ const RUNTIME_FLAGS = {
     options: [...VALID_RUNTIME_IMAGES],
   }),
   dependencies: Flags.file({
-    description: 'path to JSON file with npm dependencies (node22 only)',
+    description:
+      'path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"} (node22 only)',
   }),
   timeout: Flags.integer({
     description: 'timeout in seconds, 1-30 (node22 only, default: 10)',
