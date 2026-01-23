@@ -71,9 +71,12 @@ describe('proxies update', () => {
       expect(result.stdout).to.contain('Proxy updated successfully!');
       const [, patchArg] = proxiesPatchStub.firstCall.args;
 
-      expect(patchArg.requestTransform).to.deep.equal({
-        code: 'module.exports = async (req) => req;',
-      });
+      expect(patchArg.requestTransforms).to.deep.equal([
+        {
+          type: 'code',
+          code: 'module.exports = async (req) => req;',
+        },
+      ]);
     });
 
     it('updates proxy response-transform-code', async () => {
@@ -87,9 +90,12 @@ describe('proxies update', () => {
       expect(result.stdout).to.contain('Proxy updated successfully!');
       const [, patchArg] = proxiesPatchStub.firstCall.args;
 
-      expect(patchArg.responseTransform).to.deep.equal({
-        code: 'module.exports = async (req) => req;',
-      });
+      expect(patchArg.responseTransforms).to.deep.equal([
+        {
+          type: 'code',
+          code: 'module.exports = async (req) => req;',
+        },
+      ]);
     });
 
     it('updates proxy application-id', async () => {
@@ -171,7 +177,7 @@ describe('proxies update', () => {
         '--request-transform-timeout',
         '30',
         '--request-transform-warm-concurrency',
-        '5',
+        '1',
         '--request-transform-resources',
         'large',
         '--request-transform-dependencies',
@@ -183,10 +189,10 @@ describe('proxies update', () => {
       expect(result.stdout).to.contain('Proxy updated successfully!');
       const [, patchArg] = proxiesPatchStub.firstCall.args;
 
-      expect(patchArg.requestTransform.options.runtime).to.deep.equal({
+      expect(patchArg.requestTransforms[0].options.runtime).to.deep.equal({
         image: 'node22',
         timeout: 30,
-        warmConcurrency: 5,
+        warmConcurrency: 1,
         resources: 'large',
         dependencies: { lodash: '^4.17.21' },
         permissions: ['token:read'],
@@ -210,11 +216,13 @@ describe('proxies update', () => {
       expect(result.stdout).to.contain('Proxy updated successfully!');
       const [, patchArg] = proxiesPatchStub.firstCall.args;
 
-      expect(patchArg.responseTransform.options.runtime.image).to.equal(
+      expect(patchArg.responseTransforms[0].options.runtime.image).to.equal(
         'node22'
       );
-      expect(patchArg.responseTransform.options.runtime.timeout).to.equal(15);
-      expect(patchArg.responseTransform.options.runtime.resources).to.equal(
+      expect(patchArg.responseTransforms[0].options.runtime.timeout).to.equal(
+        15
+      );
+      expect(patchArg.responseTransforms[0].options.runtime.resources).to.equal(
         'xlarge'
       );
     });

@@ -139,7 +139,7 @@ describe('reactors update', () => {
         '--timeout',
         '30',
         '--warm-concurrency',
-        '5',
+        '1',
         '--resources',
         'large',
         '--dependencies',
@@ -156,7 +156,7 @@ describe('reactors update', () => {
       expect(patchArg.runtime).to.deep.equal({
         image: 'node22',
         timeout: 30,
-        warmConcurrency: 5,
+        warmConcurrency: 1,
         resources: 'large',
         dependencies: { lodash: '^4.17.21' },
         permissions: ['token:read', 'token:write'],

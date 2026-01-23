@@ -15,9 +15,9 @@ const RUNTIME_FLAGS = {
     max: 30,
   }),
   'warm-concurrency': Flags.integer({
-    description: 'number of warm instances, 0-10 (node22 only, default: 0)',
+    description: 'number of warm instances, 0-1 (node22 only, default: 0)',
     min: 0,
-    max: 10,
+    max: 1,
   }),
   resources: Flags.string({
     description: 'resource tier (node22 only, default: standard)',

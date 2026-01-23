@@ -76,9 +76,12 @@ describe('proxies create', () => {
       expect(result.stdout).to.contain('Proxy created successfully!');
       const [createArg] = proxiesCreateStub.firstCall.args;
 
-      expect(createArg.requestTransform).to.deep.equal({
-        code: 'module.exports = async (req) => req;',
-      });
+      expect(createArg.requestTransforms).to.deep.equal([
+        {
+          type: 'code',
+          code: 'module.exports = async (req) => req;',
+        },
+      ]);
     });
 
     it('creates proxy with response-transform-code and image flags', async () => {
@@ -97,9 +100,12 @@ describe('proxies create', () => {
       expect(result.stdout).to.contain('Proxy created successfully!');
       const [createArg] = proxiesCreateStub.firstCall.args;
 
-      expect(createArg.responseTransform).to.deep.equal({
-        code: 'module.exports = async (req) => req;',
-      });
+      expect(createArg.responseTransforms).to.deep.equal([
+        {
+          type: 'code',
+          code: 'module.exports = async (req) => req;',
+        },
+      ]);
     });
 
     it('creates proxy with application-id flag', async () => {
@@ -172,7 +178,7 @@ describe('proxies create', () => {
         '--request-transform-timeout',
         '30',
         '--request-transform-warm-concurrency',
-        '5',
+        '1',
         '--request-transform-resources',
         'large',
         '--request-transform-dependencies',
@@ -184,10 +190,10 @@ describe('proxies create', () => {
       expect(result.stdout).to.contain('Proxy created successfully!');
       const [createArg] = proxiesCreateStub.firstCall.args;
 
-      expect(createArg.requestTransform.options.runtime).to.deep.equal({
+      expect(createArg.requestTransforms[0].options.runtime).to.deep.equal({
         image: 'node22',
         timeout: 30,
-        warmConcurrency: 5,
+        warmConcurrency: 1,
         resources: 'large',
         dependencies: { lodash: '^4.17.21' },
         permissions: ['token:read'],
@@ -209,7 +215,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Response transform: Warm concurrency (0-10, press Enter for default: 0):',
+          'Response transform: Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
         .onCallResolves(
@@ -241,13 +247,15 @@ describe('proxies create', () => {
       expect(result.stdout).to.contain('Proxy created successfully!');
       const [createArg] = proxiesCreateStub.firstCall.args;
 
-      expect(createArg.responseTransform.options.runtime.image).to.equal(
+      expect(createArg.responseTransforms[0].options.runtime.image).to.equal(
         'node22'
       );
-      expect(createArg.responseTransform.options.runtime.timeout).to.equal(15);
-      expect(createArg.responseTransform.options.runtime.resources).to.equal(
-        'xlarge'
+      expect(createArg.responseTransforms[0].options.runtime.timeout).to.equal(
+        15
       );
+      expect(
+        createArg.responseTransforms[0].options.runtime.resources
+      ).to.equal('xlarge');
     });
 
     it('waits for proxy to be ready by default for node22 transform', async () => {
@@ -269,7 +277,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Request transform: Warm concurrency (0-10, press Enter for default: 0):',
+          'Request transform: Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
         .onCallResolves(
@@ -324,7 +332,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Request transform: Warm concurrency (0-10, press Enter for default: 0):',
+          'Request transform: Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
         .onCallResolves(
@@ -461,8 +469,8 @@ describe('proxies create', () => {
           '20'
         )
         .onCallResolves(
-          'Request transform: Warm concurrency (0-10, press Enter for default: 0):',
-          '3'
+          'Request transform: Warm concurrency (0-1, press Enter for default: 0):',
+          '1'
         )
         .onCallResolves(
           'Request transform: (Optional) Dependencies file path (JSON format):',
@@ -486,14 +494,16 @@ describe('proxies create', () => {
       expect(result.stdout).to.contain('Proxy created successfully!');
       const [createArg] = proxiesCreateStub.firstCall.args;
 
-      expect(createArg.requestTransform.options.runtime.image).to.equal(
+      expect(createArg.requestTransforms[0].options.runtime.image).to.equal(
         'node22'
       );
-      expect(createArg.requestTransform.options.runtime.timeout).to.equal(20);
+      expect(createArg.requestTransforms[0].options.runtime.timeout).to.equal(
+        20
+      );
       expect(
-        createArg.requestTransform.options.runtime.warmConcurrency
-      ).to.equal(3);
-      expect(createArg.requestTransform.options.runtime.resources).to.equal(
+        createArg.requestTransforms[0].options.runtime.warmConcurrency
+      ).to.equal(1);
+      expect(createArg.requestTransforms[0].options.runtime.resources).to.equal(
         'large'
       );
     });
@@ -565,7 +575,7 @@ describe('proxies create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--request-transform-timeout is only valid with configurable runtimes (node22)'
+        'Configurable runtime flags (--request-transform-timeout) require --request-transform-image node22'
       );
     });
 
@@ -586,7 +596,7 @@ describe('proxies create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--response-transform-resources is only valid with configurable runtimes (node22)'
+        'Configurable runtime flags (--response-transform-resources) require --response-transform-image node22'
       );
     });
 
@@ -746,7 +756,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Request transform: Warm concurrency (0-10, press Enter for default: 0):',
+          'Request transform: Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
         .onCallResolves(

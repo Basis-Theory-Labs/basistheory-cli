@@ -152,9 +152,9 @@ const promptRuntimeOptions = async (
   const warmConcurrency = await promptIntegerIfUndefined(
     flags['warm-concurrency'],
     {
-      message: `${prefix}Warm concurrency (0-10, press Enter for default: 0):`,
+      message: `${prefix}Warm concurrency (0-1, press Enter for default: 0):`,
       min: 0,
-      max: 10,
+      max: 1,
     }
   );
 

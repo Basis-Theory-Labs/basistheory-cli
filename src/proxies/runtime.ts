@@ -27,23 +27,13 @@ const validateTransformRuntimeFlags = (
     }
   }
 
-  if (!setFlags.length) {
-    return;
-  }
-
-  if (!image) {
-    const flagNames = setFlags.map((f) => `--${f}`).join(', ');
-
-    throw new Error(`${flagNames} requires --${prefix}-image to be specified`);
-  }
-
-  if (isLegacyRuntimeImage(image)) {
+  if (setFlags.length && isLegacyRuntimeImage(image)) {
     const flagNames = setFlags.map((f) => `--${f}`).join(', ');
 
     throw new Error(
-      `${flagNames} is only valid with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-        ', '
-      )})`
+      `Configurable runtime flags (${flagNames}) require --${prefix}-image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+        ' | '
+      )}`
     );
   }
 };

@@ -110,7 +110,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Warm concurrency (0-10, press Enter for default: 0):',
+          'Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
         .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
@@ -151,7 +151,7 @@ describe('reactors create', () => {
         '--timeout',
         '30',
         '--warm-concurrency',
-        '5',
+        '1',
         '--resources',
         'large',
         '--dependencies',
@@ -168,7 +168,7 @@ describe('reactors create', () => {
       expect(createArg.runtime).to.deep.equal({
         image: 'node22',
         timeout: 30,
-        warmConcurrency: 5,
+        warmConcurrency: 1,
         resources: 'large',
         dependencies: { lodash: '^4.17.21' },
         permissions: ['token:read', 'token:write'],
@@ -186,7 +186,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Warm concurrency (0-10, press Enter for default: 0):',
+          'Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
         .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
@@ -227,7 +227,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Warm concurrency (0-10, press Enter for default: 0):',
+          'Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
         .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
@@ -355,8 +355,8 @@ describe('reactors create', () => {
           '20'
         )
         .onCallResolves(
-          'Warm concurrency (0-10, press Enter for default: 0):',
-          '3'
+          'Warm concurrency (0-1, press Enter for default: 0):',
+          '1'
         )
         .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
         .onCallResolves(
@@ -371,7 +371,7 @@ describe('reactors create', () => {
 
       expect(createArg.runtime.image).to.equal('node22');
       expect(createArg.runtime.timeout).to.equal(20);
-      expect(createArg.runtime.warmConcurrency).to.equal(3);
+      expect(createArg.runtime.warmConcurrency).to.equal(1);
       expect(createArg.runtime.resources).to.equal('large');
       // Application ID should not be prompted for node22
       inputStub.expectNotCalledWith(
@@ -425,7 +425,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--timeout is only valid with configurable runtimes (node22)'
+        'Configurable runtime flags (--timeout) require --image node22'
       );
     });
 
@@ -444,7 +444,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--resources is only valid with configurable runtimes (node22)'
+        'Configurable runtime flags (--resources) require --image node22'
       );
     });
 
@@ -463,7 +463,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--permissions is only valid with configurable runtimes (node22)'
+        'Configurable runtime flags (--permissions) require --image node22'
       );
     });
 
@@ -484,7 +484,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--dependencies is only valid with configurable runtimes (node22)'
+        'Configurable runtime flags (--dependencies) require --image node22'
       );
     });
 
@@ -498,12 +498,12 @@ describe('reactors create', () => {
         '--image',
         'node-bt',
         '--warm-concurrency',
-        '5',
+        '1',
       ]);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--warm-concurrency is only valid with configurable runtimes (node22)'
+        'Configurable runtime flags (--warm-concurrency) require --image node22'
       );
     });
 
@@ -517,7 +517,7 @@ describe('reactors create', () => {
           'Timeout in seconds (1-30, press Enter for default):',
           ''
         )
-        .onCallResolves('Warm concurrency (0-10, press Enter for default):', '')
+        .onCallResolves('Warm concurrency (0-1, press Enter for default):', '')
         .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
         .onCallResolves(
           '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
@@ -573,7 +573,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Warm concurrency (0-10, press Enter for default: 0):',
+          'Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
         .onCallResolves(
@@ -613,7 +613,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Warm concurrency (0-10, press Enter for default: 0):',
+          'Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
         .onCallResolves(

@@ -6,7 +6,11 @@ import {
   validateTransformRuntimeFlags,
 } from '../../proxies/runtime';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
-import { promptRuntimeImage, waitForResourceState } from '../../runtime';
+import {
+  isLegacyRuntimeImage,
+  promptRuntimeImage,
+  waitForResourceState,
+} from '../../runtime';
 import {
   promptBooleanIfUndefined,
   promptStringIfUndefined,
@@ -96,12 +100,16 @@ export default class Create extends BaseCommand {
         )
       : flags['response-transform-image'];
 
-    const applicationId = await promptStringIfUndefined(
-      flags['application-id'],
-      {
-        message: '(Optional) Enter the Application ID to use in the Proxy:',
-      }
-    );
+    const hasLegacyTransform =
+      isLegacyRuntimeImage(requestTransformImage) ||
+      isLegacyRuntimeImage(responseTransformImage);
+
+    const applicationId = hasLegacyTransform
+      ? await promptStringIfUndefined(flags['application-id'], {
+          message: '(Optional) Enter the Application ID to use in the Proxy:',
+        })
+      : flags['application-id'];
+
     const configuration = await promptStringIfUndefined(flags.configuration, {
       message: '(Optional) Enter the configuration file path (.env format):',
     });

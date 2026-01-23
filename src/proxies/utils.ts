@@ -52,9 +52,9 @@ const PROXY_FLAGS = {
     max: 30,
   }),
   'request-transform-warm-concurrency': Flags.integer({
-    description: 'request-transform warm concurrency, 0-10 (node22 only)',
+    description: 'request-transform warm concurrency, 0-1 (node22 only)',
     min: 0,
-    max: 10,
+    max: 1,
   }),
   'request-transform-resources': Flags.string({
     description: 'request-transform resource tier (node22 only)',
@@ -81,9 +81,9 @@ const PROXY_FLAGS = {
     max: 30,
   }),
   'response-transform-warm-concurrency': Flags.integer({
-    description: 'response-transform warm concurrency, 0-10 (node22 only)',
+    description: 'response-transform warm concurrency, 0-1 (node22 only)',
     min: 0,
-    max: 10,
+    max: 1,
   }),
   'response-transform-resources': Flags.string({
     description: 'response-transform resource tier (node22 only)',
@@ -131,12 +131,12 @@ interface ProxyFlagProps {
 type CreateProxy = ProxyFlagProps &
   Omit<
     BasisTheory.CreateProxyRequest,
-    'application' | 'configuration' | 'requestTransform' | 'responseTransform'
+    'application' | 'configuration' | 'requestTransforms' | 'responseTransforms'
   >;
 type PatchProxy = ProxyFlagProps &
   Omit<
     BasisTheory.PatchProxyRequest,
-    'application' | 'configuration' | 'requestTransform' | 'responseTransform'
+    'application' | 'configuration' | 'requestTransforms' | 'responseTransforms'
   >;
 
 function createModelFromFlags(
@@ -165,6 +165,7 @@ function createModelFromFlags({
 
   if (requestTransformCode) {
     requestTransform = {
+      type: 'code',
       code: readFileContents(requestTransformCode),
     };
 
@@ -177,6 +178,7 @@ function createModelFromFlags({
 
   if (responseTransformCode) {
     responseTransform = {
+      type: 'code',
       code: readFileContents(responseTransformCode),
     };
 
@@ -188,8 +190,8 @@ function createModelFromFlags({
   return {
     name,
     destinationUrl,
-    requestTransform,
-    responseTransform,
+    requestTransforms: requestTransform ? [requestTransform] : undefined,
+    responseTransforms: responseTransform ? [responseTransform] : undefined,
     application: applicationId ? { id: applicationId } : undefined,
     configuration: configuration
       ? parse(readFileContents(configuration))

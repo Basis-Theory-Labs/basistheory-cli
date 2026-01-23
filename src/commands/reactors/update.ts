@@ -7,6 +7,7 @@ import { validateReactorApplicationId } from '../../reactors/runtime';
 import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
 import {
   buildRuntime,
+  CONFIGURABLE_RUNTIME_IMAGES,
   needsPolling,
   waitForResourceState,
 } from '../../runtime';
@@ -111,7 +112,9 @@ export default class Update extends BaseCommand {
 
     if (watch && isConfigurableRuntime) {
       this.warn(
-        '--watch is not supported for configurable runtimes (node22). Skipping watch.'
+        `--watch is not supported for configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}). Skipping watch.`
       );
     } else if (watch) {
       const entries = Object.entries({
