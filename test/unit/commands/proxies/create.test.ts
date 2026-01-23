@@ -1,4 +1,4 @@
-import { BasisTheoryClient } from '@basis-theory/node-sdk';
+import { BasisTheoryClient, BasisTheoryError } from '@basis-theory/node-sdk';
 import * as confirm from '@inquirer/confirm';
 import * as input from '@inquirer/input';
 import * as select from '@inquirer/select';
@@ -568,7 +568,7 @@ describe('proxies create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--application-id is only valid when at least one transform uses a legacy runtime (node-bt)'
+        '--application-id is only valid when at least one transform uses a legacy runtime (node-bt). Use --{request,response}-transform-permissions instead.'
       );
     });
 
@@ -651,6 +651,41 @@ describe('proxies create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain('API Error');
+    });
+
+    it('formats BasisTheoryError with status code and field errors', async () => {
+      const error = new BasisTheoryError({
+        statusCode: 400,
+        body: {
+          title: 'One or more validation errors occurred.',
+          status: 400,
+          detail: 'The inputs supplied to the API are invalid',
+          errors: {
+            'application.id': ['Deserialization error, invalid input.'],
+          },
+        },
+      });
+
+      proxiesCreateStub.rejects(error);
+
+      const result = await runCommand([
+        'proxies:create',
+        '--name',
+        'Test Proxy',
+        '--destination-url',
+        'https://example.com/api',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        'One or more validation errors occurred. [400]'
+      );
+      expect(result.error!.message).to.contain(
+        'Detail: The inputs supplied to the API are invalid'
+      );
+      expect(result.error!.message).to.contain(
+        '- application.id: Deserialization error, invalid input.'
+      );
     });
 
     it('errors when dependencies file contains invalid JSON', async () => {

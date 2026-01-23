@@ -86,7 +86,7 @@ const validateProxyApplicationId = (
 
   if (hasConfigurable && !hasLegacy) {
     throw new Error(
-      `--application-id is only valid when at least one transform uses a legacy runtime (${LEGACY_RUNTIME_IMAGE}). Use --<transform>-permissions to grant specific access for configurable runtimes instead.`
+      `--application-id is only valid when at least one transform uses a legacy runtime (${LEGACY_RUNTIME_IMAGE}). Use --{request,response}-transform-permissions instead.`
     );
   }
 };

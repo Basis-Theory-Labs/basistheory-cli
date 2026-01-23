@@ -1,5 +1,6 @@
+import type { BasisTheory } from '@basis-theory/node-sdk';
 import { BasisTheoryClient, BasisTheoryError } from '@basis-theory/node-sdk';
-import { Command, Flags } from '@oclif/core';
+import { Command, Errors, Flags } from '@oclif/core';
 import type { CommandError } from '@oclif/core/lib/interfaces';
 import type {
   ArgOutput,
@@ -7,6 +8,33 @@ import type {
   Input,
   ParserOutput,
 } from '@oclif/core/lib/interfaces/parser';
+
+const formatApiError = (
+  body: BasisTheory.ValidationProblemDetails | BasisTheory.ProblemDetails
+): string => {
+  const parts: string[] = [];
+
+  if (body.title) {
+    const status = body.status ? ` [${body.status}]` : '';
+    parts.push(`${body.title}${status}`);
+  }
+
+  if (body.detail) {
+    parts.push(`Detail: ${body.detail}`);
+  }
+
+  if ('errors' in body && body.errors) {
+    for (const [field, messages] of Object.entries(body.errors)) {
+      if (Array.isArray(messages)) {
+        for (const message of messages) {
+          parts.push(`  - ${field}: ${message}`);
+        }
+      }
+    }
+  }
+
+  return parts.join('\n');
+};
 
 export abstract class BaseCommand extends Command {
   public static baseFlags = {
@@ -54,7 +82,11 @@ export abstract class BaseCommand extends Command {
 
   protected catch(err: unknown): Promise<unknown> {
     if (err instanceof BasisTheoryError && err.body) {
-      this.logJson(err.body);
+      const formatted = formatApiError(
+        err.body as BasisTheory.ValidationProblemDetails
+      );
+
+      return super.catch(new Errors.CLIError(formatted) as CommandError);
     }
 
     return super.catch(err as CommandError);

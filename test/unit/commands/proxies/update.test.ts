@@ -302,7 +302,7 @@ describe('proxies update', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--application-id is only valid when at least one transform uses a legacy runtime (node-bt)'
+        '--application-id is only valid when at least one transform uses a legacy runtime (node-bt). Use --{request,response}-transform-permissions instead.'
       );
     });
 
