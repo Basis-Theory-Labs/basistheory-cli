@@ -106,13 +106,7 @@ export default class Create extends BaseCommand {
 
     if (!asyncFlag && reactor.id) {
       try {
-        await waitForResourceState(
-          bt,
-          'reactor',
-          reactor.id,
-          'Creating reactor',
-          reactor.state
-        );
+        await waitForResourceState(bt, 'reactor', reactor.id, reactor.state);
         this.log('Reactor created successfully!');
         this.log(`id: ${reactor.id}`);
       } catch (error) {

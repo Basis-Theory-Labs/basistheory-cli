@@ -156,13 +156,7 @@ export default class Create extends BaseCommand {
 
     if (!flags.async && proxy.id) {
       try {
-        await waitForResourceState(
-          bt,
-          'proxy',
-          proxy.id,
-          'Creating proxy',
-          proxy.state
-        );
+        await waitForResourceState(bt, 'proxy', proxy.id, proxy.state);
         this.log('Proxy created successfully!');
         this.log(`id: ${proxy.id}`);
         this.log(`key: ${proxy.key}`);

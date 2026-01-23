@@ -3,15 +3,11 @@ import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { showReactorLogs } from '../../logs';
 import { getReactor, patchReactor } from '../../reactors/management';
-import {
-  validateReactorApplicationId,
-  validateReactorRuntimeFlags,
-} from '../../reactors/runtime';
+import { validateReactorApplicationId } from '../../reactors/runtime';
 import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
 import {
   buildRuntime,
-  CONFIGURABLE_RUNTIME_IMAGES,
-  isLegacyRuntimeImage,
+  needsPolling,
   waitForResourceState,
 } from '../../runtime';
 
@@ -79,16 +75,7 @@ export default class Update extends BaseCommand {
       logs,
     } = flags;
 
-    validateReactorRuntimeFlags(flags as Record<string, unknown>, image);
     validateReactorApplicationId(applicationId, image);
-
-    if (watch && !isLegacyRuntimeImage(image)) {
-      throw new Error(
-        `--watch is not compatible with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ', '
-        )})`
-      );
-    }
 
     const runtime = buildRuntime({
       image,
@@ -109,16 +96,11 @@ export default class Update extends BaseCommand {
 
     await patchReactor(bt, id, model);
 
-    if (!asyncFlag) {
-      const reactor = await getReactor(bt, id);
+    const reactor = await getReactor(bt, id);
+    const isConfigurableRuntime = needsPolling(reactor.state);
 
-      await waitForResourceState(
-        bt,
-        'reactor',
-        id,
-        'Updating reactor',
-        reactor.state
-      );
+    if (!asyncFlag) {
+      await waitForResourceState(bt, 'reactor', id, reactor.state);
     }
 
     this.log('Reactor updated successfully!');
@@ -127,7 +109,11 @@ export default class Update extends BaseCommand {
       await showReactorLogs(bt, id);
     }
 
-    if (watch) {
+    if (watch && isConfigurableRuntime) {
+      this.warn(
+        '--watch is not supported for configurable runtimes (node22). Skipping watch.'
+      );
+    } else if (watch) {
       const entries = Object.entries({
         code,
         configuration,

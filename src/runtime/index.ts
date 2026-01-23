@@ -13,4 +13,9 @@ export {
   type RuntimeFlags,
 } from './utils';
 export { RUNTIME_FLAGS } from './flags';
-export { waitForResourceState, POLL_INTERVAL, POLL_TIMEOUT } from './state';
+export {
+  waitForResourceState,
+  needsPolling,
+  POLL_INTERVAL,
+  POLL_TIMEOUT,
+} from './state';

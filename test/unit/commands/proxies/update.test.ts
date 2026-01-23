@@ -247,75 +247,11 @@ describe('proxies update', () => {
       ]);
 
       expect(result.stdout).to.contain('Proxy updated successfully!');
-      expect(proxiesGetStub.called).to.be.false;
+      expect(proxiesGetStub.calledOnce).to.be.true;
     });
   });
 
   describe('validation', () => {
-    it('errors when --request-transform-timeout used without --request-transform-image', async () => {
-      const result = await runCommand([
-        'proxies:update',
-        'proxy-123',
-        '--request-transform-timeout',
-        '30',
-      ]);
-
-      expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        '--request-transform-timeout requires --request-transform-image to be specified'
-      );
-    });
-
-    it('errors when --response-transform-resources used without --response-transform-image', async () => {
-      const result = await runCommand([
-        'proxies:update',
-        'proxy-123',
-        '--response-transform-resources',
-        'large',
-      ]);
-
-      expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        '--response-transform-resources requires --response-transform-image to be specified'
-      );
-    });
-
-    it('errors when --request-transform-timeout used with node-bt', async () => {
-      const result = await runCommand([
-        'proxies:update',
-        'proxy-123',
-        '--request-transform-code',
-        './request.js',
-        '--request-transform-image',
-        'node-bt',
-        '--request-transform-timeout',
-        '30',
-      ]);
-
-      expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        '--request-transform-timeout is only valid with configurable runtimes (node22)'
-      );
-    });
-
-    it('errors when --response-transform-resources used with node-bt', async () => {
-      const result = await runCommand([
-        'proxies:update',
-        'proxy-123',
-        '--response-transform-code',
-        './response.js',
-        '--response-transform-image',
-        'node-bt',
-        '--response-transform-resources',
-        'large',
-      ]);
-
-      expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        '--response-transform-resources is only valid with configurable runtimes (node22)'
-      );
-    });
-
     it('errors when --application-id used with only configurable transforms', async () => {
       const result = await runCommand([
         'proxies:update',

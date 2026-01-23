@@ -30,60 +30,90 @@ const formatErrorMessage = (
 const needsPolling = (state: string | undefined): boolean =>
   state === 'creating' || state === 'updating';
 
+const formatElapsedTime = (startTime: number): string => {
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
+};
+
+const createTimer = (
+  startTime: number,
+  getState: () => string | undefined
+): NodeJS.Timeout =>
+  setInterval(() => {
+    const state = getState();
+
+    if (state) {
+      ux.action.status = `${state} (${formatElapsedTime(startTime)})`;
+    }
+  }, 1000);
+
 const waitForResourceState = async (
   bt: BasisTheoryClient,
   resourceType: 'reactor' | 'proxy',
   id: string,
-  message?: string,
   initialState?: string
 ): Promise<void> => {
-  const displayMessage = message ?? 'Creating resource';
-
   // If initial state is provided and doesn't need polling, return immediately
   if (initialState !== undefined && !needsPolling(initialState)) {
     return;
   }
 
   const deadline = Date.now() + POLL_TIMEOUT;
+  const startTime = Date.now();
+  let currentState: string | undefined;
 
-  ux.action.start(displayMessage);
+  const timer = createTimer(startTime, () => currentState);
+
+  ux.action.start('Status');
 
   /* eslint-disable no-await-in-loop */
-  while (Date.now() < deadline) {
-    let resource;
+  try {
+    while (Date.now() < deadline) {
+      let resource;
 
-    try {
-      resource = await (resourceType === 'reactor'
-        ? bt.reactors.get(id)
-        : bt.proxies.get(id));
-    } catch (error) {
-      ux.action.stop('error');
-      throw new Error(
-        `Failed to check ${resourceType} state: ${(error as Error).message}`
-      );
+      try {
+        resource = await (resourceType === 'reactor'
+          ? bt.reactors.get(id)
+          : bt.proxies.get(id));
+      } catch (error) {
+        ux.action.stop(`error (${formatElapsedTime(startTime)})`);
+        throw new Error(
+          `Failed to check ${resourceType} state: ${(error as Error).message}`
+        );
+      }
+
+      currentState = resource.state;
+      ux.action.status = `${currentState} (${formatElapsedTime(startTime)})`;
+
+      if (currentState === 'active') {
+        ux.action.stop(`ready (${formatElapsedTime(startTime)})`);
+
+        return;
+      }
+
+      if (currentState === 'failed' || currentState === 'outdated') {
+        ux.action.stop(`failed (${formatElapsedTime(startTime)})`);
+        throw new Error(formatErrorMessage(resource, resourceType));
+      }
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, POLL_INTERVAL);
+      });
     }
 
-    const { state } = resource;
-
-    if (state === 'active') {
-      ux.action.stop('ready');
-
-      return;
-    }
-
-    if (state === 'failed' || state === 'outdated') {
-      ux.action.stop('failed');
-      throw new Error(formatErrorMessage(resource, resourceType));
-    }
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, POLL_INTERVAL);
-    });
+    ux.action.stop(`timeout (${formatElapsedTime(startTime)})`);
+    throw new Error(`Timeout waiting for ${resourceType} to reach final state`);
+  } finally {
+    clearInterval(timer);
   }
   /* eslint-enable no-await-in-loop */
-
-  ux.action.stop('timeout');
-  throw new Error(`Timeout waiting for ${resourceType} to reach final state`);
 };
 
-export { waitForResourceState, POLL_INTERVAL, POLL_TIMEOUT };
+export { waitForResourceState, needsPolling, POLL_INTERVAL, POLL_TIMEOUT };

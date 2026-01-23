@@ -3,15 +3,11 @@ import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { showProxyLogs } from '../../logs';
 import { getProxy, patchProxy } from '../../proxies/management';
-import {
-  validateProxyApplicationId,
-  validateTransformRuntimeFlags,
-} from '../../proxies/runtime';
+import { validateProxyApplicationId } from '../../proxies/runtime';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
 import {
   buildRuntime,
-  CONFIGURABLE_RUNTIME_IMAGES,
-  isLegacyRuntimeImage,
+  needsPolling,
   waitForResourceState,
 } from '../../runtime';
 
@@ -95,29 +91,7 @@ export default class Update extends BaseCommand {
       logs,
     } = flags;
 
-    validateTransformRuntimeFlags(
-      'request-transform',
-      flags as Record<string, unknown>,
-      requestTransformImage
-    );
-    validateTransformRuntimeFlags(
-      'response-transform',
-      flags as Record<string, unknown>,
-      responseTransformImage
-    );
     validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
-
-    if (
-      watch &&
-      (!isLegacyRuntimeImage(requestTransformImage) ||
-        !isLegacyRuntimeImage(responseTransformImage))
-    ) {
-      throw new Error(
-        `--watch is not compatible with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ', '
-        )})`
-      );
-    }
 
     const requestTransformRuntime = buildRuntime({
       image: requestTransformImage,
@@ -153,16 +127,11 @@ export default class Update extends BaseCommand {
 
     await patchProxy(bt, id, model);
 
-    if (!asyncFlag) {
-      const proxy = await getProxy(bt, id);
+    const proxy = await getProxy(bt, id);
+    const isConfigurableRuntime = needsPolling(proxy.state);
 
-      await waitForResourceState(
-        bt,
-        'proxy',
-        id,
-        'Updating proxy',
-        proxy.state
-      );
+    if (!asyncFlag) {
+      await waitForResourceState(bt, 'proxy', id, proxy.state);
     }
 
     this.log('Proxy updated successfully!');
@@ -171,7 +140,11 @@ export default class Update extends BaseCommand {
       await showProxyLogs(bt, id);
     }
 
-    if (watch) {
+    if (watch && isConfigurableRuntime) {
+      this.warn(
+        '--watch is not supported for configurable runtimes (node22). Skipping watch.'
+      );
+    } else if (watch) {
       const entries = Object.entries({
         requestTransformCode,
         responseTransformCode,
