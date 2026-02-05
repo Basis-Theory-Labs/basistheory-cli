@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/2.0.0 linux-x64 node-v18.20.8
+@basis-theory-labs/cli/2.1.0 linux-x64 node-v18.20.8
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -62,7 +62,7 @@ EXAMPLES
   $ bt applications
 ```
 
-_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v2.0.0/dist/commands/applications/index.ts)_
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v2.1.0/dist/commands/applications/index.ts)_
 
 ## `bt applications create`
 
@@ -151,7 +151,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v2.0.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v2.1.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -160,23 +160,72 @@ Creates a new Pre-Configured Proxy. Requires `proxy:create` Management Applicati
 ```
 USAGE
   $ bt proxies create -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>] [-a]
+    [--request-transform-image node-bt|node22] [--request-transform-dependencies <value>] [--request-transform-timeout
+    <value>] [--request-transform-warm-concurrency <value>] [--request-transform-resources standard|large|xlarge]
+    [--request-transform-permissions <value>] [--response-transform-image node-bt|node22]
+    [--response-transform-dependencies <value>] [--response-transform-timeout <value>]
+    [--response-transform-warm-concurrency <value>] [--response-transform-resources standard|large|xlarge]
+    [--response-transform-permissions <value>] [--async]
 
 FLAGS
-  -a, --[no-]require-auth                whether the Proxy requires Basis Theory authentication to be invoked. Default:
-                                         true
-  -c, --configuration=<value>            path to configuration file (.env format) to use in the Proxy
-  -i, --application-id=<value>           application ID to use in the Proxy
-  -n, --name=<value>                     name of the Proxy
-  -q, --request-transform-code=<value>   path to JavaScript file containing a Request Transform code
-  -s, --response-transform-code=<value>  path to JavaScript file containing a Response Transform code
-  -u, --destination-url=<value>          URL to which requests will be proxied
-  -x, --management-key=<value>           (required) management key used for connecting with the reactor / proxy
+  -a, --[no-]require-auth                        whether the Proxy requires Basis Theory authentication to be invoked.
+                                                 Default: true
+  -c, --configuration=<value>                    path to configuration file (.env format) to use in the Proxy
+  -i, --application-id=<value>                   application ID to use in the Proxy
+  -n, --name=<value>                             name of the Proxy
+  -q, --request-transform-code=<value>           path to JavaScript file containing a Request Transform code
+  -s, --response-transform-code=<value>          path to JavaScript file containing a Response Transform code
+  -u, --destination-url=<value>                  URL to which requests will be proxied
+  -x, --management-key=<value>                   (required) management key used for connecting with the reactor / proxy
+  --async                                        do not wait for proxy to be ready (requires at least one transform with
+                                                 node22)
+  --request-transform-dependencies=<value>       path to JSON file with npm dependencies, e.g. {"axios": "1.7.9",
+                                                 "lodash": "4.17.21"} (node22 only)
+  --request-transform-image=<option>             request-transform runtime image (node-bt|node22)
+                                                 <options: node-bt|node22>
+  --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 only)
+  --request-transform-resources=<option>         request-transform resource tier (node22 only)
+                                                 <options: standard|large|xlarge>
+  --request-transform-timeout=<value>            request-transform timeout in seconds, 1-30 (node22 only)
+  --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 only)
+  --response-transform-dependencies=<value>      path to JSON file with npm dependencies, e.g. {"axios": "1.7.9",
+                                                 "lodash": "4.17.21"} (node22 only)
+  --response-transform-image=<option>            response-transform runtime image (node-bt|node22)
+                                                 <options: node-bt|node22>
+  --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 only)
+  --response-transform-resources=<option>        response-transform resource tier (node22 only)
+                                                 <options: standard|large|xlarge>
+  --response-transform-timeout=<value>           response-transform timeout in seconds, 1-30 (node22 only)
+  --response-transform-warm-concurrency=<value>  response-transform warm concurrency, 0-1 (node22 only)
 
 DESCRIPTION
   Creates a new Pre-Configured Proxy. Requires `proxy:create` Management Application permission
 
 EXAMPLES
-  $ bt proxies create
+  Create a proxy without transforms
+
+    $ bt proxies create --name "My Proxy" --destination-url https://api.example.com
+
+  Create a proxy with legacy runtime transforms
+
+    $ bt proxies create --name "My Proxy" --destination-url https://api.example.com --request-transform-code \
+      ./request.js --request-transform-image node-bt --application-id <application-id>
+
+  Create a proxy with node22 transforms
+
+    $ bt proxies create --name "My Proxy" --destination-url https://api.example.com --request-transform-code \
+      ./request.js --request-transform-image node22 --response-transform-code ./response.js --response-transform-image \
+      node22
+
+  Create a proxy with node22 transforms and all runtime options
+
+    $ bt proxies create --name "My Proxy" --destination-url https://api.example.com --configuration ./config.env \
+      --require-auth --request-transform-code ./request.js --request-transform-image node22 \
+      --request-transform-timeout 10 --request-transform-warm-concurrency 0 --request-transform-resources standard \
+      --request-transform-dependencies ./deps.json --request-transform-permissions token:read \
+      --response-transform-code ./response.js --response-transform-image node22 --response-transform-timeout 10 \
+      --response-transform-warm-concurrency 0 --response-transform-resources standard \
+      --response-transform-dependencies ./deps.json --response-transform-permissions token:read
 ```
 
 ## `bt proxies delete ID`
@@ -234,35 +283,76 @@ Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management App
 ```
 USAGE
   $ bt proxies update ID -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>]
-    [-a] [-w] [-l]
+    [-a] [--request-transform-image node-bt|node22] [--request-transform-dependencies <value>]
+    [--request-transform-timeout <value>] [--request-transform-warm-concurrency <value>] [--request-transform-resources
+    standard|large|xlarge] [--request-transform-permissions <value>] [--response-transform-image node-bt|node22]
+    [--response-transform-dependencies <value>] [--response-transform-timeout <value>]
+    [--response-transform-warm-concurrency <value>] [--response-transform-resources standard|large|xlarge]
+    [--response-transform-permissions <value>] [--async] [-w] [-l]
 
 ARGUMENTS
   ID  Proxy id to update
 
 FLAGS
-  -a, --[no-]require-auth                whether the Proxy requires Basis Theory authentication to be invoked. Default:
-                                         true
-  -c, --configuration=<value>            path to configuration file (.env format) to use in the Proxy
-  -i, --application-id=<value>           application ID to use in the Proxy
-  -l, --logs                             Start logs server after update
-  -n, --name=<value>                     name of the Proxy
-  -q, --request-transform-code=<value>   path to JavaScript file containing a Request Transform code
-  -s, --response-transform-code=<value>  path to JavaScript file containing a Response Transform code
-  -u, --destination-url=<value>          URL to which requests will be proxied
-  -w, --watch                            Watch for changes in informed files
-  -x, --management-key=<value>           (required) management key used for connecting with the reactor / proxy
+  -a, --[no-]require-auth                        whether the Proxy requires Basis Theory authentication to be invoked.
+                                                 Default: true
+  -c, --configuration=<value>                    path to configuration file (.env format) to use in the Proxy
+  -i, --application-id=<value>                   application ID to use in the Proxy
+  -l, --logs                                     Start logs server after update
+  -n, --name=<value>                             name of the Proxy
+  -q, --request-transform-code=<value>           path to JavaScript file containing a Request Transform code
+  -s, --response-transform-code=<value>          path to JavaScript file containing a Response Transform code
+  -u, --destination-url=<value>                  URL to which requests will be proxied
+  -w, --watch                                    Watch for changes in informed files
+  -x, --management-key=<value>                   (required) management key used for connecting with the reactor / proxy
+  --async                                        do not wait for proxy to be ready (requires at least one transform with
+                                                 node22)
+  --request-transform-dependencies=<value>       path to JSON file with npm dependencies, e.g. {"axios": "1.7.9",
+                                                 "lodash": "4.17.21"} (node22 only)
+  --request-transform-image=<option>             request-transform runtime image (node-bt|node22)
+                                                 <options: node-bt|node22>
+  --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 only)
+  --request-transform-resources=<option>         request-transform resource tier (node22 only)
+                                                 <options: standard|large|xlarge>
+  --request-transform-timeout=<value>            request-transform timeout in seconds, 1-30 (node22 only)
+  --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 only)
+  --response-transform-dependencies=<value>      path to JSON file with npm dependencies, e.g. {"axios": "1.7.9",
+                                                 "lodash": "4.17.21"} (node22 only)
+  --response-transform-image=<option>            response-transform runtime image (node-bt|node22)
+                                                 <options: node-bt|node22>
+  --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 only)
+  --response-transform-resources=<option>        response-transform resource tier (node22 only)
+                                                 <options: standard|large|xlarge>
+  --response-transform-timeout=<value>           response-transform timeout in seconds, 1-30 (node22 only)
+  --response-transform-warm-concurrency=<value>  response-transform warm concurrency, 0-1 (node22 only)
 
 DESCRIPTION
   Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission
 
 EXAMPLES
-  $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca
+  Update a proxy destination URL
 
-  $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca --destination-url https://echo.basistheory.com
+    $ bt proxies update <proxy-id> --destination-url https://api.example.com
 
-  $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca --request-transform-code ./myRequestTransform.js
+  Update a proxy with legacy runtime transforms
 
-  $ bt proxies update 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.proxy
+    $ bt proxies update <proxy-id> --request-transform-code ./request.js --request-transform-image node-bt \
+      --application-id <application-id>
+
+  Update a proxy with node22 transforms
+
+    $ bt proxies update <proxy-id> --request-transform-code ./request.js --request-transform-image node22 \
+      --response-transform-code ./response.js --response-transform-image node22
+
+  Update a proxy with node22 transforms and all runtime options
+
+    $ bt proxies update <proxy-id> --name "My Proxy" --destination-url https://api.example.com --configuration \
+      ./config.env --require-auth --request-transform-code ./request.js --request-transform-image node22 \
+      --request-transform-timeout 10 --request-transform-warm-concurrency 0 --request-transform-resources standard \
+      --request-transform-dependencies ./deps.json --request-transform-permissions token:read \
+      --response-transform-code ./response.js --response-transform-image node22 --response-transform-timeout 10 \
+      --response-transform-warm-concurrency 0 --response-transform-resources standard \
+      --response-transform-dependencies ./deps.json --response-transform-permissions token:read
 ```
 
 ## `bt reactors`
@@ -284,7 +374,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v2.0.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v2.1.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 
@@ -292,7 +382,9 @@ Creates a new Reactor. Requires `reactor:create` Management Application permissi
 
 ```
 USAGE
-  $ bt reactors create -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>]
+  $ bt reactors create -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22]
+    [--dependencies <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
+    [--permissions <value>] [--async]
 
 FLAGS
   -c, --configuration=<value>   path to configuration file (.env format) to use in the Reactor
@@ -300,12 +392,34 @@ FLAGS
   -n, --name=<value>            name of the Reactor
   -r, --code=<value>            path to JavaScript file containing the Reactor code
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  --async                       do not wait for resource to be ready (node22 only)
+  --dependencies=<value>        path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"}
+                                (node22 only)
+  --image=<option>              runtime image (node-bt|node22)
+                                <options: node-bt|node22>
+  --permissions=<value>...      permission to grant, repeatable (node22 only)
+  --resources=<option>          resource tier (node22 only, default: standard)
+                                <options: standard|large|xlarge>
+  --timeout=<value>             timeout in seconds, 1-30 (node22 only, default: 10)
+  --warm-concurrency=<value>    number of warm instances, 0-1 (node22 only, default: 0)
 
 DESCRIPTION
   Creates a new Reactor. Requires `reactor:create` Management Application permission
 
 EXAMPLES
-  $ bt reactors create
+  Create a reactor with legacy runtime
+
+    $ bt reactors create --name "My Reactor" --code ./reactor.js --image node-bt --application-id <application-id>
+
+  Create a reactor with node22 runtime
+
+    $ bt reactors create --name "My Reactor" --code ./reactor.js --image node22
+
+  Create a reactor with node22 and all runtime options
+
+    $ bt reactors create --name "My Reactor" --code ./reactor.js --configuration ./config.env --image node22 \
+      --timeout 10 --warm-concurrency 0 --resources standard --dependencies ./deps.json --permissions token:read \
+      --permissions token:create
 ```
 
 ## `bt reactors delete ID`
@@ -362,7 +476,9 @@ Updates an existing Reactor. Requires `reactor:update` Management Application pe
 
 ```
 USAGE
-  $ bt reactors update ID -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [-w] [-l]
+  $ bt reactors update ID -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22]
+    [--dependencies <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
+    [--permissions <value>] [--async] [-w] [-l]
 
 ARGUMENTS
   ID  Reactor id to update
@@ -375,15 +491,33 @@ FLAGS
   -r, --code=<value>            path to JavaScript file containing the Reactor code
   -w, --watch                   Watch for changes in informed files
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  --async                       do not wait for resource to be ready (node22 only)
+  --dependencies=<value>        path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"}
+                                (node22 only)
+  --image=<option>              runtime image (node-bt|node22)
+                                <options: node-bt|node22>
+  --permissions=<value>...      permission to grant, repeatable (node22 only)
+  --resources=<option>          resource tier (node22 only, default: standard)
+                                <options: standard|large|xlarge>
+  --timeout=<value>             timeout in seconds, 1-30 (node22 only, default: 10)
+  --warm-concurrency=<value>    number of warm instances, 0-1 (node22 only, default: 0)
 
 DESCRIPTION
   Updates an existing Reactor. Requires `reactor:update` Management Application permission
 
 EXAMPLES
-  $ bt reactors update 03858bf5-32d3-4a2e-b74b-daeea0883bca
+  Update a reactor with legacy runtime
 
-  $ bt reactors update 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./reactor.js
+    $ bt reactors update <reactor-id> --code ./reactor.js --image node-bt --application-id <application-id>
 
-  $ bt reactors update 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.reactor
+  Update a reactor with node22 runtime
+
+    $ bt reactors update <reactor-id> --code ./reactor.js --image node22
+
+  Update a reactor with node22 and all runtime options
+
+    $ bt reactors update <reactor-id> --name "My Reactor" --code ./reactor.js --configuration ./config.env --image \
+      node22 --timeout 10 --warm-concurrency 0 --resources standard --dependencies ./deps.json --permissions \
+      token:read --permissions token:create
 ```
 <!-- commandsstop -->

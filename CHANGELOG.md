@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v2.0.0...v2.1.0) (2026-02-05)
+
+
+### Features
+
+* Add node22 configurable runtime support for Reactors and Proxies ([#34](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/34)) ([13a60b7](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/13a60b7552c47647ce9a9db792aa1e602cf9164e))
+
 # [2.0.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v1.13.0...v2.0.0) (2026-01-21)
 
 
