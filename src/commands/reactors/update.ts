@@ -2,17 +2,46 @@ import { Args, Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { showReactorLogs } from '../../logs';
-import { patchReactor } from '../../reactors/management';
+import { getReactor, patchReactor } from '../../reactors/management';
+import { validateReactorApplicationId } from '../../reactors/runtime';
 import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
+import {
+  buildRuntime,
+  CONFIGURABLE_RUNTIME_IMAGES,
+  needsPolling,
+  waitForResourceState,
+} from '../../runtime';
 
 export default class Update extends BaseCommand {
   public static description =
     'Updates an existing Reactor. Requires `reactor:update` Management Application permission';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --code ./reactor.js',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.reactor',
+    {
+      description: 'Update a reactor with legacy runtime',
+      command:
+        '<%= config.bin %> <%= command.id %> <reactor-id> --code ./reactor.js --image node-bt --application-id <application-id>',
+    },
+    {
+      description: 'Update a reactor with node22 runtime',
+      command:
+        '<%= config.bin %> <%= command.id %> <reactor-id> --code ./reactor.js --image node22',
+    },
+    {
+      description: 'Update a reactor with node22 and all runtime options',
+      command:
+        '<%= config.bin %> <%= command.id %> <reactor-id> ' +
+        '--name "My Reactor" ' +
+        '--code ./reactor.js ' +
+        '--configuration ./config.env ' +
+        '--image node22 ' +
+        '--timeout 10 ' +
+        '--warm-concurrency 0 ' +
+        '--resources standard ' +
+        '--dependencies ./deps.json ' +
+        '--permissions token:read ' +
+        '--permissions token:create',
+    },
   ];
 
   public static flags = {
@@ -42,24 +71,52 @@ export default class Update extends BaseCommand {
     const {
       bt,
       args: { id },
-      flags: {
-        name,
-        code,
-        'application-id': applicationId,
-        configuration,
-        watch,
-        logs,
-      },
+      flags,
     } = await this.parse(Update);
+
+    const {
+      name,
+      code,
+      'application-id': applicationId,
+      configuration,
+      image,
+      dependencies,
+      timeout,
+      'warm-concurrency': warmConcurrency,
+      resources,
+      permissions,
+      async: asyncFlag,
+      watch,
+      logs,
+    } = flags;
+
+    validateReactorApplicationId(applicationId, image);
+
+    const runtime = buildRuntime({
+      image,
+      dependencies,
+      timeout,
+      warmConcurrency,
+      resources,
+      permissions,
+    });
 
     const model = createModelFromFlags({
       name,
       code,
       applicationId,
       configuration,
+      runtime,
     });
 
     await patchReactor(bt, id, model);
+
+    const reactor = await getReactor(bt, id);
+    const isConfigurableRuntime = needsPolling(reactor.state);
+
+    if (!asyncFlag) {
+      await waitForResourceState(bt, 'reactor', id, reactor.state);
+    }
 
     this.log('Reactor updated successfully!');
 
@@ -67,7 +124,13 @@ export default class Update extends BaseCommand {
       await showReactorLogs(bt, id);
     }
 
-    if (watch) {
+    if (watch && isConfigurableRuntime) {
+      this.warn(
+        `--watch is not supported for configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}). Skipping watch.`
+      );
+    } else if (watch) {
       const entries = Object.entries({
         code,
         configuration,

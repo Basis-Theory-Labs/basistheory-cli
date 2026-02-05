@@ -2,63 +2,126 @@ import type { BasisTheory } from '@basis-theory/node-sdk';
 
 const testDate = new Date('2024-01-01T00:00:00Z');
 
-export const reactorFixtures: Record<string, BasisTheory.Reactor> = {
-  basic: {
-    id: 'reactor-1',
-    name: 'Test Reactor 1',
-    code: 'module.exports = async (req) => req;',
-    createdAt: testDate,
-    modifiedAt: testDate,
+const REACTOR_ID = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+
+const baseReactor = {
+  name: 'Test Reactor',
+  code: 'module.exports = async (req) => req;',
+  createdAt: testDate,
+  modifiedAt: testDate,
+};
+
+const baseFixtures = {
+  active: {
+    ...baseReactor,
+    state: 'active',
+  },
+  creating: {
+    ...baseReactor,
+    state: 'creating',
+  },
+  updating: {
+    ...baseReactor,
+    state: 'updating',
+  },
+  failed: {
+    ...baseReactor,
+    state: 'failed',
   },
   withApplication: {
-    id: 'reactor-2',
-    name: 'Test Reactor 2',
-    code: 'module.exports = async (req) => req;',
+    ...baseReactor,
+    state: 'active',
     application: {
       id: 'app-1',
     },
-    createdAt: testDate,
-    modifiedAt: testDate,
   },
   withConfiguration: {
-    id: 'reactor-3',
-    name: 'Test Reactor 3',
-    code: 'module.exports = async (req) => req;',
+    ...baseReactor,
+    state: 'active',
     configuration: {
       TEST_VAR: 'test_value',
     },
-    createdAt: testDate,
-    modifiedAt: testDate,
   },
-  created: {
-    id: 'reactor-new',
-    name: 'New Reactor',
-    code: 'module.exports = async (req) => req;',
-    createdAt: testDate,
-    modifiedAt: testDate,
+  withRuntime: {
+    ...baseReactor,
+    state: 'active',
+    runtime: {
+      image: 'node22',
+      timeout: 30,
+      resources: 'large',
+    },
   },
-};
+  failedWithDetails: {
+    ...baseReactor,
+    state: 'failed',
+    runtime: {
+      image: 'node22',
+      dependencies: {},
+    },
+    requested: {
+      reactor: {
+        code: 'module.exports = async (req) => req;',
+        runtime: {
+          image: 'node22',
+          dependencies: {
+            qs: '4.0.0',
+            axios: '0.27.2',
+          },
+          warmConcurrency: 0,
+          timeout: 5,
+          resources: 'standard',
+        },
+        configuration: {
+          BT_API_KEY: 'key_test',
+        },
+      },
+      errorCode: 'vulnerabilities_detected',
+      errorMessage:
+        'Please update the dependencies listed to resolve security vulnerabilities.',
+      errorDetails: {
+        vulnerabilities: [
+          {
+            dependencyPath: ['axios'],
+            id: 'CVE-2025-27152',
+            name: 'axios',
+            severity: 'HIGH',
+            version: '0.27.2',
+          },
+          {
+            dependencyPath: ['qs'],
+            id: 'CVE-2017-1000048',
+            name: 'qs',
+            severity: 'HIGH',
+            version: '4.0.0',
+          },
+        ],
+      },
+    },
+  },
+} as const;
 
-export const reactorPaginatedList: BasisTheory.ReactorPaginatedList = {
-  pagination: {
-    pageNumber: 1,
-    pageSize: 5,
-    totalItems: 3,
-    totalPages: 1,
-  },
-  data: [
-    reactorFixtures.basic,
-    reactorFixtures.withApplication,
-    reactorFixtures.withConfiguration,
-  ],
-};
+const withId = <T extends Record<string, unknown>>(
+  fixture: T,
+  id: string
+): T & { id: string } => ({
+  ...fixture,
+  id,
+});
 
-export const emptyReactorPaginatedList: BasisTheory.ReactorPaginatedList = {
-  pagination: {
-    pageNumber: 1,
-    pageSize: 5,
-    totalItems: 0,
-    totalPages: 0,
-  },
-  data: [],
-};
+const reactorFixtures: Record<string, BasisTheory.Reactor> = Object.fromEntries(
+  Object.entries(baseFixtures).map(([key, value]) => [
+    key,
+    withId(value, REACTOR_ID),
+  ])
+) as Record<string, BasisTheory.Reactor>;
+
+const createReactorList = (
+  keys: (keyof typeof baseFixtures)[]
+): BasisTheory.Reactor[] =>
+  keys.map((key, index) => ({
+    ...baseFixtures[key],
+    id: `a1b2c3d4-0001-0000-0000-00000000000${index + 1}`,
+    name: `Test Reactor ${index + 1}`,
+  })) as BasisTheory.Reactor[];
+
+export { reactorFixtures, createReactorList };

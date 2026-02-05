@@ -2,6 +2,7 @@ import type { BasisTheory } from '@basis-theory/node-sdk';
 import { Flags } from '@oclif/core';
 import { parse } from 'dotenv';
 import { readFileContents } from '../files';
+import { VALID_RUNTIME_IMAGES } from '../runtime';
 
 const PROXY_FLAGS = {
   name: Flags.string({
@@ -35,6 +36,69 @@ const PROXY_FLAGS = {
     allowNo: true,
     default: true,
   }),
+  'request-transform-image': Flags.string({
+    description: `request-transform runtime image (${VALID_RUNTIME_IMAGES.join(
+      '|'
+    )})`,
+    options: [...VALID_RUNTIME_IMAGES],
+  }),
+  'request-transform-dependencies': Flags.file({
+    description:
+      'path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"} (node22 only)',
+  }),
+  'request-transform-timeout': Flags.integer({
+    description: 'request-transform timeout in seconds, 1-30 (node22 only)',
+    min: 1,
+    max: 30,
+  }),
+  'request-transform-warm-concurrency': Flags.integer({
+    description: 'request-transform warm concurrency, 0-1 (node22 only)',
+    min: 0,
+    max: 1,
+  }),
+  'request-transform-resources': Flags.string({
+    description: 'request-transform resource tier (node22 only)',
+    options: ['standard', 'large', 'xlarge'],
+  }),
+  'request-transform-permissions': Flags.string({
+    description:
+      'request-transform permission to grant, repeatable (node22 only)',
+    multiple: true,
+  }),
+  'response-transform-image': Flags.string({
+    description: `response-transform runtime image (${VALID_RUNTIME_IMAGES.join(
+      '|'
+    )})`,
+    options: [...VALID_RUNTIME_IMAGES],
+  }),
+  'response-transform-dependencies': Flags.file({
+    description:
+      'path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"} (node22 only)',
+  }),
+  'response-transform-timeout': Flags.integer({
+    description: 'response-transform timeout in seconds, 1-30 (node22 only)',
+    min: 1,
+    max: 30,
+  }),
+  'response-transform-warm-concurrency': Flags.integer({
+    description: 'response-transform warm concurrency, 0-1 (node22 only)',
+    min: 0,
+    max: 1,
+  }),
+  'response-transform-resources': Flags.string({
+    description: 'response-transform resource tier (node22 only)',
+    options: ['standard', 'large', 'xlarge'],
+  }),
+  'response-transform-permissions': Flags.string({
+    description:
+      'response-transform permission to grant, repeatable (node22 only)',
+    multiple: true,
+  }),
+  async: Flags.boolean({
+    description:
+      'do not wait for proxy to be ready (requires at least one transform with node22)',
+    default: false,
+  }),
 };
 
 interface ProxyFlagProps {
@@ -54,17 +118,25 @@ interface ProxyFlagProps {
    * Path to .env file
    */
   configuration?: string;
+  /**
+   * Request transform runtime
+   */
+  requestTransformRuntime?: BasisTheory.Runtime;
+  /**
+   * Response transform runtime
+   */
+  responseTransformRuntime?: BasisTheory.Runtime;
 }
 
 type CreateProxy = ProxyFlagProps &
   Omit<
     BasisTheory.CreateProxyRequest,
-    'application' | 'configuration' | 'requestTransform' | 'responseTransform'
+    'application' | 'configuration' | 'requestTransforms' | 'responseTransforms'
   >;
 type PatchProxy = ProxyFlagProps &
   Omit<
     BasisTheory.PatchProxyRequest,
-    'application' | 'configuration' | 'requestTransform' | 'responseTransform'
+    'application' | 'configuration' | 'requestTransforms' | 'responseTransforms'
   >;
 
 function createModelFromFlags(
@@ -84,18 +156,42 @@ function createModelFromFlags({
   applicationId,
   configuration,
   requireAuth,
+  requestTransformRuntime,
+  responseTransformRuntime,
 }: CreateProxy | PatchProxy):
   | BasisTheory.CreateProxyRequest
   | BasisTheory.PatchProxyRequest {
+  let requestTransform: BasisTheory.ProxyTransform | undefined;
+
+  if (requestTransformCode) {
+    requestTransform = {
+      type: 'code',
+      code: readFileContents(requestTransformCode),
+    };
+
+    if (requestTransformRuntime) {
+      requestTransform.options = { runtime: requestTransformRuntime };
+    }
+  }
+
+  let responseTransform: BasisTheory.ProxyTransform | undefined;
+
+  if (responseTransformCode) {
+    responseTransform = {
+      type: 'code',
+      code: readFileContents(responseTransformCode),
+    };
+
+    if (responseTransformRuntime) {
+      responseTransform.options = { runtime: responseTransformRuntime };
+    }
+  }
+
   return {
     name,
     destinationUrl,
-    requestTransform: requestTransformCode
-      ? { code: readFileContents(requestTransformCode) }
-      : undefined,
-    responseTransform: responseTransformCode
-      ? { code: readFileContents(responseTransformCode) }
-      : undefined,
+    requestTransforms: requestTransform ? [requestTransform] : undefined,
+    responseTransforms: responseTransform ? [responseTransform] : undefined,
     application: applicationId ? { id: applicationId } : undefined,
     configuration: configuration
       ? parse(readFileContents(configuration))

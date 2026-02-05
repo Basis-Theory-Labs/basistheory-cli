@@ -2,18 +2,60 @@ import { Args, Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { showProxyLogs } from '../../logs';
-import { patchProxy } from '../../proxies/management';
+import { getProxy, patchProxy } from '../../proxies/management';
+import { validateProxyApplicationId } from '../../proxies/runtime';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
+import {
+  buildRuntime,
+  CONFIGURABLE_RUNTIME_IMAGES,
+  needsPolling,
+  waitForResourceState,
+} from '../../runtime';
 
 export default class Update extends BaseCommand {
   public static description =
     'Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --destination-url https://echo.basistheory.com',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --request-transform-code ./myRequestTransform.js',
-    '<%= config.bin %> <%= command.id %> 03858bf5-32d3-4a2e-b74b-daeea0883bca --configuration ./.env.proxy',
+    {
+      description: 'Update a proxy destination URL',
+      command:
+        '<%= config.bin %> <%= command.id %> <proxy-id> --destination-url https://api.example.com',
+    },
+    {
+      description: 'Update a proxy with legacy runtime transforms',
+      command:
+        '<%= config.bin %> <%= command.id %> <proxy-id> --request-transform-code ./request.js --request-transform-image node-bt --application-id <application-id>',
+    },
+    {
+      description: 'Update a proxy with node22 transforms',
+      command:
+        '<%= config.bin %> <%= command.id %> <proxy-id> --request-transform-code ./request.js --request-transform-image node22 --response-transform-code ./response.js --response-transform-image node22',
+    },
+    {
+      description:
+        'Update a proxy with node22 transforms and all runtime options',
+      command:
+        '<%= config.bin %> <%= command.id %> <proxy-id> ' +
+        '--name "My Proxy" ' +
+        '--destination-url https://api.example.com ' +
+        '--configuration ./config.env ' +
+        '--require-auth ' +
+        '--request-transform-code ./request.js ' +
+        '--request-transform-image node22 ' +
+        '--request-transform-timeout 10 ' +
+        '--request-transform-warm-concurrency 0 ' +
+        '--request-transform-resources standard ' +
+        '--request-transform-dependencies ./deps.json ' +
+        '--request-transform-permissions token:read ' +
+        '--response-transform-code ./response.js ' +
+        '--response-transform-image node22 ' +
+        '--response-transform-timeout 10 ' +
+        '--response-transform-warm-concurrency 0 ' +
+        '--response-transform-resources standard ' +
+        '--response-transform-dependencies ./deps.json ' +
+        '--response-transform-permissions token:read',
+    },
   ];
 
   public static flags = {
@@ -43,19 +85,54 @@ export default class Update extends BaseCommand {
     const {
       bt,
       args: { id },
-      flags: {
-        name,
-        'destination-url': destinationUrl,
-        'response-transform-code': responseTransformCode,
-        'request-transform-code': requestTransformCode,
-        'application-id': applicationId,
-        configuration,
-        'require-auth': requireAuth,
-        watch,
-        logs,
-      },
+      flags,
       metadata,
     } = await this.parse(Update);
+
+    const {
+      name,
+      'destination-url': destinationUrl,
+      'response-transform-code': responseTransformCode,
+      'request-transform-code': requestTransformCode,
+      'application-id': applicationId,
+      configuration,
+      'require-auth': requireAuth,
+      'request-transform-image': requestTransformImage,
+      'request-transform-dependencies': requestTransformDependencies,
+      'request-transform-timeout': requestTransformTimeout,
+      'request-transform-warm-concurrency': requestTransformWarmConcurrency,
+      'request-transform-resources': requestTransformResources,
+      'request-transform-permissions': requestTransformPermissions,
+      'response-transform-image': responseTransformImage,
+      'response-transform-dependencies': responseTransformDependencies,
+      'response-transform-timeout': responseTransformTimeout,
+      'response-transform-warm-concurrency': responseTransformWarmConcurrency,
+      'response-transform-resources': responseTransformResources,
+      'response-transform-permissions': responseTransformPermissions,
+      async: asyncFlag,
+      watch,
+      logs,
+    } = flags;
+
+    validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
+
+    const requestTransformRuntime = buildRuntime({
+      image: requestTransformImage,
+      dependencies: requestTransformDependencies,
+      timeout: requestTransformTimeout,
+      warmConcurrency: requestTransformWarmConcurrency,
+      resources: requestTransformResources,
+      permissions: requestTransformPermissions,
+    });
+
+    const responseTransformRuntime = buildRuntime({
+      image: responseTransformImage,
+      dependencies: responseTransformDependencies,
+      timeout: responseTransformTimeout,
+      warmConcurrency: responseTransformWarmConcurrency,
+      resources: responseTransformResources,
+      permissions: responseTransformPermissions,
+    });
 
     const model = createModelFromFlags({
       name,
@@ -67,9 +144,18 @@ export default class Update extends BaseCommand {
       requireAuth: metadata.flags?.['require-auth']?.setFromDefault
         ? undefined
         : requireAuth,
+      requestTransformRuntime,
+      responseTransformRuntime,
     });
 
     await patchProxy(bt, id, model);
+
+    const proxy = await getProxy(bt, id);
+    const isConfigurableRuntime = needsPolling(proxy.state);
+
+    if (!asyncFlag) {
+      await waitForResourceState(bt, 'proxy', id, proxy.state);
+    }
 
     this.log('Proxy updated successfully!');
 
@@ -77,7 +163,13 @@ export default class Update extends BaseCommand {
       await showProxyLogs(bt, id);
     }
 
-    if (watch) {
+    if (watch && isConfigurableRuntime) {
+      this.warn(
+        `--watch is not supported for configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}). Skipping watch.`
+      );
+    } else if (watch) {
       const entries = Object.entries({
         requestTransformCode,
         responseTransformCode,
