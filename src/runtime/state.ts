@@ -4,6 +4,26 @@ import { ux } from '@oclif/core';
 const POLL_INTERVAL = 2000; // 2 seconds
 const POLL_TIMEOUT = 600000; // 10 minutes
 
+const formatErrorDetails = (value: unknown): string => {
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value), undefined, 2);
+    } catch {
+      return value;
+    }
+  }
+
+  if (typeof value === 'object' && Boolean(value)) {
+    try {
+      return JSON.stringify(value, undefined, 2);
+    } catch {
+      return String(value);
+    }
+  }
+
+  return String(value);
+};
+
 const formatErrorMessage = (
   resource: BasisTheory.Reactor | BasisTheory.Proxy,
   resourceType: 'reactor' | 'proxy'
@@ -21,7 +41,7 @@ const formatErrorMessage = (
   }
 
   if (requested?.errorDetails) {
-    parts.push(`errorDetails: ${JSON.stringify(requested.errorDetails)}`);
+    parts.push(`errorDetails: ${formatErrorDetails(requested.errorDetails)}`);
   }
 
   return parts.join('\n');
