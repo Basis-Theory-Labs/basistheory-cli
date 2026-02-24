@@ -51,14 +51,14 @@ export default class Create extends BaseCommand {
         '--request-transform-timeout 10 ' +
         '--request-transform-warm-concurrency 0 ' +
         '--request-transform-resources standard ' +
-        '--request-transform-dependencies ./deps.json ' +
+        '--request-transform-package-json ./request/package.json ' +
         '--request-transform-permissions token:read ' +
         '--response-transform-code ./response.js ' +
         '--response-transform-image node22 ' +
         '--response-transform-timeout 10 ' +
         '--response-transform-warm-concurrency 0 ' +
         '--response-transform-resources standard ' +
-        '--response-transform-dependencies ./deps.json ' +
+        '--response-transform-package-json ./response/package.json ' +
         '--response-transform-permissions token:read',
     },
   ];

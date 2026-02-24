@@ -6,9 +6,9 @@ const RUNTIME_FLAGS = {
     description: `runtime image (${VALID_RUNTIME_IMAGES.join('|')})`,
     options: [...VALID_RUNTIME_IMAGES],
   }),
-  dependencies: Flags.file({
+  'package-json': Flags.file({
     description:
-      'path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"} (node22 only)',
+      'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
   }),
   timeout: Flags.integer({
     description: 'timeout in seconds, 1-30 (node22 only, default: 10)',

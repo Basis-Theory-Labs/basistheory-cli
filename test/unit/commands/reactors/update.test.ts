@@ -129,7 +129,11 @@ describe('reactors update', () => {
     });
 
     it('updates reactor with all runtime flags', async () => {
-      readFileStub.withArgs('./deps.json').returns('{"lodash": "^4.17.21"}');
+      readFileStub
+        .withArgs('./package.json')
+        .returns(
+          '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+        );
 
       const result = await runCommand([
         'reactors:update',
@@ -142,8 +146,8 @@ describe('reactors update', () => {
         '1',
         '--resources',
         'large',
-        '--dependencies',
-        './deps.json',
+        '--package-json',
+        './package.json',
         '--permissions',
         'token:read',
         '--permissions',
@@ -158,8 +162,39 @@ describe('reactors update', () => {
         timeout: 30,
         warmConcurrency: 1,
         resources: 'large',
-        dependencies: { lodash: '^4.17.21' },
+        dependencies: { lodash: '4.17.21' },
+        resolutions: {
+          uuid: '9.0.1',
+          nanoid: '5.0.7',
+        },
         permissions: ['token:read', 'token:write'],
+      });
+    });
+
+    it('uses overrides as resolutions when resolutions is not present', async () => {
+      readFileStub
+        .withArgs('./runtime-package-overrides.json')
+        .returns(
+          '{"dependencies":{"lodash":"4.17.21"},"overrides":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+        );
+
+      await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--image',
+        'node22',
+        '--package-json',
+        './runtime-package-overrides.json',
+      ]);
+
+      const [, patchArg] = reactorsPatchStub.firstCall.args;
+
+      expect(patchArg.runtime.dependencies).to.deep.equal({
+        lodash: '4.17.21',
+      });
+      expect(patchArg.runtime.resolutions).to.deep.equal({
+        uuid: '9.0.1',
+        nanoid: '5.0.7',
       });
     });
 
@@ -223,13 +258,13 @@ describe('reactors update', () => {
         'reactor-123',
         '--image',
         'node22',
-        '--dependencies',
+        '--package-json',
         './invalid.json',
       ]);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Failed to parse dependencies file'
+        'Failed to parse package.json file'
       );
     });
   });

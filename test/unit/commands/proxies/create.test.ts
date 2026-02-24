@@ -163,7 +163,11 @@ describe('proxies create', () => {
 
   describe('with transform runtime flags', () => {
     it('creates proxy with request transform runtime flags', async () => {
-      readFileStub.withArgs('./deps.json').returns('{"lodash": "^4.17.21"}');
+      readFileStub
+        .withArgs('./package.json')
+        .returns(
+          '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+        );
 
       const result = await runCommand([
         'proxies:create',
@@ -181,8 +185,8 @@ describe('proxies create', () => {
         '1',
         '--request-transform-resources',
         'large',
-        '--request-transform-dependencies',
-        './deps.json',
+        '--request-transform-package-json',
+        './package.json',
         '--request-transform-permissions',
         'token:read',
       ]);
@@ -195,8 +199,56 @@ describe('proxies create', () => {
         timeout: 30,
         warmConcurrency: 1,
         resources: 'large',
-        dependencies: { lodash: '^4.17.21' },
+        dependencies: { lodash: '4.17.21' },
+        resolutions: {
+          uuid: '9.0.1',
+          nanoid: '5.0.7',
+        },
         permissions: ['token:read'],
+      });
+    });
+
+    it('uses overrides as resolutions for request transform when resolutions is not present', async () => {
+      readFileStub
+        .withArgs('./runtime-package-overrides.json')
+        .returns(
+          '{"dependencies":{"lodash":"4.17.21"},"overrides":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+        );
+
+      await runCommand([
+        'proxies:create',
+        '--name',
+        'Test Proxy',
+        '--destination-url',
+        'https://example.com/api',
+        '--request-transform-code',
+        './request.js',
+        '--request-transform-image',
+        'node22',
+        '--request-transform-timeout',
+        '10',
+        '--request-transform-warm-concurrency',
+        '0',
+        '--request-transform-resources',
+        'standard',
+        '--request-transform-package-json',
+        './runtime-package-overrides.json',
+        '--request-transform-permissions',
+        'token:read',
+      ]);
+
+      const [createArg] = proxiesCreateStub.firstCall.args;
+
+      expect(
+        createArg.requestTransforms[0].options.runtime.dependencies
+      ).to.deep.equal({
+        lodash: '4.17.21',
+      });
+      expect(
+        createArg.requestTransforms[0].options.runtime.resolutions
+      ).to.deep.equal({
+        uuid: '9.0.1',
+        nanoid: '5.0.7',
       });
     });
 
@@ -219,7 +271,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Response transform: (Optional) Dependencies file path (JSON format):',
+          'Response transform: (Optional) Runtime package.json file path (JSON format):',
           ''
         )
         .onCallResolves(
@@ -281,7 +333,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Request transform: (Optional) Dependencies file path (JSON format):',
+          'Request transform: (Optional) Runtime package.json file path (JSON format):',
           ''
         )
         .onCallResolves(
@@ -336,7 +388,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Request transform: (Optional) Dependencies file path (JSON format):',
+          'Request transform: (Optional) Runtime package.json file path (JSON format):',
           ''
         )
         .onCallResolves(
@@ -473,7 +525,7 @@ describe('proxies create', () => {
           '1'
         )
         .onCallResolves(
-          'Request transform: (Optional) Dependencies file path (JSON format):',
+          'Request transform: (Optional) Runtime package.json file path (JSON format):',
           ''
         )
         .onCallResolves(
@@ -778,13 +830,13 @@ describe('proxies create', () => {
         'node22',
         '--request-transform-resources',
         'standard',
-        '--request-transform-dependencies',
+        '--request-transform-package-json',
         './invalid.json',
       ]);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Failed to parse dependencies file'
+        'Failed to parse package.json file'
       );
     });
   });

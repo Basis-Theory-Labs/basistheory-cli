@@ -5,6 +5,7 @@ export {
   CONFIGURABLE_RUNTIME_FLAGS,
   isLegacyRuntimeImage,
   validateRuntimeImage,
+  parseRuntimePackageJsonFile,
   buildRuntime,
   promptRuntimeOptions,
   promptRuntimeImage,

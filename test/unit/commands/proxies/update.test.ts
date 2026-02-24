@@ -165,7 +165,11 @@ describe('proxies update', () => {
 
   describe('with transform runtime flags', () => {
     it('updates proxy with request transform runtime flags', async () => {
-      readFileStub.withArgs('./deps.json').returns('{"lodash": "^4.17.21"}');
+      readFileStub
+        .withArgs('./package.json')
+        .returns(
+          '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+        );
 
       const result = await runCommand([
         'proxies:update',
@@ -180,8 +184,8 @@ describe('proxies update', () => {
         '1',
         '--request-transform-resources',
         'large',
-        '--request-transform-dependencies',
-        './deps.json',
+        '--request-transform-package-json',
+        './package.json',
         '--request-transform-permissions',
         'token:read',
       ]);
@@ -194,8 +198,45 @@ describe('proxies update', () => {
         timeout: 30,
         warmConcurrency: 1,
         resources: 'large',
-        dependencies: { lodash: '^4.17.21' },
+        dependencies: { lodash: '4.17.21' },
+        resolutions: {
+          uuid: '9.0.1',
+          nanoid: '5.0.7',
+        },
         permissions: ['token:read'],
+      });
+    });
+
+    it('uses overrides as resolutions for request transform when resolutions is not present', async () => {
+      readFileStub
+        .withArgs('./runtime-package-overrides.json')
+        .returns(
+          '{"dependencies":{"lodash":"4.17.21"},"overrides":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+        );
+
+      await runCommand([
+        'proxies:update',
+        'proxy-123',
+        '--request-transform-code',
+        './request.js',
+        '--request-transform-image',
+        'node22',
+        '--request-transform-package-json',
+        './runtime-package-overrides.json',
+      ]);
+
+      const [, patchArg] = proxiesPatchStub.firstCall.args;
+
+      expect(
+        patchArg.requestTransforms[0].options.runtime.dependencies
+      ).to.deep.equal({
+        lodash: '4.17.21',
+      });
+      expect(
+        patchArg.requestTransforms[0].options.runtime.resolutions
+      ).to.deep.equal({
+        uuid: '9.0.1',
+        nanoid: '5.0.7',
       });
     });
 
@@ -343,13 +384,13 @@ describe('proxies update', () => {
         './request.js',
         '--request-transform-image',
         'node22',
-        '--request-transform-dependencies',
+        '--request-transform-package-json',
         './invalid.json',
       ]);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Failed to parse dependencies file'
+        'Failed to parse package.json file'
       );
     });
   });

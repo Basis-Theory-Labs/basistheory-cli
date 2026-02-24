@@ -46,14 +46,14 @@ export default class Update extends BaseCommand {
         '--request-transform-timeout 10 ' +
         '--request-transform-warm-concurrency 0 ' +
         '--request-transform-resources standard ' +
-        '--request-transform-dependencies ./deps.json ' +
+        '--request-transform-package-json ./request/package.json ' +
         '--request-transform-permissions token:read ' +
         '--response-transform-code ./response.js ' +
         '--response-transform-image node22 ' +
         '--response-transform-timeout 10 ' +
         '--response-transform-warm-concurrency 0 ' +
         '--response-transform-resources standard ' +
-        '--response-transform-dependencies ./deps.json ' +
+        '--response-transform-package-json ./response/package.json ' +
         '--response-transform-permissions token:read',
     },
   ];
@@ -98,13 +98,13 @@ export default class Update extends BaseCommand {
       configuration,
       'require-auth': requireAuth,
       'request-transform-image': requestTransformImage,
-      'request-transform-dependencies': requestTransformDependencies,
+      'request-transform-package-json': requestTransformPackageJson,
       'request-transform-timeout': requestTransformTimeout,
       'request-transform-warm-concurrency': requestTransformWarmConcurrency,
       'request-transform-resources': requestTransformResources,
       'request-transform-permissions': requestTransformPermissions,
       'response-transform-image': responseTransformImage,
-      'response-transform-dependencies': responseTransformDependencies,
+      'response-transform-package-json': responseTransformPackageJson,
       'response-transform-timeout': responseTransformTimeout,
       'response-transform-warm-concurrency': responseTransformWarmConcurrency,
       'response-transform-resources': responseTransformResources,
@@ -118,7 +118,7 @@ export default class Update extends BaseCommand {
 
     const requestTransformRuntime = buildRuntime({
       image: requestTransformImage,
-      dependencies: requestTransformDependencies,
+      packageJson: requestTransformPackageJson,
       timeout: requestTransformTimeout,
       warmConcurrency: requestTransformWarmConcurrency,
       resources: requestTransformResources,
@@ -127,7 +127,7 @@ export default class Update extends BaseCommand {
 
     const responseTransformRuntime = buildRuntime({
       image: responseTransformImage,
-      dependencies: responseTransformDependencies,
+      packageJson: responseTransformPackageJson,
       timeout: responseTransformTimeout,
       warmConcurrency: responseTransformWarmConcurrency,
       resources: responseTransformResources,
