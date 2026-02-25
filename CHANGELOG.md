@@ -1,3 +1,13 @@
+# [3.0.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v2.1.0...v3.0.0) (2026-02-25)
+
+
+* feat!: Adding package-json option for reactors and proxies (#35) ([abb7046](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/abb704699c17098f422a68eb1194042be3002ae4)), closes [#35](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/35)
+
+
+### BREAKING CHANGES
+
+* This removes the old `*-dependencies` option in favor of `*-package-json` for reactors and proxies
+
 # [2.1.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v2.0.0...v2.1.0) (2026-02-05)
 
 

@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/2.1.0 linux-x64 node-v18.20.8
+@basis-theory-labs/cli/3.0.0 linux-x64 node-v18.20.8
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -62,7 +62,7 @@ EXAMPLES
   $ bt applications
 ```
 
-_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v2.1.0/dist/commands/applications/index.ts)_
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v3.0.0/dist/commands/applications/index.ts)_
 
 ## `bt applications create`
 
@@ -151,7 +151,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v2.1.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v3.0.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -160,10 +160,10 @@ Creates a new Pre-Configured Proxy. Requires `proxy:create` Management Applicati
 ```
 USAGE
   $ bt proxies create -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>] [-a]
-    [--request-transform-image node-bt|node22] [--request-transform-dependencies <value>] [--request-transform-timeout
+    [--request-transform-image node-bt|node22] [--request-transform-package-json <value>] [--request-transform-timeout
     <value>] [--request-transform-warm-concurrency <value>] [--request-transform-resources standard|large|xlarge]
     [--request-transform-permissions <value>] [--response-transform-image node-bt|node22]
-    [--response-transform-dependencies <value>] [--response-transform-timeout <value>]
+    [--response-transform-package-json <value>] [--response-transform-timeout <value>]
     [--response-transform-warm-concurrency <value>] [--response-transform-resources standard|large|xlarge]
     [--response-transform-permissions <value>] [--async]
 
@@ -179,19 +179,21 @@ FLAGS
   -x, --management-key=<value>                   (required) management key used for connecting with the reactor / proxy
   --async                                        do not wait for proxy to be ready (requires at least one transform with
                                                  node22)
-  --request-transform-dependencies=<value>       path to JSON file with npm dependencies, e.g. {"axios": "1.7.9",
-                                                 "lodash": "4.17.21"} (node22 only)
   --request-transform-image=<option>             request-transform runtime image (node-bt|node22)
                                                  <options: node-bt|node22>
+  --request-transform-package-json=<value>       path to runtime package.json JSON file (top-level dependencies
+                                                 required; supports resolutions or overrides fallback; pinned versions
+                                                 required) (node22 only)
   --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 only)
   --request-transform-resources=<option>         request-transform resource tier (node22 only)
                                                  <options: standard|large|xlarge>
   --request-transform-timeout=<value>            request-transform timeout in seconds, 1-30 (node22 only)
   --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 only)
-  --response-transform-dependencies=<value>      path to JSON file with npm dependencies, e.g. {"axios": "1.7.9",
-                                                 "lodash": "4.17.21"} (node22 only)
   --response-transform-image=<option>            response-transform runtime image (node-bt|node22)
                                                  <options: node-bt|node22>
+  --response-transform-package-json=<value>      path to runtime package.json JSON file (top-level dependencies
+                                                 required; supports resolutions or overrides fallback; pinned versions
+                                                 required) (node22 only)
   --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 only)
   --response-transform-resources=<option>        response-transform resource tier (node22 only)
                                                  <options: standard|large|xlarge>
@@ -222,10 +224,10 @@ EXAMPLES
     $ bt proxies create --name "My Proxy" --destination-url https://api.example.com --configuration ./config.env \
       --require-auth --request-transform-code ./request.js --request-transform-image node22 \
       --request-transform-timeout 10 --request-transform-warm-concurrency 0 --request-transform-resources standard \
-      --request-transform-dependencies ./deps.json --request-transform-permissions token:read \
+      --request-transform-package-json ./request/package.json --request-transform-permissions token:read \
       --response-transform-code ./response.js --response-transform-image node22 --response-transform-timeout 10 \
       --response-transform-warm-concurrency 0 --response-transform-resources standard \
-      --response-transform-dependencies ./deps.json --response-transform-permissions token:read
+      --response-transform-package-json ./response/package.json --response-transform-permissions token:read
 ```
 
 ## `bt proxies delete ID`
@@ -283,10 +285,10 @@ Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management App
 ```
 USAGE
   $ bt proxies update ID -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>]
-    [-a] [--request-transform-image node-bt|node22] [--request-transform-dependencies <value>]
+    [-a] [--request-transform-image node-bt|node22] [--request-transform-package-json <value>]
     [--request-transform-timeout <value>] [--request-transform-warm-concurrency <value>] [--request-transform-resources
     standard|large|xlarge] [--request-transform-permissions <value>] [--response-transform-image node-bt|node22]
-    [--response-transform-dependencies <value>] [--response-transform-timeout <value>]
+    [--response-transform-package-json <value>] [--response-transform-timeout <value>]
     [--response-transform-warm-concurrency <value>] [--response-transform-resources standard|large|xlarge]
     [--response-transform-permissions <value>] [--async] [-w] [-l]
 
@@ -307,19 +309,21 @@ FLAGS
   -x, --management-key=<value>                   (required) management key used for connecting with the reactor / proxy
   --async                                        do not wait for proxy to be ready (requires at least one transform with
                                                  node22)
-  --request-transform-dependencies=<value>       path to JSON file with npm dependencies, e.g. {"axios": "1.7.9",
-                                                 "lodash": "4.17.21"} (node22 only)
   --request-transform-image=<option>             request-transform runtime image (node-bt|node22)
                                                  <options: node-bt|node22>
+  --request-transform-package-json=<value>       path to runtime package.json JSON file (top-level dependencies
+                                                 required; supports resolutions or overrides fallback; pinned versions
+                                                 required) (node22 only)
   --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 only)
   --request-transform-resources=<option>         request-transform resource tier (node22 only)
                                                  <options: standard|large|xlarge>
   --request-transform-timeout=<value>            request-transform timeout in seconds, 1-30 (node22 only)
   --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 only)
-  --response-transform-dependencies=<value>      path to JSON file with npm dependencies, e.g. {"axios": "1.7.9",
-                                                 "lodash": "4.17.21"} (node22 only)
   --response-transform-image=<option>            response-transform runtime image (node-bt|node22)
                                                  <options: node-bt|node22>
+  --response-transform-package-json=<value>      path to runtime package.json JSON file (top-level dependencies
+                                                 required; supports resolutions or overrides fallback; pinned versions
+                                                 required) (node22 only)
   --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 only)
   --response-transform-resources=<option>        response-transform resource tier (node22 only)
                                                  <options: standard|large|xlarge>
@@ -349,10 +353,10 @@ EXAMPLES
     $ bt proxies update <proxy-id> --name "My Proxy" --destination-url https://api.example.com --configuration \
       ./config.env --require-auth --request-transform-code ./request.js --request-transform-image node22 \
       --request-transform-timeout 10 --request-transform-warm-concurrency 0 --request-transform-resources standard \
-      --request-transform-dependencies ./deps.json --request-transform-permissions token:read \
+      --request-transform-package-json ./request/package.json --request-transform-permissions token:read \
       --response-transform-code ./response.js --response-transform-image node22 --response-transform-timeout 10 \
       --response-transform-warm-concurrency 0 --response-transform-resources standard \
-      --response-transform-dependencies ./deps.json --response-transform-permissions token:read
+      --response-transform-package-json ./response/package.json --response-transform-permissions token:read
 ```
 
 ## `bt reactors`
@@ -374,7 +378,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v2.1.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v3.0.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 
@@ -383,7 +387,7 @@ Creates a new Reactor. Requires `reactor:create` Management Application permissi
 ```
 USAGE
   $ bt reactors create -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22]
-    [--dependencies <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
+    [--package-json <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
     [--permissions <value>] [--async]
 
 FLAGS
@@ -393,10 +397,10 @@ FLAGS
   -r, --code=<value>            path to JavaScript file containing the Reactor code
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
   --async                       do not wait for resource to be ready (node22 only)
-  --dependencies=<value>        path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"}
-                                (node22 only)
   --image=<option>              runtime image (node-bt|node22)
                                 <options: node-bt|node22>
+  --package-json=<value>        path to runtime package.json JSON file (top-level dependencies required; supports
+                                resolutions or overrides fallback; pinned versions required) (node22 only)
   --permissions=<value>...      permission to grant, repeatable (node22 only)
   --resources=<option>          resource tier (node22 only, default: standard)
                                 <options: standard|large|xlarge>
@@ -418,7 +422,7 @@ EXAMPLES
   Create a reactor with node22 and all runtime options
 
     $ bt reactors create --name "My Reactor" --code ./reactor.js --configuration ./config.env --image node22 \
-      --timeout 10 --warm-concurrency 0 --resources standard --dependencies ./deps.json --permissions token:read \
+      --timeout 10 --warm-concurrency 0 --resources standard --package-json ./package.json --permissions token:read \
       --permissions token:create
 ```
 
@@ -477,7 +481,7 @@ Updates an existing Reactor. Requires `reactor:update` Management Application pe
 ```
 USAGE
   $ bt reactors update ID -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22]
-    [--dependencies <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
+    [--package-json <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
     [--permissions <value>] [--async] [-w] [-l]
 
 ARGUMENTS
@@ -492,10 +496,10 @@ FLAGS
   -w, --watch                   Watch for changes in informed files
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
   --async                       do not wait for resource to be ready (node22 only)
-  --dependencies=<value>        path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"}
-                                (node22 only)
   --image=<option>              runtime image (node-bt|node22)
                                 <options: node-bt|node22>
+  --package-json=<value>        path to runtime package.json JSON file (top-level dependencies required; supports
+                                resolutions or overrides fallback; pinned versions required) (node22 only)
   --permissions=<value>...      permission to grant, repeatable (node22 only)
   --resources=<option>          resource tier (node22 only, default: standard)
                                 <options: standard|large|xlarge>
@@ -517,7 +521,7 @@ EXAMPLES
   Update a reactor with node22 and all runtime options
 
     $ bt reactors update <reactor-id> --name "My Reactor" --code ./reactor.js --configuration ./config.env --image \
-      node22 --timeout 10 --warm-concurrency 0 --resources standard --dependencies ./deps.json --permissions \
+      node22 --timeout 10 --warm-concurrency 0 --resources standard --package-json ./package.json --permissions \
       token:read --permissions token:create
 ```
 <!-- commandsstop -->
