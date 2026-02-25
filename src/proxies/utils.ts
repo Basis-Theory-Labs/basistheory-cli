@@ -42,9 +42,9 @@ const PROXY_FLAGS = {
     )})`,
     options: [...VALID_RUNTIME_IMAGES],
   }),
-  'request-transform-dependencies': Flags.file({
+  'request-transform-package-json': Flags.file({
     description:
-      'path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"} (node22 only)',
+      'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
   }),
   'request-transform-timeout': Flags.integer({
     description: 'request-transform timeout in seconds, 1-30 (node22 only)',
@@ -71,9 +71,9 @@ const PROXY_FLAGS = {
     )})`,
     options: [...VALID_RUNTIME_IMAGES],
   }),
-  'response-transform-dependencies': Flags.file({
+  'response-transform-package-json': Flags.file({
     description:
-      'path to JSON file with npm dependencies, e.g. {"axios": "1.7.9", "lodash": "4.17.21"} (node22 only)',
+      'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
   }),
   'response-transform-timeout': Flags.integer({
     description: 'response-transform timeout in seconds, 1-30 (node22 only)',

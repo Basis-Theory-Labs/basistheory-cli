@@ -113,7 +113,10 @@ describe('reactors create', () => {
           'Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
-        .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
+        .onCallResolves(
+          '(Optional) Runtime package.json file path (JSON format):',
+          ''
+        )
         .onCallResolves(
           '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
           ''
@@ -138,7 +141,11 @@ describe('reactors create', () => {
     });
 
     it('creates reactor with all runtime flags', async () => {
-      readFileStub.withArgs('./deps.json').returns('{"lodash": "^4.17.21"}');
+      readFileStub
+        .withArgs('./package.json')
+        .returns(
+          '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+        );
 
       const result = await runCommand([
         'reactors:create',
@@ -154,8 +161,8 @@ describe('reactors create', () => {
         '1',
         '--resources',
         'large',
-        '--dependencies',
-        './deps.json',
+        '--package-json',
+        './package.json',
         '--permissions',
         'token:read',
         '--permissions',
@@ -170,8 +177,50 @@ describe('reactors create', () => {
         timeout: 30,
         warmConcurrency: 1,
         resources: 'large',
-        dependencies: { lodash: '^4.17.21' },
+        dependencies: { lodash: '4.17.21' },
+        resolutions: {
+          uuid: '9.0.1',
+          nanoid: '5.0.7',
+        },
         permissions: ['token:read', 'token:write'],
+      });
+    });
+
+    it('uses overrides as resolutions when resolutions is not present', async () => {
+      readFileStub
+        .withArgs('./runtime-package-overrides.json')
+        .returns(
+          '{"dependencies":{"lodash":"4.17.21"},"overrides":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+        );
+
+      await runCommand([
+        'reactors:create',
+        '--name',
+        'Test Reactor',
+        '--code',
+        './reactor.js',
+        '--image',
+        'node22',
+        '--timeout',
+        '10',
+        '--warm-concurrency',
+        '0',
+        '--resources',
+        'standard',
+        '--package-json',
+        './runtime-package-overrides.json',
+        '--permissions',
+        'token:read',
+      ]);
+
+      const [createArg] = reactorsCreateStub.firstCall.args;
+
+      expect(createArg.runtime.dependencies).to.deep.equal({
+        lodash: '4.17.21',
+      });
+      expect(createArg.runtime.resolutions).to.deep.equal({
+        uuid: '9.0.1',
+        nanoid: '5.0.7',
       });
     });
 
@@ -189,7 +238,10 @@ describe('reactors create', () => {
           'Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
-        .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
+        .onCallResolves(
+          '(Optional) Runtime package.json file path (JSON format):',
+          ''
+        )
         .onCallResolves(
           '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
           ''
@@ -230,7 +282,10 @@ describe('reactors create', () => {
           'Warm concurrency (0-1, press Enter for default: 0):',
           ''
         )
-        .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
+        .onCallResolves(
+          '(Optional) Runtime package.json file path (JSON format):',
+          ''
+        )
         .onCallResolves(
           '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
           ''
@@ -358,7 +413,10 @@ describe('reactors create', () => {
           'Warm concurrency (0-1, press Enter for default: 0):',
           '1'
         )
-        .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
+        .onCallResolves(
+          '(Optional) Runtime package.json file path (JSON format):',
+          ''
+        )
         .onCallResolves(
           '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
           ''
@@ -467,8 +525,10 @@ describe('reactors create', () => {
       );
     });
 
-    it('errors when --dependencies used with node-bt', async () => {
-      readFileStub.withArgs('./deps.json').returns('{"lodash": "^4.17.21"}');
+    it('errors when --package-json used with node-bt', async () => {
+      readFileStub
+        .withArgs('./package.json')
+        .returns('{"dependencies":{"lodash":"4.17.21"}}');
 
       const result = await runCommand([
         'reactors:create',
@@ -478,13 +538,13 @@ describe('reactors create', () => {
         './reactor.js',
         '--image',
         'node-bt',
-        '--dependencies',
-        './deps.json',
+        '--package-json',
+        './package.json',
       ]);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--dependencies) require --image node22'
+        'Configurable runtime flags (--package-json) require --image node22'
       );
     });
 
@@ -518,7 +578,10 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves('Warm concurrency (0-1, press Enter for default):', '')
-        .onCallResolves('(Optional) Dependencies file path (JSON format):', '')
+        .onCallResolves(
+          '(Optional) Runtime package.json file path (JSON format):',
+          ''
+        )
         .onCallResolves(
           '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
           ''
@@ -592,13 +655,13 @@ describe('reactors create', () => {
         'node22',
         '--resources',
         'standard',
-        '--dependencies',
+        '--package-json',
         './invalid.json',
       ]);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Failed to parse dependencies file'
+        'Failed to parse package.json file'
       );
     });
 
@@ -634,7 +697,7 @@ describe('reactors create', () => {
         'node22',
         '--resources',
         'standard',
-        '--dependencies',
+        '--package-json',
         './missing.json',
       ]);
 

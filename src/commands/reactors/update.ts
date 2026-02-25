@@ -38,7 +38,7 @@ export default class Update extends BaseCommand {
         '--timeout 10 ' +
         '--warm-concurrency 0 ' +
         '--resources standard ' +
-        '--dependencies ./deps.json ' +
+        '--package-json ./package.json ' +
         '--permissions token:read ' +
         '--permissions token:create',
     },
@@ -80,7 +80,7 @@ export default class Update extends BaseCommand {
       'application-id': applicationId,
       configuration,
       image,
-      dependencies,
+      'package-json': packageJson,
       timeout,
       'warm-concurrency': warmConcurrency,
       resources,
@@ -94,7 +94,7 @@ export default class Update extends BaseCommand {
 
     const runtime = buildRuntime({
       image,
-      dependencies,
+      packageJson,
       timeout,
       warmConcurrency,
       resources,

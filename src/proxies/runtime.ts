@@ -99,7 +99,7 @@ const promptTransformRuntime = async (
       | number
       | undefined,
     resources: flags[`${prefix}-transform-resources`] as string | undefined,
-    dependencies: flags[`${prefix}-transform-dependencies`] as
+    'package-json': flags[`${prefix}-transform-package-json`] as
       | string
       | undefined,
     permissions: flags[`${prefix}-transform-permissions`] as

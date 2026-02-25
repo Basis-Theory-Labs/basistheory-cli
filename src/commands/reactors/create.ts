@@ -40,7 +40,7 @@ export default class Create extends BaseCommand {
         '--timeout 10 ' +
         '--warm-concurrency 0 ' +
         '--resources standard ' +
-        '--dependencies ./deps.json ' +
+        '--package-json ./package.json ' +
         '--permissions token:read ' +
         '--permissions token:create',
     },
@@ -57,7 +57,7 @@ export default class Create extends BaseCommand {
       timeout,
       'warm-concurrency': warmConcurrency,
       resources,
-      dependencies,
+      'package-json': packageJson,
       permissions,
       'application-id': applicationId,
       async: asyncFlag,
@@ -97,7 +97,7 @@ export default class Create extends BaseCommand {
         timeout,
         'warm-concurrency': warmConcurrency,
         resources,
-        dependencies,
+        'package-json': packageJson,
         permissions,
       });
 
