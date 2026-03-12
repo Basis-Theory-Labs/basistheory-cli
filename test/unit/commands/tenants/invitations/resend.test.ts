@@ -22,10 +22,7 @@ describe('tenants invitations resend', () => {
   });
 
   it('resends invitation', async () => {
-    const result = await runCommand([
-      'tenants:invitations:resend',
-      'inv-123',
-    ]);
+    const result = await runCommand(['tenants:invitations:resend', 'inv-123']);
 
     expect(result.stdout).to.contain('Invitation resent successfully!');
     expect(invitationsResendStub.calledOnce).to.be.true;

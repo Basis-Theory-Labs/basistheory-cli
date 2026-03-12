@@ -26,11 +26,7 @@ describe('tokens delete', () => {
 
   describe('with --force flag', () => {
     it('deletes token without confirmation prompt', async () => {
-      const result = await runCommand([
-        'tokens:delete',
-        'tok-123',
-        '--force',
-      ]);
+      const result = await runCommand(['tokens:delete', 'tok-123', '--force']);
 
       expect(result.stdout).to.contain('Token deleted successfully!');
       expect(tokensDeleteStub.calledOnce).to.be.true;
@@ -81,11 +77,7 @@ describe('tokens delete', () => {
     it('handles API errors', async () => {
       tokensDeleteStub.rejects(new Error('Token not found'));
 
-      const result = await runCommand([
-        'tokens:delete',
-        'tok-123',
-        '--force',
-      ]);
+      const result = await runCommand(['tokens:delete', 'tok-123', '--force']);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain('Token not found');

@@ -1,7 +1,7 @@
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import type { BasisTheory } from '@basis-theory/node-sdk';
 import { Flags } from '@oclif/core';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { ApiCommand } from '../../api-command';
 
 export default class Upload extends ApiCommand {

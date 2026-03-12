@@ -73,11 +73,7 @@ describe('tenants update', () => {
     it('handles API errors', async () => {
       selfUpdateStub.rejects(new Error('Update failed'));
 
-      const result = await runCommand([
-        'tenants:update',
-        '--name',
-        'Updated',
-      ]);
+      const result = await runCommand(['tenants:update', '--name', 'Updated']);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain('Update failed');

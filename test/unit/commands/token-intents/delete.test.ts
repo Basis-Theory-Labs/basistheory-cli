@@ -39,11 +39,7 @@ describe('token-intents delete', () => {
     });
 
     it('accepts -f shorthand flag', async () => {
-      const result = await runCommand([
-        'token-intents:delete',
-        'ti-456',
-        '-f',
-      ]);
+      const result = await runCommand(['token-intents:delete', 'ti-456', '-f']);
 
       expect(result.stdout).to.contain('Token intent deleted successfully!');
       expect(tokenIntentsDeleteStub.calledWith('ti-456')).to.be.true;

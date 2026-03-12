@@ -11,6 +11,7 @@ export const keyMetadataFixtures = [
 
 export const keyResponseFixture = {
   keyId: 'key-new',
-  publicKeyPem: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBg...\n-----END PUBLIC KEY-----',
+  publicKeyPem:
+    '-----BEGIN PUBLIC KEY-----\nMIIBIjANBg...\n-----END PUBLIC KEY-----',
   expiresAt: new Date('2025-12-31'),
 };

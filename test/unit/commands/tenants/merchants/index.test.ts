@@ -9,10 +9,12 @@ describe('tenants merchants', () => {
   beforeEach(() => {
     fetchStub = sinon.stub(global, 'fetch');
 
-    fetchStub.resolves(new Response(
-      JSON.stringify({ data: tenantMerchantFixtures }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    ));
+    fetchStub.resolves(
+      new Response(JSON.stringify({ data: tenantMerchantFixtures }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
   });
 
   afterEach(() => {
@@ -49,10 +51,12 @@ describe('tenants merchants', () => {
   });
 
   it('shows message when no merchants found', async () => {
-    fetchStub.resolves(new Response(
-      JSON.stringify({ data: [] }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    ));
+    fetchStub.resolves(
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
 
     const result = await runCommand([
       'tenants:merchants',
@@ -65,10 +69,7 @@ describe('tenants merchants', () => {
 
   describe('error handling', () => {
     it('handles API errors', async () => {
-      fetchStub.resolves(new Response(
-        'Unauthorized',
-        { status: 401 }
-      ));
+      fetchStub.resolves(new Response('Unauthorized', { status: 401 }));
 
       const result = await runCommand([
         'tenants:merchants',

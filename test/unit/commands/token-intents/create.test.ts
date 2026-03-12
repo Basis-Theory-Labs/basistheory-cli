@@ -37,7 +37,9 @@ describe('token-intents create', () => {
     expect(createArg.type).to.equal('card');
     expect(createArg.data).to.deep.equal({
       number: '4242424242424242',
+      // eslint-disable-next-line camelcase
       expiration_month: 12,
+      // eslint-disable-next-line camelcase
       expiration_year: 2025,
     });
   });
@@ -54,11 +56,7 @@ describe('token-intents create', () => {
   });
 
   it('requires --data or --file flag', async () => {
-    const result = await runCommand([
-      'token-intents:create',
-      '--type',
-      'card',
-    ]);
+    const result = await runCommand(['token-intents:create', '--type', 'card']);
 
     expect(result.error).to.exist;
     expect(result.error!.message).to.contain(

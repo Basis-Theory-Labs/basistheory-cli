@@ -31,7 +31,10 @@ export default class Create extends ApiCommand {
   public async run(): Promise<void> {
     const { bt, flags } = await this.parse(Create);
 
-    const jsonData = readJsonInput({ data: flags.data, file: flags.file });
+    const jsonData = readJsonInput({
+      data: flags.data,
+      file: flags.file,
+    });
 
     const request = jsonData ?? {
       tokenId: flags['token-id'],

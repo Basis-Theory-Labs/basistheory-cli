@@ -40,9 +40,7 @@ describe('connections stripe-forward tokenize', () => {
   });
 
   it('requires data or file flag', async () => {
-    const result = await runCommand([
-      'connections:stripe-forward:tokenize',
-    ]);
+    const result = await runCommand(['connections:stripe-forward:tokenize']);
 
     expect(result.error).to.exist;
     expect(result.error!.message).to.contain(

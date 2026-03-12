@@ -38,9 +38,7 @@ describe('google-pay merchants certificates get', () => {
   });
 
   it('requires merchant-id and certificate-id arguments', async () => {
-    const result = await runCommand([
-      'google-pay:merchants:certificates:get',
-    ]);
+    const result = await runCommand(['google-pay:merchants:certificates:get']);
 
     expect(result.error).to.exist;
     expect(result.error!.message).to.contain('Missing 2 required arg');

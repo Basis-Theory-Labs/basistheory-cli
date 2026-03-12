@@ -1,10 +1,9 @@
-import { readFileSync } from 'fs';
 import { Args, Flags } from '@oclif/core';
+import { readFileSync } from 'fs';
 import { ApiCommand } from '../../../../api-command';
 
 export default class Create extends ApiCommand {
-  public static description =
-    'Create Apple Pay merchant certificates';
+  public static description = 'Create Apple Pay merchant certificates';
 
   public static examples = ['<%= config.bin %> <%= command.id %> merch-123'];
 

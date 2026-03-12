@@ -32,13 +32,7 @@ describe('tenants invitations', () => {
   });
 
   it('passes page and size flags to SDK', async () => {
-    await runCommand([
-      'tenants:invitations',
-      '--page',
-      '2',
-      '--size',
-      '10',
-    ]);
+    await runCommand(['tenants:invitations', '--page', '2', '--size', '10']);
 
     const [listArg] = invitationsListStub.firstCall.args;
 

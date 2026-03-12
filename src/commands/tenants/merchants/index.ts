@@ -40,7 +40,7 @@ export default class Merchants extends BaseCommand {
       this.error(`Request failed with status ${response.status}: ${errorBody}`);
     }
 
-    const result = await response.json() as any;
+    const result = (await response.json()) as any;
 
     if (flags.json) {
       this.logJson(result);
@@ -50,7 +50,7 @@ export default class Merchants extends BaseCommand {
 
     const merchants = result.data ?? [];
 
-    if (merchants.length === 0) {
+    if (!merchants.length) {
       this.log('No merchants found.');
 
       return;

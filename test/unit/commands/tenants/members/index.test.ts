@@ -31,13 +31,7 @@ describe('tenants members', () => {
   });
 
   it('passes page and size flags to SDK', async () => {
-    await runCommand([
-      'tenants:members',
-      '--page',
-      '2',
-      '--size',
-      '10',
-    ]);
+    await runCommand(['tenants:members', '--page', '2', '--size', '10']);
 
     const [listArg] = membersListStub.firstCall.args;
 
@@ -46,11 +40,7 @@ describe('tenants members', () => {
   });
 
   it('passes user-id flag to SDK', async () => {
-    await runCommand([
-      'tenants:members',
-      '--user-id',
-      'user-1',
-    ]);
+    await runCommand(['tenants:members', '--user-id', 'user-1']);
 
     const [listArg] = membersListStub.firstCall.args;
 

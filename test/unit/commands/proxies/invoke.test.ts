@@ -5,7 +5,12 @@ import { runCommand } from '../../helpers/run-command';
 describe('proxies invoke', () => {
   let fetchStub: sinon.SinonStub;
 
-  const proxyResponse = { result: 'success', data: { key: 'value' } };
+  const proxyResponse = {
+    result: 'success',
+    data: {
+      key: 'value',
+    },
+  };
 
   beforeEach(() => {
     fetchStub = sinon.stub(global, 'fetch');
@@ -56,9 +61,7 @@ describe('proxies invoke', () => {
 
     const [, options] = fetchStub.firstCall.args;
 
-    expect(options.headers['BT-PROXY-URL']).to.equal(
-      'https://example.com/api'
-    );
+    expect(options.headers['BT-PROXY-URL']).to.equal('https://example.com/api');
     expect(result.stdout).to.contain('success');
   });
 
@@ -95,11 +98,7 @@ describe('proxies invoke', () => {
   });
 
   it('errors when neither --proxy-url nor --proxy-key provided', async () => {
-    const result = await runCommand([
-      'proxies:invoke',
-      '--data',
-      '{}',
-    ]);
+    const result = await runCommand(['proxies:invoke', '--data', '{}']);
 
     expect(result.error).to.exist;
     expect(result.error!.message).to.contain(

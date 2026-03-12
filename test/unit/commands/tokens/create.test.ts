@@ -54,11 +54,7 @@ describe('tokens create', () => {
   });
 
   it('creates a token with token-intent-id', async () => {
-    await runCommand([
-      'tokens:create',
-      '--token-intent-id',
-      'ti-123',
-    ]);
+    await runCommand(['tokens:create', '--token-intent-id', 'ti-123']);
 
     const [createArg] = tokensCreateStub.firstCall.args;
 

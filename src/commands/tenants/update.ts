@@ -41,7 +41,7 @@ export default class Update extends BaseCommand {
 
     const tenant = await bt.tenants.self.update({
       name: flags.name || '',
-      settings: Object.keys(settings).length > 0 ? settings : undefined,
+      settings: Object.keys(settings).length ? settings : undefined,
     });
 
     this.log('Tenant updated successfully!');

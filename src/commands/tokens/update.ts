@@ -49,7 +49,10 @@ export default class Update extends ApiCommand {
       flags,
     } = await this.parse(Update);
 
-    const data = readJsonInput({ data: flags.data, file: flags.file });
+    const data = readJsonInput({
+      data: flags.data,
+      file: flags.file,
+    });
 
     const metadata: Record<string, string> | undefined = flags.metadata?.length
       ? Object.fromEntries(

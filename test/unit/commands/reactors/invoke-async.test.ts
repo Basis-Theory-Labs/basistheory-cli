@@ -41,10 +41,7 @@ describe('reactors invoke-async', () => {
   });
 
   it('invokes reactor asynchronously without body', async () => {
-    const result = await runCommand([
-      'reactors:invoke-async',
-      'reactor-123',
-    ]);
+    const result = await runCommand(['reactors:invoke-async', 'reactor-123']);
 
     expect(reactAsyncStub.calledOnce).to.be.true;
     expect(reactAsyncStub.firstCall.args[0]).to.equal('reactor-123');

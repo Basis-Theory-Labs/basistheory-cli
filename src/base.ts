@@ -18,7 +18,8 @@ const formatApiError = (
   const title = body.title || (raw.Title as string);
   const status = body.status || (raw.Status as number);
   const detail = body.detail || (raw.Detail as string);
-  const errors = 'errors' in body ? body.errors : (raw.Errors as Record<string, string[]>);
+  const errors =
+    'errors' in body ? body.errors : (raw.Errors as Record<string, string[]>);
 
   if (title) {
     const statusStr = status ? ` [${status}]` : '';

@@ -1,5 +1,5 @@
-import { readFileSync } from 'fs';
 import { Args, Flags } from '@oclif/core';
+import { readFileSync } from 'fs';
 import { ApiCommand } from '../../../../api-command';
 
 export default class Create extends ApiCommand {

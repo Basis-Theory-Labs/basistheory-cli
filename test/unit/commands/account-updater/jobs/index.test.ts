@@ -34,11 +34,7 @@ describe('account-updater jobs', () => {
   });
 
   it('passes size flag', async () => {
-    const result = await runCommand([
-      'account-updater:jobs',
-      '--size',
-      '10',
-    ]);
+    const result = await runCommand(['account-updater:jobs', '--size', '10']);
 
     expect(result.stdout).to.contain('job-1');
     expect(jobsListStub.calledOnce).to.be.true;

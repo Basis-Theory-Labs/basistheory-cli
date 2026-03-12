@@ -1,5 +1,5 @@
-import { Flags } from '@oclif/core';
 import type { BasisTheory } from '@basis-theory/node-sdk';
+import { Flags } from '@oclif/core';
 import { ApiCommand } from '../../api-command';
 import { requireJsonInput } from '../../json-input';
 
@@ -26,7 +26,10 @@ export default class Create extends ApiCommand {
   public async run(): Promise<void> {
     const { bt, flags } = await this.parse(Create);
 
-    const data = requireJsonInput({ data: flags.data, file: flags.file });
+    const data = requireJsonInput({
+      data: flags.data,
+      file: flags.file,
+    });
 
     const result = await bt.googlePay.create({
       googlePaymentData: data as BasisTheory.GooglePayMethodToken,

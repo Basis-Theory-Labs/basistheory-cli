@@ -1,5 +1,5 @@
-import { Args, Flags } from '@oclif/core';
 import type { BasisTheory } from '@basis-theory/node-sdk';
+import { Args, Flags } from '@oclif/core';
 import { ApiCommand } from '../../../api-command';
 import { requireJsonInput } from '../../../json-input';
 
@@ -33,9 +33,15 @@ export default class Authenticate extends ApiCommand {
       flags,
     } = await this.parse(Authenticate);
 
-    const request = requireJsonInput({ data: flags.data, file: flags.file });
+    const request = requireJsonInput({
+      data: flags.data,
+      file: flags.file,
+    });
 
-    const result = await bt.threeds.sessions.authenticate(id, request as BasisTheory.AuthenticateThreeDsSessionRequest);
+    const result = await bt.threeds.sessions.authenticate(
+      id,
+      request as BasisTheory.AuthenticateThreeDsSessionRequest
+    );
 
     this.logJson(result);
   }

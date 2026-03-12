@@ -38,13 +38,7 @@ describe('tokens search', () => {
   it('passes query and size to API', async () => {
     tokensSearchV2Stub.resolves({ data: [] });
 
-    await runCommand([
-      'tokens:search',
-      '--query',
-      'data:4242',
-      '--size',
-      '10',
-    ]);
+    await runCommand(['tokens:search', '--query', 'data:4242', '--size', '10']);
 
     expect(
       tokensSearchV2Stub.calledWith({
@@ -86,11 +80,7 @@ describe('tokens search', () => {
   it('handles API errors', async () => {
     tokensSearchV2Stub.rejects(new Error('Search failed'));
 
-    const result = await runCommand([
-      'tokens:search',
-      '--query',
-      'data:test',
-    ]);
+    const result = await runCommand(['tokens:search', '--query', 'data:test']);
 
     expect(result.error).to.exist;
     expect(result.error!.message).to.contain('Search failed');

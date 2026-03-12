@@ -1,13 +1,11 @@
-import { Args, Flags } from '@oclif/core';
 import confirm from '@inquirer/confirm';
+import { Args, Flags } from '@oclif/core';
 import { BaseCommand } from '../../base';
 
 export default class Delete extends BaseCommand {
   public static description = 'Delete a webhook';
 
-  public static examples = [
-    '<%= config.bin %> <%= command.id %> wh-123',
-  ];
+  public static examples = ['<%= config.bin %> <%= command.id %> wh-123'];
 
   public static args = {
     id: Args.string({

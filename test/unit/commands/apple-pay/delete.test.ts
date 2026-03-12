@@ -26,15 +26,9 @@ describe('apple-pay delete', () => {
 
   describe('with --force flag', () => {
     it('deletes without confirmation prompt', async () => {
-      const result = await runCommand([
-        'apple-pay:delete',
-        'ap-1',
-        '--force',
-      ]);
+      const result = await runCommand(['apple-pay:delete', 'ap-1', '--force']);
 
-      expect(result.stdout).to.contain(
-        'Apple Pay token deleted successfully!'
-      );
+      expect(result.stdout).to.contain('Apple Pay token deleted successfully!');
       expect(applePayDeleteStub.calledOnce).to.be.true;
       expect(applePayDeleteStub.calledWith('ap-1')).to.be.true;
       expect(confirmStub.called).to.be.false;
@@ -43,9 +37,7 @@ describe('apple-pay delete', () => {
     it('accepts -f shorthand flag', async () => {
       const result = await runCommand(['apple-pay:delete', 'ap-1', '-f']);
 
-      expect(result.stdout).to.contain(
-        'Apple Pay token deleted successfully!'
-      );
+      expect(result.stdout).to.contain('Apple Pay token deleted successfully!');
       expect(applePayDeleteStub.calledWith('ap-1')).to.be.true;
     });
   });
@@ -56,9 +48,7 @@ describe('apple-pay delete', () => {
 
       const result = await runCommand(['apple-pay:delete', 'ap-1']);
 
-      expect(result.stdout).to.contain(
-        'Apple Pay token deleted successfully!'
-      );
+      expect(result.stdout).to.contain('Apple Pay token deleted successfully!');
       expect(confirmStub.calledOnce).to.be.true;
       expect(applePayDeleteStub.calledOnce).to.be.true;
     });
@@ -89,11 +79,7 @@ describe('apple-pay delete', () => {
     it('handles API errors', async () => {
       applePayDeleteStub.rejects(new Error('Not found'));
 
-      const result = await runCommand([
-        'apple-pay:delete',
-        'ap-1',
-        '--force',
-      ]);
+      const result = await runCommand(['apple-pay:delete', 'ap-1', '--force']);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain('Not found');

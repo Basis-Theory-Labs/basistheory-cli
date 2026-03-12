@@ -32,9 +32,7 @@ describe('apple-pay domains register', () => {
 
     expect(result.stdout).to.contain('example.com');
     expect(domainRegisterStub.calledOnce).to.be.true;
-    expect(domainRegisterStub.firstCall.args[0].domain).to.equal(
-      'example.com'
-    );
+    expect(domainRegisterStub.firstCall.args[0].domain).to.equal('example.com');
   });
 
   it('requires --domain flag', async () => {

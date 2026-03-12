@@ -1,6 +1,6 @@
+import { Args, Flags } from '@oclif/core';
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
-import { Args, Flags } from '@oclif/core';
 import { ApiCommand } from '../../api-command';
 
 export default class Download extends ApiCommand {

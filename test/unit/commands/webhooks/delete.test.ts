@@ -26,11 +26,7 @@ describe('webhooks delete', () => {
 
   describe('with --force flag', () => {
     it('deletes webhook without confirmation prompt', async () => {
-      const result = await runCommand([
-        'webhooks:delete',
-        'wh-1',
-        '--force',
-      ]);
+      const result = await runCommand(['webhooks:delete', 'wh-1', '--force']);
 
       expect(result.stdout).to.contain('Webhook deleted successfully!');
       expect(webhooksDeleteStub.calledOnce).to.be.true;
@@ -81,11 +77,7 @@ describe('webhooks delete', () => {
     it('handles API errors', async () => {
       webhooksDeleteStub.rejects(new Error('Webhook not found'));
 
-      const result = await runCommand([
-        'webhooks:delete',
-        'wh-1',
-        '--force',
-      ]);
+      const result = await runCommand(['webhooks:delete', 'wh-1', '--force']);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain('Webhook not found');

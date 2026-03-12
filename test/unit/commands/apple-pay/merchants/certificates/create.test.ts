@@ -1,6 +1,6 @@
-import fs from 'fs';
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
 import { expect } from 'chai';
+import fs from 'fs';
 import sinon from 'sinon';
 import { applePayMerchantCertificatesFixture } from '../../../../fixtures/apple-pay';
 import { runCommand } from '../../../../helpers/run-command';
@@ -56,8 +56,7 @@ describe('apple-pay merchants certificates create', () => {
       certificatesCreateStub.firstCall.args[1].merchantCertificatePassword
     ).to.equal('pass1');
     expect(
-      certificatesCreateStub.firstCall.args[1]
-        .paymentProcessorCertificateData
+      certificatesCreateStub.firstCall.args[1].paymentProcessorCertificateData
     ).to.equal(Buffer.from('cert-data').toString('base64'));
     expect(
       certificatesCreateStub.firstCall.args[1]

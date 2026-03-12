@@ -50,10 +50,7 @@ describe('3ds sessions authenticate', () => {
   });
 
   it('requires data or file flag', async () => {
-    const result = await runCommand([
-      '3ds:sessions:authenticate',
-      'sess-1',
-    ]);
+    const result = await runCommand(['3ds:sessions:authenticate', 'sess-1']);
 
     expect(result.error).to.exist;
     expect(result.error!.message).to.contain(

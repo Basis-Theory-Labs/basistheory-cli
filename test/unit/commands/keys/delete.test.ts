@@ -26,11 +26,7 @@ describe('keys delete', () => {
 
   describe('with --force flag', () => {
     it('deletes key without confirmation prompt', async () => {
-      const result = await runCommand([
-        'keys:delete',
-        'key-1',
-        '--force',
-      ]);
+      const result = await runCommand(['keys:delete', 'key-1', '--force']);
 
       expect(result.stdout).to.contain('Key deleted successfully!');
       expect(keysDeleteStub.calledOnce).to.be.true;
@@ -81,11 +77,7 @@ describe('keys delete', () => {
     it('handles API errors', async () => {
       keysDeleteStub.rejects(new Error('Key not found'));
 
-      const result = await runCommand([
-        'keys:delete',
-        'key-1',
-        '--force',
-      ]);
+      const result = await runCommand(['keys:delete', 'key-1', '--force']);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain('Key not found');

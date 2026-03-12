@@ -5,9 +5,7 @@ import { ApiCommand } from '../../api-command';
 export default class Delete extends ApiCommand {
   public static description = 'Delete a token intent';
 
-  public static examples = [
-    '<%= config.bin %> <%= command.id %> ti-123',
-  ];
+  public static examples = ['<%= config.bin %> <%= command.id %> ti-123'];
 
   public static args = {
     id: Args.string({

@@ -26,11 +26,7 @@ describe('google-pay delete', () => {
 
   describe('with --force flag', () => {
     it('deletes without confirmation prompt', async () => {
-      const result = await runCommand([
-        'google-pay:delete',
-        'gp-1',
-        '--force',
-      ]);
+      const result = await runCommand(['google-pay:delete', 'gp-1', '--force']);
 
       expect(result.stdout).to.contain(
         'Google Pay token deleted successfully!'
@@ -89,11 +85,7 @@ describe('google-pay delete', () => {
     it('handles API errors', async () => {
       googlePayDeleteStub.rejects(new Error('Not found'));
 
-      const result = await runCommand([
-        'google-pay:delete',
-        'gp-1',
-        '--force',
-      ]);
+      const result = await runCommand(['google-pay:delete', 'gp-1', '--force']);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain('Not found');

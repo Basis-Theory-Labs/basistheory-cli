@@ -33,9 +33,9 @@ describe('apple-pay merchants create', () => {
     expect(result.stdout).to.contain('merch-1');
     expect(result.stdout).to.contain('merchant.com.example');
     expect(merchantCreateStub.calledOnce).to.be.true;
-    expect(
-      merchantCreateStub.firstCall.args[0].merchantIdentifier
-    ).to.equal('merchant.com.example');
+    expect(merchantCreateStub.firstCall.args[0].merchantIdentifier).to.equal(
+      'merchant.com.example'
+    );
   });
 
   it('requires --merchant-identifier flag', async () => {

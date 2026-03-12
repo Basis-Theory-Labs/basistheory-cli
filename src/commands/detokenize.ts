@@ -21,7 +21,10 @@ export default class Detokenize extends ApiCommand {
   public async run(): Promise<void> {
     const { bt, flags } = await this.parse(Detokenize);
 
-    const input = requireJsonInput({ data: flags.data, file: flags.file });
+    const input = requireJsonInput({
+      data: flags.data,
+      file: flags.file,
+    });
 
     const result = await bt.tokens.detokenize(input);
 

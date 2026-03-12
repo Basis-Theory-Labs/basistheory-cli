@@ -21,12 +21,13 @@ export default class Tokenize extends ApiCommand {
   public async run(): Promise<void> {
     const { flags } = await this.parse(Tokenize);
 
-    const data = requireJsonInput({ data: flags.data, file: flags.file });
+    const data = requireJsonInput({
+      data: flags.data,
+      file: flags.file,
+    });
 
-    const apiKey =
-      flags['api-key'] || flags['management-key'];
-    const baseUrl =
-      flags['api-base-url'] || 'https://api.basistheory.com';
+    const apiKey = flags['api-key'] || flags['management-key'];
+    const baseUrl = flags['api-base-url'] || 'https://api.basistheory.com';
 
     const response = await fetch(
       `${baseUrl}/connections/stripe-forward/tokenize`,

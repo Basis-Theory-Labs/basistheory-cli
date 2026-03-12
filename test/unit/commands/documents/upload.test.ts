@@ -55,7 +55,10 @@ describe('documents upload', () => {
     const uploadArg = uploadStub.firstCall.args[0];
 
     expect(uploadArg.request).to.deep.equal({
-      metadata: { category: 'reports', owner: 'test-user' },
+      metadata: {
+        category: 'reports',
+        owner: 'test-user',
+      },
     });
     expect(result.stdout).to.contain('Document uploaded successfully!');
   });

@@ -12,6 +12,12 @@ export const logFixtures = [
 ];
 
 export const entityTypeFixtures = [
-  { displayName: 'Application', value: 'application' },
-  { displayName: 'Token', value: 'token' },
+  {
+    displayName: 'Application',
+    value: 'application',
+  },
+  {
+    displayName: 'Token',
+    value: 'token',
+  },
 ];

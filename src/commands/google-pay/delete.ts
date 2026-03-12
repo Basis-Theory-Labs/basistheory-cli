@@ -1,5 +1,5 @@
-import { Args, Flags } from '@oclif/core';
 import confirm from '@inquirer/confirm';
+import { Args, Flags } from '@oclif/core';
 import { ApiCommand } from '../../api-command';
 
 export default class Delete extends ApiCommand {

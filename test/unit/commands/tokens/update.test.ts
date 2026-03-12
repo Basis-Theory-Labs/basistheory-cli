@@ -51,12 +51,7 @@ describe('tokens update', () => {
   });
 
   it('updates a token with metadata', async () => {
-    await runCommand([
-      'tokens:update',
-      'tok-1',
-      '--metadata',
-      'env=staging',
-    ]);
+    await runCommand(['tokens:update', 'tok-1', '--metadata', 'env=staging']);
 
     const [, updateArg] = tokensUpdateStub.firstCall.args;
 

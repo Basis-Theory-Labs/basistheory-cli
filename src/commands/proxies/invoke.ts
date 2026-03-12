@@ -71,7 +71,10 @@ export default class Invoke extends ApiCommand {
       headers['BT-PROXY-KEY'] = proxyKey;
     }
 
-    const body = readJsonInput({ data, file });
+    const body = readJsonInput({
+      data,
+      file,
+    });
 
     const response = await fetch(url, {
       method: method || 'POST',
@@ -82,9 +85,7 @@ export default class Invoke extends ApiCommand {
     const responseText = await response.text();
 
     if (!response.ok) {
-      this.error(
-        `Proxy request failed [${response.status}]: ${responseText}`
-      );
+      this.error(`Proxy request failed [${response.status}]: ${responseText}`);
     }
 
     try {

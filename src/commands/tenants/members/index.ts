@@ -39,7 +39,7 @@ export default class Members extends BaseCommand {
 
     const members = result.data ?? [];
 
-    if (members.length === 0) {
+    if (!members.length) {
       this.log('No members found.');
 
       return;

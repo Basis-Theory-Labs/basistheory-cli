@@ -19,7 +19,10 @@ describe('tokenize', () => {
   });
 
   it('tokenizes data with --data flag', async () => {
-    const tokenizeResult = { id: 'tok-1', type: 'token' };
+    const tokenizeResult = {
+      id: 'tok-1',
+      type: 'token',
+    };
 
     tokensTokenizeStub.resolves(tokenizeResult);
 
@@ -33,7 +36,10 @@ describe('tokenize', () => {
     expect(tokensTokenizeStub.calledOnce).to.be.true;
     const [input] = tokensTokenizeStub.firstCall.args;
 
-    expect(input).to.deep.equal({ type: 'token', data: 'secret' });
+    expect(input).to.deep.equal({
+      type: 'token',
+      data: 'secret',
+    });
   });
 
   it('requires --data or --file flag', async () => {

@@ -5,7 +5,7 @@ export default class Search extends ApiCommand {
   public static description = 'Search tokens';
 
   public static examples = [
-    '<%= config.bin %> <%= command.id %> --query \'data:4242\'',
+    "<%= config.bin %> <%= command.id %> --query 'data:4242'",
   ];
 
   public static flags = {
@@ -25,7 +25,10 @@ export default class Search extends ApiCommand {
       flags: { query, size },
     } = await this.parse(Search);
 
-    const result = await bt.tokens.searchV2({ query, size });
+    const result = await bt.tokens.searchV2({
+      query,
+      size,
+    });
 
     if (!result.data?.length) {
       this.log('No tokens found.');

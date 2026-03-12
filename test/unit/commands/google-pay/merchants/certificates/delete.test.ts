@@ -41,8 +41,7 @@ describe('google-pay merchants certificates delete', () => {
         'Google Pay merchant certificate deleted successfully!'
       );
       expect(certificatesDeleteStub.calledOnce).to.be.true;
-      expect(certificatesDeleteStub.calledWith('merch-1', 'cert-1')).to.be
-        .true;
+      expect(certificatesDeleteStub.calledWith('merch-1', 'cert-1')).to.be.true;
       expect(confirmStub.called).to.be.false;
     });
   });

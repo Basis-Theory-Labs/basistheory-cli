@@ -54,10 +54,7 @@ describe('tenants members delete', () => {
     it('deletes member when user confirms', async () => {
       confirmStub.resolves(true);
 
-      const result = await runCommand([
-        'tenants:members:delete',
-        'member-123',
-      ]);
+      const result = await runCommand(['tenants:members:delete', 'member-123']);
 
       expect(result.stdout).to.contain('Member deleted successfully!');
       expect(confirmStub.calledOnce).to.be.true;
@@ -67,10 +64,7 @@ describe('tenants members delete', () => {
     it('does not delete member when user declines', async () => {
       confirmStub.resolves(false);
 
-      const result = await runCommand([
-        'tenants:members:delete',
-        'member-123',
-      ]);
+      const result = await runCommand(['tenants:members:delete', 'member-123']);
 
       expect(result.stdout).to.not.contain('Member deleted successfully!');
       expect(confirmStub.calledOnce).to.be.true;

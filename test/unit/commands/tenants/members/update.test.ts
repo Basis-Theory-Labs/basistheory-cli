@@ -66,10 +66,7 @@ describe('tenants members update', () => {
     });
 
     it('requires role flag', async () => {
-      const result = await runCommand([
-        'tenants:members:update',
-        'member-123',
-      ]);
+      const result = await runCommand(['tenants:members:update', 'member-123']);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain('Missing required flag');

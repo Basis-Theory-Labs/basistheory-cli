@@ -18,7 +18,9 @@ export const tokenFixtures: Record<string, BasisTheory.Token> = {
     tenantId: 't1',
     data: {
       number: '4242...4242',
+      // eslint-disable-next-line camelcase
       expiration_month: 12,
+      // eslint-disable-next-line camelcase
       expiration_year: 2025,
     },
     containers: ['/pci/high/'],

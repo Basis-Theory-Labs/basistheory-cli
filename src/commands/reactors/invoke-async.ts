@@ -33,7 +33,10 @@ export default class InvokeAsync extends ApiCommand {
       flags: { data, file },
     } = await this.parse(InvokeAsync);
 
-    const body = readJsonInput({ data, file });
+    const body = readJsonInput({
+      data,
+      file,
+    });
 
     const result = await bt.reactors.reactAsync(
       id,

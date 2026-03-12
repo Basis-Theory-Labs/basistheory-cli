@@ -33,7 +33,10 @@ describe('detokenize', () => {
     expect(tokensDetokenizeStub.calledOnce).to.be.true;
     const [input] = tokensDetokenizeStub.firstCall.args;
 
-    expect(input).to.deep.equal({ token_id: 'tok-123' });
+    expect(input).to.deep.equal({
+      // eslint-disable-next-line camelcase
+      token_id: 'tok-123',
+    });
   });
 
   it('requires --data or --file flag', async () => {

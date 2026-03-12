@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, unlinkSync } from 'fs';
-import { resolve } from 'path';
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
 import { expect } from 'chai';
+import { existsSync, readFileSync, unlinkSync } from 'fs';
+import { resolve } from 'path';
 import sinon from 'sinon';
 import { runCommand } from '../../helpers/run-command';
 
@@ -23,10 +23,14 @@ describe('documents download', () => {
 
     dataGetStub.resolves({
       bodyUsed: false,
-      arrayBuffer: sinon.stub().resolves(contentBuffer.buffer.slice(
-        contentBuffer.byteOffset,
-        contentBuffer.byteOffset + contentBuffer.byteLength
-      )),
+      arrayBuffer: sinon
+        .stub()
+        .resolves(
+          contentBuffer.buffer.slice(
+            contentBuffer.byteOffset,
+            contentBuffer.byteOffset + contentBuffer.byteLength
+          )
+        ),
     });
   });
 

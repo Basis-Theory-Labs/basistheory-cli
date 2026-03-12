@@ -41,7 +41,10 @@ describe('account-updater jobs get', () => {
   it('handles API errors', async () => {
     jobsGetStub.rejects(new Error('Job not found'));
 
-    const result = await runCommand(['account-updater:jobs:get', 'job-invalid']);
+    const result = await runCommand([
+      'account-updater:jobs:get',
+      'job-invalid',
+    ]);
 
     expect(result.error).to.exist;
     expect(result.error!.message).to.contain('Job not found');

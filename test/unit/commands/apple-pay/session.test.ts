@@ -56,9 +56,9 @@ describe('apple-pay session', () => {
     expect(sessionCreateStub.firstCall.args[0].validationUrl).to.equal(
       'https://validate.example.com'
     );
-    expect(
-      sessionCreateStub.firstCall.args[0].merchantRegistrationId
-    ).to.equal('mr-1');
+    expect(sessionCreateStub.firstCall.args[0].merchantRegistrationId).to.equal(
+      'mr-1'
+    );
   });
 
   it('requires --display-name flag', async () => {

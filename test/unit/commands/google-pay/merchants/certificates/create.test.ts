@@ -1,6 +1,6 @@
-import fs from 'fs';
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
 import { expect } from 'chai';
+import fs from 'fs';
 import sinon from 'sinon';
 import { googlePayMerchantCertificatesFixture } from '../../../../fixtures/google-pay';
 import { runCommand } from '../../../../helpers/run-command';

@@ -35,7 +35,7 @@ export default class Invitations extends BaseCommand {
 
     const invitations = result.data ?? [];
 
-    if (invitations.length === 0) {
+    if (!invitations.length) {
       this.log('No invitations found.');
 
       return;

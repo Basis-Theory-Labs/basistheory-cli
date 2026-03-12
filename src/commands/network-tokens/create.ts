@@ -1,5 +1,5 @@
-import { Flags } from '@oclif/core';
 import type { BasisTheory } from '@basis-theory/node-sdk';
+import { Flags } from '@oclif/core';
 import { ApiCommand } from '../../api-command';
 import { readJsonInput } from '../../json-input';
 
@@ -28,7 +28,10 @@ export default class Create extends ApiCommand {
   public async run(): Promise<void> {
     const { bt, flags } = await this.parse(Create);
 
-    const data = readJsonInput({ data: flags.data, file: flags.file });
+    const data = readJsonInput({
+      data: flags.data,
+      file: flags.file,
+    });
 
     const networkToken = await bt.networkTokens.create({
       tokenId: flags['token-id'],
