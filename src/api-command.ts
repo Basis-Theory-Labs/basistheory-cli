@@ -37,14 +37,17 @@ const formatApiError = (
   return parts.join('\n');
 };
 
-export abstract class BaseCommand extends Command {
+export abstract class ApiCommand extends Command {
   public static baseFlags = {
     'management-key': Flags.string({
       char: 'x',
       env: 'BT_MANAGEMENT_KEY',
-      description:
-        'management key used for connecting with the reactor / proxy',
-      required: true,
+      description: 'management key used for API authentication',
+    }),
+    'api-key': Flags.string({
+      char: 'k',
+      env: 'BT_API_KEY',
+      description: 'private API key used for API authentication',
     }),
     'api-base-url': Flags.string({
       env: 'BT_API_BASE_URL',
@@ -70,11 +73,22 @@ export abstract class BaseCommand extends Command {
     }
   > {
     const { flags, ...parsed } = await super.parse(options, argv);
-    const { 'management-key': managementKey, 'api-base-url': apiBaseUrl } =
-      flags;
+    const {
+      'api-key': apiKey,
+      'management-key': managementKey,
+      'api-base-url': apiBaseUrl,
+    } = flags;
+
+    const key = apiKey || managementKey;
+
+    if (!key) {
+      this.error(
+        'Either --api-key (BT_API_KEY) or --management-key (BT_MANAGEMENT_KEY) must be provided.'
+      );
+    }
 
     const bt = new BasisTheoryClient({
-      apiKey: managementKey,
+      apiKey: key,
       ...(apiBaseUrl ? { environment: apiBaseUrl } : {}),
     });
 

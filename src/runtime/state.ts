@@ -28,7 +28,10 @@ const formatErrorMessage = (
   resource: BasisTheory.Reactor | BasisTheory.Proxy,
   resourceType: 'reactor' | 'proxy'
 ): string => {
-  const { state, requested } = resource;
+  const { state } = resource;
+  const requested = (resource as Record<string, unknown>).requested as
+    | Record<string, unknown>
+    | undefined;
   const resourceName = resourceType === 'reactor' ? 'Reactor' : 'Proxy';
   const parts = [`${resourceName} reached ${state} state`];
 

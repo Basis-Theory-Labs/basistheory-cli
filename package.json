@@ -80,6 +80,81 @@
       },
       "reactors": {
         "description": "Manage Reactors"
+      },
+      "tenants": {
+        "description": "Manage Tenants"
+      },
+      "tenants members": {
+        "description": "Manage Tenant Members"
+      },
+      "tenants invitations": {
+        "description": "Manage Tenant Invitations"
+      },
+      "tenants merchants": {
+        "description": "View Tenant Merchants"
+      },
+      "logs": {
+        "description": "View Audit Logs"
+      },
+      "webhooks": {
+        "description": "Manage Webhooks"
+      },
+      "keys": {
+        "description": "Manage Client Encryption Keys"
+      },
+      "tokens": {
+        "description": "Manage Tokens"
+      },
+      "token-intents": {
+        "description": "Manage Token Intents"
+      },
+      "documents": {
+        "description": "Manage Documents"
+      },
+      "apple-pay": {
+        "description": "Manage Apple Pay"
+      },
+      "apple-pay domains": {
+        "description": "Manage Apple Pay Domains"
+      },
+      "apple-pay merchants": {
+        "description": "Manage Apple Pay Merchants"
+      },
+      "apple-pay merchants certificates": {
+        "description": "Manage Apple Pay Merchant Certificates"
+      },
+      "google-pay": {
+        "description": "Manage Google Pay"
+      },
+      "google-pay merchants": {
+        "description": "Manage Google Pay Merchants"
+      },
+      "google-pay merchants certificates": {
+        "description": "Manage Google Pay Merchant Certificates"
+      },
+      "account-updater": {
+        "description": "Account Updater Operations"
+      },
+      "account-updater jobs": {
+        "description": "Manage Account Updater Batch Jobs"
+      },
+      "network-tokens": {
+        "description": "Manage Network Tokens"
+      },
+      "3ds": {
+        "description": "3D Secure Operations"
+      },
+      "3ds sessions": {
+        "description": "Manage 3DS Sessions"
+      },
+      "enrichments": {
+        "description": "Data Enrichment Operations"
+      },
+      "connections": {
+        "description": "Manage Connections"
+      },
+      "connections stripe-forward": {
+        "description": "Stripe Forward Connection"
       }
     }
   },
