@@ -20,12 +20,27 @@ export default class Merchants extends BaseCommand {
   };
 
   public async run(): Promise<void> {
-    const { bt, flags } = await this.parse(Merchants);
+    const { flags } = await this.parse(Merchants);
 
-    const result = await (bt.tenants as any).merchants.list({
-      page: flags.page,
-      size: flags.size,
-    });
+    const apiKey = flags['management-key'];
+    const baseUrl = flags['api-base-url'] || 'https://api.basistheory.com';
+
+    const response = await fetch(
+      `${baseUrl}/tenants/self/merchants?page=${flags.page}&size=${flags.size}`,
+      {
+        headers: {
+          'BT-API-KEY': apiKey,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+
+      this.error(`Request failed with status ${response.status}: ${errorBody}`);
+    }
+
+    const result = await response.json() as any;
 
     if (flags.json) {
       this.logJson(result);

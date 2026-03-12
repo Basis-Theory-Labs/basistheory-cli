@@ -13,19 +13,25 @@ const formatApiError = (
   body: BasisTheory.ValidationProblemDetails | BasisTheory.ProblemDetails
 ): string => {
   const parts: string[] = [];
+  // SDK error bodies may use PascalCase or camelCase keys
+  const raw = body as Record<string, unknown>;
+  const title = body.title || (raw.Title as string);
+  const status = body.status || (raw.Status as number);
+  const detail = body.detail || (raw.Detail as string);
+  const errors = 'errors' in body ? body.errors : (raw.Errors as Record<string, string[]>);
 
-  if (body.title) {
-    const status = body.status ? ` [${body.status}]` : '';
+  if (title) {
+    const statusStr = status ? ` [${status}]` : '';
 
-    parts.push(`${body.title}${status}`);
+    parts.push(`${title}${statusStr}`);
   }
 
-  if (body.detail) {
-    parts.push(`Detail: ${body.detail}`);
+  if (detail) {
+    parts.push(`Detail: ${detail}`);
   }
 
-  if ('errors' in body && body.errors) {
-    for (const [field, messages] of Object.entries(body.errors)) {
+  if (errors) {
+    for (const [field, messages] of Object.entries(errors)) {
       if (Array.isArray(messages)) {
         for (const message of messages) {
           parts.push(`  - ${field}: ${message}`);
