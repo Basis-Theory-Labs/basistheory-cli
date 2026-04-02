@@ -29,11 +29,7 @@ describe('documents delete', () => {
   });
 
   it('accepts --force flag', async () => {
-    const result = await runCommand([
-      'documents:delete',
-      'doc-123',
-      '--force',
-    ]);
+    const result = await runCommand(['documents:delete', 'doc-123', '--force']);
 
     expect(result.stdout).to.contain('Document deleted successfully!');
     expect(deleteStub.calledOnce).to.be.true;

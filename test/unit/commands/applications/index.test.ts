@@ -50,11 +50,8 @@ describe('applications list', () => {
 
     await runCommand(['applications', '--page', '2']);
 
-    expect(
-      applicationsListStub.calledWith(
-        sinon.match({ page: 2 })
-      )
-    ).to.be.true;
+    expect(applicationsListStub.calledWith(sinon.match({ page: 2 }))).to.be
+      .true;
   });
 
   it('supports --size flag', async () => {
@@ -62,10 +59,7 @@ describe('applications list', () => {
 
     await runCommand(['applications', '--size', '10']);
 
-    expect(
-      applicationsListStub.calledWith(
-        sinon.match({ size: 10 })
-      )
-    ).to.be.true;
+    expect(applicationsListStub.calledWith(sinon.match({ size: 10 }))).to.be
+      .true;
   });
 });

@@ -55,7 +55,9 @@ export default class Merchants extends BaseCommand {
       this.error(`Request failed with status ${response.status}: ${errorBody}`);
     }
 
-    const result = (await response.json()) as any;
+    const result = (await response.json()) as {
+      data?: Record<string, unknown>[];
+    };
 
     if (flags.json) {
       this.logJson(result);
@@ -72,7 +74,7 @@ export default class Merchants extends BaseCommand {
     }
 
     ux.table(
-      merchants.map((m: any) => ({
+      merchants.map((m: Record<string, unknown>) => ({
         id: m.id,
         name: m.name,
         createdAt: m.createdAt,

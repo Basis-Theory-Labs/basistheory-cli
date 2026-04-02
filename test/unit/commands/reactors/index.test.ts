@@ -47,11 +47,7 @@ describe('reactors list', () => {
 
     await runCommand(['reactors', '--page', '2']);
 
-    expect(
-      reactorsListStub.calledWith(
-        sinon.match({ page: 2 })
-      )
-    ).to.be.true;
+    expect(reactorsListStub.calledWith(sinon.match({ page: 2 }))).to.be.true;
   });
 
   it('supports --size flag', async () => {
@@ -59,10 +55,6 @@ describe('reactors list', () => {
 
     await runCommand(['reactors', '--size', '10']);
 
-    expect(
-      reactorsListStub.calledWith(
-        sinon.match({ size: 10 })
-      )
-    ).to.be.true;
+    expect(reactorsListStub.calledWith(sinon.match({ size: 10 }))).to.be.true;
   });
 });

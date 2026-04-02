@@ -1,7 +1,10 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { tenantFixture, tenantMerchantFixtures } from '../../../fixtures/tenants';
+import {
+  tenantFixture,
+  tenantMerchantFixtures,
+} from '../../../fixtures/tenants';
 import { runCommand } from '../../../helpers/run-command';
 
 describe('tenants merchants', () => {

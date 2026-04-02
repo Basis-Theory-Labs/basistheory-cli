@@ -23,9 +23,7 @@ describe('google-pay delete', () => {
   it('deletes google pay token', async () => {
     const result = await runCommand(['google-pay:delete', 'gp-1']);
 
-    expect(result.stdout).to.contain(
-      'Google Pay token deleted successfully!'
-    );
+    expect(result.stdout).to.contain('Google Pay token deleted successfully!');
     expect(googlePayDeleteStub.calledOnce).to.be.true;
     expect(googlePayDeleteStub.calledWith('gp-1')).to.be.true;
   });
@@ -33,9 +31,7 @@ describe('google-pay delete', () => {
   it('accepts --force flag', async () => {
     const result = await runCommand(['google-pay:delete', 'gp-1', '--force']);
 
-    expect(result.stdout).to.contain(
-      'Google Pay token deleted successfully!'
-    );
+    expect(result.stdout).to.contain('Google Pay token deleted successfully!');
     expect(googlePayDeleteStub.calledOnce).to.be.true;
     expect(googlePayDeleteStub.calledWith('gp-1')).to.be.true;
   });
@@ -43,9 +39,7 @@ describe('google-pay delete', () => {
   it('accepts -f shorthand flag', async () => {
     const result = await runCommand(['google-pay:delete', 'gp-1', '-f']);
 
-    expect(result.stdout).to.contain(
-      'Google Pay token deleted successfully!'
-    );
+    expect(result.stdout).to.contain('Google Pay token deleted successfully!');
     expect(googlePayDeleteStub.calledWith('gp-1')).to.be.true;
   });
 

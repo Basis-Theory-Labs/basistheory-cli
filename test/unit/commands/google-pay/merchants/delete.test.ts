@@ -23,10 +23,7 @@ describe('google-pay merchants delete', () => {
   });
 
   it('deletes google pay merchant', async () => {
-    const result = await runCommand([
-      'google-pay:merchants:delete',
-      'merch-1',
-    ]);
+    const result = await runCommand(['google-pay:merchants:delete', 'merch-1']);
 
     expect(result.stdout).to.contain(
       'Google Pay merchant deleted successfully!'

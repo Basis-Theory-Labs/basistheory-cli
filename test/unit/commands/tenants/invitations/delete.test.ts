@@ -21,10 +21,7 @@ describe('tenants invitations delete', () => {
   });
 
   it('deletes invitation', async () => {
-    const result = await runCommand([
-      'tenants:invitations:delete',
-      'inv-123',
-    ]);
+    const result = await runCommand(['tenants:invitations:delete', 'inv-123']);
 
     expect(result.stdout).to.contain('Invitation deleted successfully!');
     expect(invitationsDeleteStub.calledOnce).to.be.true;

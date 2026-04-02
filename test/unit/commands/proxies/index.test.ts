@@ -47,11 +47,7 @@ describe('proxies list', () => {
 
     await runCommand(['proxies', '--page', '2']);
 
-    expect(
-      proxiesListStub.calledWith(
-        sinon.match({ page: 2 })
-      )
-    ).to.be.true;
+    expect(proxiesListStub.calledWith(sinon.match({ page: 2 }))).to.be.true;
   });
 
   it('supports --size flag', async () => {
@@ -59,10 +55,6 @@ describe('proxies list', () => {
 
     await runCommand(['proxies', '--size', '10']);
 
-    expect(
-      proxiesListStub.calledWith(
-        sinon.match({ size: 10 })
-      )
-    ).to.be.true;
+    expect(proxiesListStub.calledWith(sinon.match({ size: 10 }))).to.be.true;
   });
 });

@@ -23,10 +23,7 @@ describe('apple-pay merchants delete', () => {
   });
 
   it('deletes apple pay merchant', async () => {
-    const result = await runCommand([
-      'apple-pay:merchants:delete',
-      'merch-1',
-    ]);
+    const result = await runCommand(['apple-pay:merchants:delete', 'merch-1']);
 
     expect(result.stdout).to.contain(
       'Apple Pay merchant deleted successfully!'
