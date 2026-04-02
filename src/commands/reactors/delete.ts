@@ -29,11 +29,10 @@ export default class Delete extends BaseCommand {
   public async run(): Promise<void> {
     const {
       bt,
-      flags: { yes },
       args: { id },
     } = await this.parse(Delete);
 
-    if (await deleteReactor(bt, id, yes)) {
+    if (await deleteReactor(bt, id)) {
       this.log('Reactor deleted successfully!');
     }
   }

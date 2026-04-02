@@ -1,6 +1,6 @@
 {
   "name": "@basis-theory-labs/cli",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Basis Theory CLI tool",
   "author": "Davi Aquino @djejaquino",
   "bin": {
@@ -72,6 +72,9 @@
     "bin": "bt",
     "dirname": "bt",
     "commands": "./dist/commands",
+    "hooks": {
+      "init": "./dist/hooks/init"
+    },
     "plugins": [],
     "topicSeparator": " ",
     "topics": {
@@ -112,25 +115,25 @@
         "description": "Manage Documents"
       },
       "apple-pay": {
-        "description": "Manage Apple Pay"
+        "description": "[Beta] Manage Apple Pay"
       },
       "apple-pay domains": {
-        "description": "Manage Apple Pay Domains"
+        "description": "[Beta] Manage Apple Pay Domains"
       },
       "apple-pay merchants": {
-        "description": "Manage Apple Pay Merchants"
+        "description": "[Beta] Manage Apple Pay Merchants"
       },
       "apple-pay merchants certificates": {
-        "description": "Manage Apple Pay Merchant Certificates"
+        "description": "[Beta] Manage Apple Pay Merchant Certificates"
       },
       "google-pay": {
-        "description": "Manage Google Pay"
+        "description": "[Beta] Manage Google Pay"
       },
       "google-pay merchants": {
-        "description": "Manage Google Pay Merchants"
+        "description": "[Beta] Manage Google Pay Merchants"
       },
       "google-pay merchants certificates": {
-        "description": "Manage Google Pay Merchant Certificates"
+        "description": "[Beta] Manage Google Pay Merchant Certificates"
       },
       "account-updater": {
         "description": "Account Updater Operations"
@@ -139,16 +142,16 @@
         "description": "Manage Account Updater Batch Jobs"
       },
       "network-tokens": {
-        "description": "Manage Network Tokens"
+        "description": "[Beta] Manage Network Tokens"
       },
       "3ds": {
-        "description": "3D Secure Operations"
+        "description": "[Beta] 3D Secure Operations"
       },
       "3ds sessions": {
-        "description": "Manage 3DS Sessions"
+        "description": "[Beta] Manage 3DS Sessions"
       },
       "enrichments": {
-        "description": "Data Enrichment Operations"
+        "description": "[Beta] Data Enrichment Operations"
       },
       "connections": {
         "description": "Manage Connections"

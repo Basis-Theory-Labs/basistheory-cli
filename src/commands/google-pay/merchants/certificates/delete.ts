@@ -1,4 +1,3 @@
-import confirm from '@inquirer/confirm';
 import { Args, Flags } from '@oclif/core';
 import { ApiCommand } from '../../../../api-command';
 
@@ -29,18 +28,7 @@ export default class Delete extends ApiCommand {
   };
 
   public async run(): Promise<void> {
-    const { bt, args, flags } = await this.parse(Delete);
-
-    if (!flags.force) {
-      const proceed = await confirm({
-        message: `Are you sure you want to delete this certificate (${args['certificate-id']})?`,
-        default: false,
-      });
-
-      if (!proceed) {
-        return;
-      }
-    }
+    const { bt, args } = await this.parse(Delete);
 
     await bt.googlePay.merchant.certificates.delete(
       args['merchant-id'],

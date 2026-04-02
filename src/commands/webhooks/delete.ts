@@ -1,4 +1,3 @@
-import confirm from '@inquirer/confirm';
 import { Args, Flags } from '@oclif/core';
 import { BaseCommand } from '../../base';
 
@@ -26,19 +25,7 @@ export default class Delete extends BaseCommand {
     const {
       bt,
       args: { id },
-      flags: { force },
     } = await this.parse(Delete);
-
-    if (!force) {
-      const proceed = await confirm({
-        message: `Are you sure you want to delete this Webhook (${id})?`,
-        default: false,
-      });
-
-      if (!proceed) {
-        return;
-      }
-    }
 
     await bt.webhooks.delete(id);
 

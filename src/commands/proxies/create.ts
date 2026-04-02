@@ -6,16 +6,7 @@ import {
   validateTransformRuntimeFlags,
 } from '../../proxies/runtime';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
-import {
-  isLegacyRuntimeImage,
-  promptRuntimeImage,
-  waitForResourceState,
-} from '../../runtime';
-import {
-  promptBooleanIfUndefined,
-  promptStringIfUndefined,
-  promptUrlIfUndefined,
-} from '../../utils';
+import { isLegacyRuntimeImage, waitForResourceState } from '../../runtime';
 
 export default class Create extends BaseCommand {
   public static description =
@@ -81,66 +72,31 @@ export default class Create extends BaseCommand {
       flags['response-transform-image']
     );
 
-    const name = await promptStringIfUndefined(flags.name, {
-      message: 'What is the Proxy name?',
-      validate: (value) => Boolean(value),
-    });
-    const destinationUrl = (
-      await promptUrlIfUndefined(flags['destination-url'], {
-        message: 'What is the Proxy destination URL?',
-      })
-    ).toString();
-    const requestTransformCode = await promptStringIfUndefined(
-      flags['request-transform-code'],
-      {
-        message: '(Optional) Enter the Request Transform code file path:',
-      }
-    );
+    const name = flags.name ?? '';
 
-    const requestTransformImage = requestTransformCode
-      ? await promptRuntimeImage(
-          flags['request-transform-image'],
-          'Which runtime do you want for the request transform?'
-        )
-      : flags['request-transform-image'];
+    if (!flags['destination-url']) {
+      throw new Error('--destination-url is required');
+    }
 
-    const responseTransformCode = await promptStringIfUndefined(
-      flags['response-transform-code'],
-      {
-        message: '(Optional) Enter the Response Transform code file path:',
-      }
-    );
-
-    const responseTransformImage = responseTransformCode
-      ? await promptRuntimeImage(
-          flags['response-transform-image'],
-          'Which runtime do you want for the response transform?'
-        )
-      : flags['response-transform-image'];
+    const destinationUrl = flags['destination-url'].toString();
+    const requestTransformCode = flags['request-transform-code'] ?? '';
+    const requestTransformImage = flags['request-transform-image'];
+    const responseTransformCode = flags['response-transform-code'] ?? '';
+    const responseTransformImage = flags['response-transform-image'];
 
     const hasLegacyTransform =
       isLegacyRuntimeImage(requestTransformImage) ||
       isLegacyRuntimeImage(responseTransformImage);
 
     const applicationId = hasLegacyTransform
-      ? await promptStringIfUndefined(flags['application-id'], {
-          message: '(Optional) Enter the Application ID to use in the Proxy:',
-        })
+      ? flags['application-id'] ?? ''
       : flags['application-id'];
 
-    const configuration = await promptStringIfUndefined(flags.configuration, {
-      message: '(Optional) Enter the configuration file path (.env format):',
-    });
+    const configuration = flags.configuration ?? '';
 
-    const requireAuth = await promptBooleanIfUndefined(
-      metadata.flags?.['require-auth']?.setFromDefault
-        ? undefined
-        : flags['require-auth'],
-      {
-        message: 'Does the Proxy require Basis Theory authentication?',
-        default: true,
-      }
-    );
+    const requireAuth = metadata.flags?.['require-auth']?.setFromDefault
+      ? false
+      : flags['require-auth'] ?? false;
 
     const updatedFlags = {
       ...flags,

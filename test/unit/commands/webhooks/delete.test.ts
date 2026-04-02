@@ -1,15 +1,12 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
-import * as confirm from '@inquirer/confirm';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { runCommand } from '../../helpers/run-command';
 
 describe('webhooks delete', () => {
-  let confirmStub: sinon.SinonStub;
   let webhooksDeleteStub: sinon.SinonStub;
 
   beforeEach(() => {
-    confirmStub = sinon.stub(confirm, 'default');
     webhooksDeleteStub = sinon.stub();
 
     sinon.stub(BasisTheoryClient.prototype, 'webhooks').get(() => ({
@@ -17,51 +14,33 @@ describe('webhooks delete', () => {
     }));
 
     webhooksDeleteStub.resolves(undefined);
-    confirmStub.resolves(true);
   });
 
   afterEach(() => {
     sinon.restore();
   });
 
-  describe('with --force flag', () => {
-    it('deletes webhook without confirmation prompt', async () => {
-      const result = await runCommand(['webhooks:delete', 'wh-1', '--force']);
+  it('deletes webhook', async () => {
+    const result = await runCommand(['webhooks:delete', 'wh-1']);
 
-      expect(result.stdout).to.contain('Webhook deleted successfully!');
-      expect(webhooksDeleteStub.calledOnce).to.be.true;
-      expect(webhooksDeleteStub.calledWith('wh-1')).to.be.true;
-      expect(confirmStub.called).to.be.false;
-    });
-
-    it('accepts -f shorthand flag', async () => {
-      const result = await runCommand(['webhooks:delete', 'wh-1', '-f']);
-
-      expect(result.stdout).to.contain('Webhook deleted successfully!');
-      expect(webhooksDeleteStub.calledWith('wh-1')).to.be.true;
-    });
+    expect(result.stdout).to.contain('Webhook deleted successfully!');
+    expect(webhooksDeleteStub.calledOnce).to.be.true;
+    expect(webhooksDeleteStub.calledWith('wh-1')).to.be.true;
   });
 
-  describe('with confirmation prompt', () => {
-    it('deletes webhook when user confirms', async () => {
-      confirmStub.resolves(true);
+  it('accepts --force flag', async () => {
+    const result = await runCommand(['webhooks:delete', 'wh-1', '--force']);
 
-      const result = await runCommand(['webhooks:delete', 'wh-1']);
+    expect(result.stdout).to.contain('Webhook deleted successfully!');
+    expect(webhooksDeleteStub.calledOnce).to.be.true;
+    expect(webhooksDeleteStub.calledWith('wh-1')).to.be.true;
+  });
 
-      expect(result.stdout).to.contain('Webhook deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(webhooksDeleteStub.calledOnce).to.be.true;
-    });
+  it('accepts -f shorthand flag', async () => {
+    const result = await runCommand(['webhooks:delete', 'wh-1', '-f']);
 
-    it('does not delete webhook when user declines', async () => {
-      confirmStub.resolves(false);
-
-      const result = await runCommand(['webhooks:delete', 'wh-1']);
-
-      expect(result.stdout).to.not.contain('Webhook deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(webhooksDeleteStub.called).to.be.false;
-    });
+    expect(result.stdout).to.contain('Webhook deleted successfully!');
+    expect(webhooksDeleteStub.calledWith('wh-1')).to.be.true;
   });
 
   describe('required arguments', () => {

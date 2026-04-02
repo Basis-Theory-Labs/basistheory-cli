@@ -29,11 +29,10 @@ export default class Delete extends BaseCommand {
   public async run(): Promise<void> {
     const {
       bt,
-      flags: { yes },
       args: { id },
     } = await this.parse(Delete);
 
-    if (await deleteProxy(bt, id, yes)) {
+    if (await deleteProxy(bt, id)) {
       this.log('Proxy deleted successfully!');
     }
   }

@@ -2,16 +2,9 @@ import { Flags } from '@oclif/core';
 import {
   createApplication,
   createApplicationFromTemplate,
-  listPermissions,
-  promptTemplate,
 } from '../../applications/management';
 import { APPLICATION_FLAGS } from '../../applications/utils';
 import { BaseCommand } from '../../base';
-import {
-  promptCheckboxIfUndefined,
-  promptSelectIfUndefined,
-  promptStringIfUndefined,
-} from '../../utils';
 
 const APPLICATION_TYPES = ['private', 'public', 'management'] as const;
 
@@ -42,54 +35,21 @@ export default class Create extends BaseCommand {
     let application;
 
     if (flags.template) {
-      // template passed as flag
       application = await createApplicationFromTemplate(bt, flags.template);
     } else {
-      let template;
-      let rules, permissions, type;
-
-      if (!flags.name && !flags.type && !flags.permission) {
-        // no other flags where passed, prompt template
-        template = await promptTemplate(bt);
-      }
-
-      const name = await promptStringIfUndefined(flags.name, {
-        message: 'What is the Application name?',
-        default: template?.name,
-        validate: (value) => Boolean(value),
-      });
-
-      if (template) {
-        // template has been picked, so type and permissions/rules are defined
-        type = template.applicationType;
-        rules = template.rules;
-        permissions = template.permissions;
-      } else {
-        type = (await promptSelectIfUndefined(flags.type, {
-          message: 'What is the Application type?',
-          choices: APPLICATION_TYPES.map((t) => ({ value: t })),
-        })) as ApplicationType;
-
-        const available = await listPermissions(bt, type);
-
-        permissions = await promptCheckboxIfUndefined(flags.permission, {
-          message: 'Select the permissions for the Application',
-          choices: available.map((p) => ({
-            value: p.type,
-          })),
-          loop: false,
-        });
-      }
+      const name = flags.name ?? '';
+      const type = (flags.type ?? '') as ApplicationType;
 
       if (!type) {
         throw new Error('Application type is required');
       }
 
+      const permissions = flags.permission ?? [];
+
       application = await createApplication(bt, {
         name,
         type,
         permissions,
-        rules,
       });
     }
 

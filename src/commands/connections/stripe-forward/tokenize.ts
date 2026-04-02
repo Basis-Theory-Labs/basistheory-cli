@@ -1,5 +1,6 @@
 import { Flags } from '@oclif/core';
 import { ApiCommand } from '../../../api-command';
+import { loadConfig } from '../../../config';
 import { requireJsonInput } from '../../../json-input';
 
 export default class Tokenize extends ApiCommand {
@@ -26,15 +27,30 @@ export default class Tokenize extends ApiCommand {
       file: flags.file,
     });
 
-    const apiKey = flags['api-key'] || flags['management-key'];
-    const baseUrl = flags['api-base-url'] || 'https://api.basistheory.com';
+    const config = loadConfig();
+    const apiKey =
+      flags['api-key'] ||
+      flags['management-key'] ||
+      config.apiKey ||
+      config.managementApiKey;
+
+    if (!apiKey) {
+      this.error(
+        'Either --api-key (BT_API_KEY) or --management-key (BT_MANAGEMENT_KEY) must be provided.'
+      );
+    }
+
+    const baseUrl =
+      flags['api-base-url'] ||
+      config.apiBaseUrl ||
+      'https://api.basistheory.com';
 
     const response = await fetch(
       `${baseUrl}/connections/stripe-forward/tokenize`,
       {
         method: 'POST',
         headers: {
-          'BT-API-KEY': apiKey!,
+          'BT-API-KEY': apiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),

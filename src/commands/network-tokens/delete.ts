@@ -1,4 +1,3 @@
-import confirm from '@inquirer/confirm';
 import { Args, Flags } from '@oclif/core';
 import { ApiCommand } from '../../api-command';
 
@@ -25,19 +24,8 @@ export default class Delete extends ApiCommand {
   public async run(): Promise<void> {
     const {
       bt,
-      flags: { force },
       args: { id },
     } = await this.parse(Delete);
-
-    if (!force) {
-      const confirmed = await confirm({
-        message: `Are you sure you want to delete network token ${id}?`,
-      });
-
-      if (!confirmed) {
-        return;
-      }
-    }
 
     await bt.networkTokens.delete(id);
 

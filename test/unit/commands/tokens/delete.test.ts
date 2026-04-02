@@ -1,15 +1,12 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
-import * as confirm from '@inquirer/confirm';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { runCommand } from '../../helpers/run-command';
 
 describe('tokens delete', () => {
-  let confirmStub: sinon.SinonStub;
   let tokensDeleteStub: sinon.SinonStub;
 
   beforeEach(() => {
-    confirmStub = sinon.stub(confirm, 'default');
     tokensDeleteStub = sinon.stub();
 
     sinon.stub(BasisTheoryClient.prototype, 'tokens').get(() => ({
@@ -17,51 +14,33 @@ describe('tokens delete', () => {
     }));
 
     tokensDeleteStub.resolves(undefined);
-    confirmStub.resolves(true);
   });
 
   afterEach(() => {
     sinon.restore();
   });
 
-  describe('with --force flag', () => {
-    it('deletes token without confirmation prompt', async () => {
-      const result = await runCommand(['tokens:delete', 'tok-123', '--force']);
+  it('deletes token', async () => {
+    const result = await runCommand(['tokens:delete', 'tok-123']);
 
-      expect(result.stdout).to.contain('Token deleted successfully!');
-      expect(tokensDeleteStub.calledOnce).to.be.true;
-      expect(tokensDeleteStub.calledWith('tok-123')).to.be.true;
-      expect(confirmStub.called).to.be.false;
-    });
-
-    it('accepts -f shorthand flag', async () => {
-      const result = await runCommand(['tokens:delete', 'tok-456', '-f']);
-
-      expect(result.stdout).to.contain('Token deleted successfully!');
-      expect(tokensDeleteStub.calledWith('tok-456')).to.be.true;
-    });
+    expect(result.stdout).to.contain('Token deleted successfully!');
+    expect(tokensDeleteStub.calledOnce).to.be.true;
+    expect(tokensDeleteStub.calledWith('tok-123')).to.be.true;
   });
 
-  describe('with confirmation prompt', () => {
-    it('deletes token when user confirms', async () => {
-      confirmStub.resolves(true);
+  it('accepts --force flag', async () => {
+    const result = await runCommand(['tokens:delete', 'tok-123', '--force']);
 
-      const result = await runCommand(['tokens:delete', 'tok-123']);
+    expect(result.stdout).to.contain('Token deleted successfully!');
+    expect(tokensDeleteStub.calledOnce).to.be.true;
+    expect(tokensDeleteStub.calledWith('tok-123')).to.be.true;
+  });
 
-      expect(result.stdout).to.contain('Token deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(tokensDeleteStub.calledOnce).to.be.true;
-    });
+  it('accepts -f shorthand flag', async () => {
+    const result = await runCommand(['tokens:delete', 'tok-456', '-f']);
 
-    it('does not delete token when user declines', async () => {
-      confirmStub.resolves(false);
-
-      const result = await runCommand(['tokens:delete', 'tok-123']);
-
-      expect(result.stdout).to.not.contain('Token deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(tokensDeleteStub.called).to.be.false;
-    });
+    expect(result.stdout).to.contain('Token deleted successfully!');
+    expect(tokensDeleteStub.calledWith('tok-456')).to.be.true;
   });
 
   describe('required arguments', () => {

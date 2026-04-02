@@ -8,11 +8,15 @@
 #   export BT_API_KEY="your_private_api_key"
 #   ./scripts/test-endpoints.sh
 #
+# Keys can also be provided via ~/.basistheory/cli.json:
+#   { "managementApiKey": "...", "apiKey": "...", "apiBaseUrl": "..." }
+#
 # Options:
-#   --skip-destructive   Skip delete/destroy operations
 #   --json               Pass --json to all commands
 #   --verbose            Print full command output
 #   --section SECTION    Run only a specific section (tenants, logs, webhooks, keys, tokens, etc.)
+#
+# All created resources are automatically cleaned up on exit (including Ctrl-C).
 #
 
 set -euo pipefail
@@ -25,21 +29,169 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-SKIP_DESTRUCTIVE=false
 JSON_FLAG=""
 VERBOSE=false
 SECTION=""
 PASS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
+LAST_TEST_PASSED=false
 
 BT="./bin/run"
+
+# ─── Cleanup Tracking ──────────────────────────────────────────────────────────
+# Resources created during the run are tracked here and cleaned up on exit.
+
+# Using declare -a ensures arrays are defined (prevents unbound variable errors with set -u)
+declare -a CLEANUP_INVITATIONS=()
+declare -a CLEANUP_WEBHOOKS=()
+declare -a CLEANUP_KEYS=()
+declare -a CLEANUP_TOKENS=()
+declare -a CLEANUP_TOKEN_INTENTS=()
+declare -a CLEANUP_DOCUMENTS=()
+declare -a CLEANUP_NETWORK_TOKENS=()
+declare -a CLEANUP_REACTORS=()
+declare -a CLEANUP_TEMP_FILES=()
+ORIGINAL_TENANT_NAME=""
+CONFIG_BACKUP=""
+CONFIG_NEEDS_RESTORE=false
+ORIG_MGMT_KEY_FOR_RESTORE=""
+ORIG_API_KEY_FOR_RESTORE=""
+
+cleanup() {
+  echo ""
+  echo -e "${BLUE}━━━ Cleanup ━━━${NC}"
+
+  # Restore config file if needed
+  if $CONFIG_NEEDS_RESTORE; then
+    echo -e "  Restoring ~/.basistheory/cli.json..."
+    echo "$CONFIG_BACKUP" > "$CONFIG_FILE"
+    if [[ -n "$ORIG_MGMT_KEY_FOR_RESTORE" ]]; then
+      export BT_MANAGEMENT_KEY="$ORIG_MGMT_KEY_FOR_RESTORE"
+    fi
+    if [[ -n "$ORIG_API_KEY_FOR_RESTORE" ]]; then
+      export BT_API_KEY="$ORIG_API_KEY_FOR_RESTORE"
+    fi
+    CONFIG_NEEDS_RESTORE=false
+  fi
+
+  # Restore tenant name
+  if [[ -n "$ORIGINAL_TENANT_NAME" ]]; then
+    printf "  %-60s " "Restore tenant name"
+    if $BT tenants update --name "$ORIGINAL_TENANT_NAME" >/dev/null 2>&1; then
+      echo -e "${GREEN}done${NC}"
+    else
+      echo -e "${YELLOW}failed (manual restore needed)${NC}"
+    fi
+  fi
+
+  local had_work=false
+
+  # Delete resources in reverse order of dependency
+  for id in ${CLEANUP_NETWORK_TOKENS[@]+"${CLEANUP_NETWORK_TOKENS[@]}"}; do
+    [[ -z "$id" ]] && continue
+    had_work=true
+    printf "  %-60s " "Delete network token $id"
+    if $BT network-tokens delete "$id" --force >/dev/null 2>&1; then
+      echo -e "${GREEN}done${NC}"
+    else
+      echo -e "${YELLOW}failed${NC}"
+    fi
+  done
+
+  for id in ${CLEANUP_REACTORS[@]+"${CLEANUP_REACTORS[@]}"}; do
+    [[ -z "$id" ]] && continue
+    had_work=true
+    printf "  %-60s " "Delete reactor $id"
+    if $BT reactors delete "$id" --yes >/dev/null 2>&1; then
+      echo -e "${GREEN}done${NC}"
+    else
+      echo -e "${YELLOW}failed${NC}"
+    fi
+  done
+
+  for id in ${CLEANUP_DOCUMENTS[@]+"${CLEANUP_DOCUMENTS[@]}"}; do
+    [[ -z "$id" ]] && continue
+    had_work=true
+    printf "  %-60s " "Delete document $id"
+    if $BT documents delete "$id" --force >/dev/null 2>&1; then
+      echo -e "${GREEN}done${NC}"
+    else
+      echo -e "${YELLOW}failed${NC}"
+    fi
+  done
+
+  for id in ${CLEANUP_TOKEN_INTENTS[@]+"${CLEANUP_TOKEN_INTENTS[@]}"}; do
+    [[ -z "$id" ]] && continue
+    had_work=true
+    printf "  %-60s " "Delete token intent $id"
+    if $BT token-intents delete "$id" --force >/dev/null 2>&1; then
+      echo -e "${GREEN}done${NC}"
+    else
+      echo -e "${YELLOW}failed${NC}"
+    fi
+  done
+
+  for id in ${CLEANUP_TOKENS[@]+"${CLEANUP_TOKENS[@]}"}; do
+    [[ -z "$id" ]] && continue
+    had_work=true
+    printf "  %-60s " "Delete token $id"
+    if $BT tokens delete "$id" --force >/dev/null 2>&1; then
+      echo -e "${GREEN}done${NC}"
+    else
+      echo -e "${YELLOW}failed${NC}"
+    fi
+  done
+
+  for id in ${CLEANUP_KEYS[@]+"${CLEANUP_KEYS[@]}"}; do
+    [[ -z "$id" ]] && continue
+    had_work=true
+    printf "  %-60s " "Delete client key $id"
+    if $BT keys delete "$id" --force >/dev/null 2>&1; then
+      echo -e "${GREEN}done${NC}"
+    else
+      echo -e "${YELLOW}failed${NC}"
+    fi
+  done
+
+  for id in ${CLEANUP_WEBHOOKS[@]+"${CLEANUP_WEBHOOKS[@]}"}; do
+    [[ -z "$id" ]] && continue
+    had_work=true
+    printf "  %-60s " "Delete webhook $id"
+    if $BT webhooks delete "$id" --force >/dev/null 2>&1; then
+      echo -e "${GREEN}done${NC}"
+    else
+      echo -e "${YELLOW}failed${NC}"
+    fi
+  done
+
+  for id in ${CLEANUP_INVITATIONS[@]+"${CLEANUP_INVITATIONS[@]}"}; do
+    [[ -z "$id" ]] && continue
+    had_work=true
+    printf "  %-60s " "Delete invitation $id"
+    if $BT tenants invitations delete "$id" --force >/dev/null 2>&1; then
+      echo -e "${GREEN}done${NC}"
+    else
+      echo -e "${YELLOW}failed${NC}"
+    fi
+  done
+
+  # Remove temp files
+  for f in ${CLEANUP_TEMP_FILES[@]+"${CLEANUP_TEMP_FILES[@]}"}; do
+    rm -f "$f"
+  done
+
+  if ! $had_work && [[ -z "$ORIGINAL_TENANT_NAME" ]]; then
+    echo -e "  ${GREEN}Nothing to clean up.${NC}"
+  fi
+}
+
+trap cleanup EXIT
 
 # ─── Parse Arguments ────────────────────────────────────────────────────────────
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --skip-destructive) SKIP_DESTRUCTIVE=true; shift ;;
     --json) JSON_FLAG="--json"; shift ;;
     --verbose) VERBOSE=true; shift ;;
     --section) SECTION="$2"; shift 2 ;;
@@ -49,14 +201,39 @@ done
 
 # ─── Validation ─────────────────────────────────────────────────────────────────
 
-if [[ -z "${BT_MANAGEMENT_KEY:-}" ]]; then
-  echo -e "${RED}Error: BT_MANAGEMENT_KEY environment variable is required${NC}"
-  echo "Export it before running: export BT_MANAGEMENT_KEY=your_key"
+CONFIG_FILE="$HOME/.basistheory/cli.json"
+
+# Check for keys in env vars OR config file
+HAS_MANAGEMENT_KEY=false
+HAS_API_KEY=false
+
+if [[ -n "${BT_MANAGEMENT_KEY:-}" ]]; then
+  HAS_MANAGEMENT_KEY=true
+elif [[ -f "$CONFIG_FILE" ]]; then
+  CONFIG_MGMT_KEY=$(grep -o '"managementApiKey"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" 2>/dev/null | grep -o '"[^"]*"$' | tr -d '"' || true)
+  if [[ -n "$CONFIG_MGMT_KEY" ]]; then
+    HAS_MANAGEMENT_KEY=true
+  fi
+fi
+
+if [[ -n "${BT_API_KEY:-}" ]]; then
+  HAS_API_KEY=true
+elif [[ -f "$CONFIG_FILE" ]]; then
+  CONFIG_API_KEY=$(grep -o '"apiKey"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" 2>/dev/null | grep -o '"[^"]*"$' | tr -d '"' || true)
+  if [[ -n "$CONFIG_API_KEY" ]]; then
+    HAS_API_KEY=true
+  fi
+fi
+
+if ! $HAS_MANAGEMENT_KEY; then
+  echo -e "${RED}Error: Management key is required via BT_MANAGEMENT_KEY env var or ~/.basistheory/cli.json${NC}"
+  echo "Either: export BT_MANAGEMENT_KEY=your_key"
+  echo "    or: echo '{\"managementApiKey\": \"your_key\"}' > ~/.basistheory/cli.json"
   exit 1
 fi
 
-if [[ -z "${BT_API_KEY:-}" ]]; then
-  echo -e "${YELLOW}Warning: BT_API_KEY not set. Tokenization commands will use BT_MANAGEMENT_KEY.${NC}"
+if ! $HAS_API_KEY; then
+  echo -e "${YELLOW}Warning: API key not found in BT_API_KEY or ~/.basistheory/cli.json. Tokenization commands will use management key.${NC}"
 fi
 
 # ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -68,8 +245,10 @@ run_test() {
 
   printf "  %-60s " "$description"
 
-  local output
-  if output=$("${cmd[@]}" 2>&1); then
+  local output exit_code=0
+  output=$("${cmd[@]}" 2>&1) || exit_code=$?
+
+  if [[ $exit_code -eq 0 ]]; then
     echo -e "${GREEN}PASS${NC}"
     PASS_COUNT=$((PASS_COUNT + 1))
     if $VERBOSE; then
@@ -77,14 +256,22 @@ run_test() {
     fi
     # Store last output for chaining
     LAST_OUTPUT="$output"
-    return 0
+    LAST_TEST_PASSED=true
+  elif echo "$output" | grep -qi '\[403\]\|Forbidden\|missing.permission\|Missing permission'; then
+    echo -e "${YELLOW}SKIP (missing permission)${NC}"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
+    LAST_OUTPUT=""
+    LAST_TEST_PASSED=false
   else
     echo -e "${RED}FAIL${NC}"
     FAIL_COUNT=$((FAIL_COUNT + 1))
     echo "$output" | sed 's/^/    │ /' | head -5
     LAST_OUTPUT=""
-    return 1
+    LAST_TEST_PASSED=false
   fi
+  # Always return 0 so set -e doesn't exit the script.
+  # Use LAST_TEST_PASSED for conditional chaining instead.
+  return 0
 }
 
 skip_test() {
@@ -105,24 +292,82 @@ should_run() {
 
 extract_id() {
   # Extract an ID from JSON output (first "id" field found)
-  echo "$LAST_OUTPUT" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"'
+  local val
+  val=$(echo "$LAST_OUTPUT" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"' || true)
+  echo "$val"
 }
 
 extract_field() {
   local field="$1"
-  echo "$LAST_OUTPUT" | grep -o "\"${field}\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | head -1 | grep -o '"[^"]*"$' | tr -d '"'
+  local val
+  val=$(echo "$LAST_OUTPUT" | grep -o "\"${field}\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | head -1 | grep -o '"[^"]*"$' | tr -d '"' || true)
+  echo "$val"
 }
 
 # ─── Build ──────────────────────────────────────────────────────────────────────
 
 section_header "Building CLI"
 run_test "yarn build" yarn build
+if ! $LAST_TEST_PASSED; then
+  echo -e "${RED}Build failed. Cannot continue.${NC}"
+  exit 1
+fi
 
 echo ""
 echo -e "${BLUE}Starting endpoint tests...${NC}"
-echo -e "  Management Key: ${BT_MANAGEMENT_KEY:0:10}..."
+if [[ -n "${BT_MANAGEMENT_KEY:-}" ]]; then
+  echo -e "  Management Key: ${BT_MANAGEMENT_KEY:0:10}... (env)"
+elif $HAS_MANAGEMENT_KEY; then
+  echo -e "  Management Key: (from ~/.basistheory/cli.json)"
+fi
 if [[ -n "${BT_API_KEY:-}" ]]; then
-  echo -e "  API Key: ${BT_API_KEY:0:10}..."
+  echo -e "  API Key: ${BT_API_KEY:0:10}... (env)"
+elif $HAS_API_KEY; then
+  echo -e "  API Key: (from ~/.basistheory/cli.json)"
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIG FILE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+if should_run "config"; then
+  section_header "Config File (~/.basistheory/cli.json)"
+
+  run_test "Config directory exists" \
+    test -d "$HOME/.basistheory"
+
+  run_test "Config file exists after CLI init" \
+    test -f "$CONFIG_FILE"
+
+  run_test "Config file is valid JSON" \
+    python3 -c "import json; json.load(open('$CONFIG_FILE'))"
+
+  # Test that CLI reads from config file (backup and restore env vars)
+  if [[ -n "${BT_MANAGEMENT_KEY:-}" ]]; then
+    # Set up trap-safe restore state
+    CONFIG_BACKUP=$(cat "$CONFIG_FILE")
+    ORIG_MGMT_KEY_FOR_RESTORE="${BT_MANAGEMENT_KEY}"
+    ORIG_API_KEY_FOR_RESTORE="${BT_API_KEY:-}"
+    CONFIG_NEEDS_RESTORE=true
+
+    # Write management key to config, unset env var, and verify CLI still works
+    echo "{\"managementApiKey\": \"$BT_MANAGEMENT_KEY\"}" > "$CONFIG_FILE"
+    unset BT_MANAGEMENT_KEY 2>/dev/null || true
+    unset BT_API_KEY 2>/dev/null || true
+
+    run_test "CLI reads managementApiKey from config file" \
+      $BT tenants get $JSON_FLAG
+
+    # Restore immediately (trap is a safety net)
+    echo "$CONFIG_BACKUP" > "$CONFIG_FILE"
+    export BT_MANAGEMENT_KEY="$ORIG_MGMT_KEY_FOR_RESTORE"
+    if [[ -n "$ORIG_API_KEY_FOR_RESTORE" ]]; then
+      export BT_API_KEY="$ORIG_API_KEY_FOR_RESTORE"
+    fi
+    CONFIG_NEEDS_RESTORE=false
+  else
+    skip_test "CLI reads from config file — BT_MANAGEMENT_KEY not in env to test with"
+  fi
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -137,11 +382,16 @@ if should_run "tenants"; then
   run_test "Get current tenant" \
     $BT tenants get $JSON_FLAG
 
+  # Capture original tenant name so cleanup can restore it
+  if $LAST_TEST_PASSED; then
+    ORIGINAL_TENANT_NAME=$(extract_field "name")
+  fi
+
   run_test "Get tenant usage report" \
     $BT tenants usage $JSON_FLAG
 
   run_test "Update tenant name" \
-    $BT tenants update --name "CLI Test Tenant" $JSON_FLAG || true
+    $BT tenants update --name "CLI Test Tenant" $JSON_FLAG
 
   # Members
   section_header "Tenant Members"
@@ -158,21 +408,31 @@ if should_run "tenants"; then
   run_test "List tenant invitations" \
     $BT tenants invitations $JSON_FLAG
 
+  # Clean up stale cli-test invitations from previous runs
+  if $LAST_TEST_PASSED && [[ -n "$LAST_OUTPUT" ]]; then
+    STALE_IDS=$(echo "$LAST_OUTPUT" | grep -o '[0-9a-f\-]\{36\}.*cli-test-' | grep -o '^[0-9a-f\-]\{36\}' || true)
+    for stale_id in $STALE_IDS; do
+      $BT tenants invitations delete "$stale_id" --force >/dev/null 2>&1 || true
+    done
+  fi
+
   INVITATION_ID=""
-  if run_test "Create tenant invitation" \
-    $BT tenants invitations create --email "cli-test-$(date +%s)@example.com" --role ADMIN $JSON_FLAG; then
+  run_test "Create tenant invitation" \
+    $BT tenants invitations create --email "cli-test-$(date +%s)@example.com" --role ADMIN $JSON_FLAG
+  if $LAST_TEST_PASSED; then
     INVITATION_ID=$(extract_id)
+    [[ -n "$INVITATION_ID" ]] && CLEANUP_INVITATIONS+=("$INVITATION_ID")
   fi
 
   if [[ -n "$INVITATION_ID" ]]; then
     run_test "Resend invitation ($INVITATION_ID)" \
-      $BT tenants invitations resend "$INVITATION_ID" $JSON_FLAG || true
+      $BT tenants invitations resend "$INVITATION_ID" $JSON_FLAG
 
-    if ! $SKIP_DESTRUCTIVE; then
-      run_test "Delete invitation ($INVITATION_ID)" \
-        $BT tenants invitations delete "$INVITATION_ID" --force $JSON_FLAG
-    else
-      skip_test "Delete invitation (--skip-destructive)"
+    run_test "Delete invitation ($INVITATION_ID)" \
+      $BT tenants invitations delete "$INVITATION_ID" --force $JSON_FLAG
+    # Remove from cleanup if inline delete succeeded
+    if $LAST_TEST_PASSED; then
+      CLEANUP_INVITATIONS=("${CLEANUP_INVITATIONS[@]/$INVITATION_ID/}")
     fi
   fi
 
@@ -210,14 +470,16 @@ if should_run "webhooks"; then
     $BT webhooks events $JSON_FLAG
 
   WEBHOOK_ID=""
-  if run_test "Create webhook" \
+  run_test "Create webhook" \
     $BT webhooks create \
       --name "CLI Test Webhook $(date +%s)" \
       --url "https://httpbin.org/post" \
       --events "token.created" \
       --events "token.deleted" \
-      $JSON_FLAG; then
+      $JSON_FLAG
+  if $LAST_TEST_PASSED; then
     WEBHOOK_ID=$(extract_id)
+    [[ -n "$WEBHOOK_ID" ]] && CLEANUP_WEBHOOKS+=("$WEBHOOK_ID")
   fi
 
   if [[ -n "$WEBHOOK_ID" ]]; then
@@ -229,16 +491,15 @@ if should_run "webhooks"; then
         --name "CLI Test Webhook Updated" \
         --url "https://httpbin.org/post" \
         --events "token.created" \
-        $JSON_FLAG || true
+        $JSON_FLAG
 
     run_test "Ping webhooks" \
-      $BT webhooks ping $JSON_FLAG || true
+      $BT webhooks ping $JSON_FLAG
 
-    if ! $SKIP_DESTRUCTIVE; then
-      run_test "Delete webhook ($WEBHOOK_ID)" \
-        $BT webhooks delete "$WEBHOOK_ID" --force $JSON_FLAG
-    else
-      skip_test "Delete webhook (--skip-destructive)"
+    run_test "Delete webhook ($WEBHOOK_ID)" \
+      $BT webhooks delete "$WEBHOOK_ID" --force $JSON_FLAG
+    if $LAST_TEST_PASSED; then
+      CLEANUP_WEBHOOKS=("${CLEANUP_WEBHOOKS[@]/$WEBHOOK_ID/}")
     fi
   fi
 fi
@@ -252,17 +513,20 @@ if should_run "keys"; then
     $BT keys $JSON_FLAG
 
   KEY_ID=""
-  if run_test "Create client key" \
-    $BT keys create $JSON_FLAG; then
-    KEY_ID=$(extract_field "keyId") || KEY_ID=$(extract_field "key_id") || KEY_ID=$(extract_id)
+  run_test "Create client key" \
+    $BT keys create $JSON_FLAG
+  if $LAST_TEST_PASSED; then
+    KEY_ID=$(extract_field "keyId")
+    [[ -z "$KEY_ID" ]] && KEY_ID=$(extract_field "key_id")
+    [[ -z "$KEY_ID" ]] && KEY_ID=$(extract_id)
+    [[ -n "$KEY_ID" ]] && CLEANUP_KEYS+=("$KEY_ID")
   fi
 
   if [[ -n "$KEY_ID" ]]; then
-    if ! $SKIP_DESTRUCTIVE; then
-      run_test "Delete client key ($KEY_ID)" \
-        $BT keys delete "$KEY_ID" --force $JSON_FLAG
-    else
-      skip_test "Delete client key (--skip-destructive)"
+    run_test "Delete client key ($KEY_ID)" \
+      $BT keys delete "$KEY_ID" --force $JSON_FLAG
+    if $LAST_TEST_PASSED; then
+      CLEANUP_KEYS=("${CLEANUP_KEYS[@]/$KEY_ID/}")
     fi
   fi
 fi
@@ -277,19 +541,21 @@ if should_run "tokens"; then
   section_header "Tokens"
 
   TOKEN_ID=""
-  if run_test "Create token" \
+  run_test "Create token" \
     $BT tokens create \
       --type token \
       --data '{"value": "cli-test-secret"}' \
-      $JSON_FLAG; then
+      $JSON_FLAG
+  if $LAST_TEST_PASSED; then
     TOKEN_ID=$(extract_id)
+    [[ -n "$TOKEN_ID" ]] && CLEANUP_TOKENS+=("$TOKEN_ID")
   fi
 
   run_test "List tokens" \
     $BT tokens $JSON_FLAG
 
   run_test "List token types (reference)" \
-    $BT tokens types $JSON_FLAG || true
+    $BT tokens types $JSON_FLAG
 
   if [[ -n "$TOKEN_ID" ]]; then
     run_test "Get token ($TOKEN_ID)" \
@@ -298,16 +564,15 @@ if should_run "tokens"; then
     run_test "Update token ($TOKEN_ID)" \
       $BT tokens update "$TOKEN_ID" \
         --data '{"value": "cli-test-updated"}' \
-        $JSON_FLAG || true
+        $JSON_FLAG
 
     run_test "Search tokens" \
-      $BT tokens search --query "type:token" $JSON_FLAG || true
+      $BT tokens search --query "type:token" $JSON_FLAG
 
-    if ! $SKIP_DESTRUCTIVE; then
-      run_test "Delete token ($TOKEN_ID)" \
-        $BT tokens delete "$TOKEN_ID" --force $JSON_FLAG
-    else
-      skip_test "Delete token (--skip-destructive)"
+    run_test "Delete token ($TOKEN_ID)" \
+      $BT tokens delete "$TOKEN_ID" --force $JSON_FLAG
+    if $LAST_TEST_PASSED; then
+      CLEANUP_TOKENS=("${CLEANUP_TOKENS[@]/$TOKEN_ID/}")
     fi
   fi
 
@@ -327,23 +592,24 @@ if should_run "token-intents"; then
   section_header "Token Intents"
 
   INTENT_ID=""
-  if run_test "Create token intent" \
+  run_test "Create token intent" \
     $BT token-intents create \
       --type card \
       --data '{"number": "4242424242424242", "expiration_month": 12, "expiration_year": 2026, "cvc": "123"}' \
-      $JSON_FLAG; then
+      $JSON_FLAG
+  if $LAST_TEST_PASSED; then
     INTENT_ID=$(extract_id)
+    [[ -n "$INTENT_ID" ]] && CLEANUP_TOKEN_INTENTS+=("$INTENT_ID")
   fi
 
   if [[ -n "$INTENT_ID" ]]; then
     run_test "Get token intent ($INTENT_ID)" \
       $BT token-intents get "$INTENT_ID" $JSON_FLAG
 
-    if ! $SKIP_DESTRUCTIVE; then
-      run_test "Delete token intent ($INTENT_ID)" \
-        $BT token-intents delete "$INTENT_ID" --force $JSON_FLAG
-    else
-      skip_test "Delete token intent (--skip-destructive)"
+    run_test "Delete token intent ($INTENT_ID)" \
+      $BT token-intents delete "$INTENT_ID" --force $JSON_FLAG
+    if $LAST_TEST_PASSED; then
+      CLEANUP_TOKEN_INTENTS=("${CLEANUP_TOKEN_INTENTS[@]/$INTENT_ID/}")
     fi
   fi
 fi
@@ -354,13 +620,16 @@ if should_run "documents"; then
   section_header "Documents"
 
   # Create a temp file to upload
-  TEMP_DOC=$(mktemp /tmp/bt-cli-test-XXXXXX.txt)
+  TEMP_DOC=$(mktemp /tmp/bt-cli-test-XXXXXX)
   echo "CLI test document content" > "$TEMP_DOC"
+  CLEANUP_TEMP_FILES+=("$TEMP_DOC" "/tmp/bt-cli-test-download.txt")
 
   DOC_ID=""
-  if run_test "Upload document" \
-    $BT documents upload --file "$TEMP_DOC" $JSON_FLAG; then
+  run_test "Upload document" \
+    $BT documents upload --file "$TEMP_DOC" $JSON_FLAG
+  if $LAST_TEST_PASSED; then
     DOC_ID=$(extract_id)
+    [[ -n "$DOC_ID" ]] && CLEANUP_DOCUMENTS+=("$DOC_ID")
   fi
 
   if [[ -n "$DOC_ID" ]]; then
@@ -368,17 +637,14 @@ if should_run "documents"; then
       $BT documents get "$DOC_ID" $JSON_FLAG
 
     run_test "Download document ($DOC_ID)" \
-      $BT documents download "$DOC_ID" --output /tmp/bt-cli-test-download.txt $JSON_FLAG || true
+      $BT documents download "$DOC_ID" --output /tmp/bt-cli-test-download.txt $JSON_FLAG
 
-    if ! $SKIP_DESTRUCTIVE; then
-      run_test "Delete document ($DOC_ID)" \
-        $BT documents delete "$DOC_ID" --force $JSON_FLAG
-    else
-      skip_test "Delete document (--skip-destructive)"
+    run_test "Delete document ($DOC_ID)" \
+      $BT documents delete "$DOC_ID" --force $JSON_FLAG
+    if $LAST_TEST_PASSED; then
+      CLEANUP_DOCUMENTS=("${CLEANUP_DOCUMENTS[@]/$DOC_ID/}")
     fi
   fi
-
-  rm -f "$TEMP_DOC" /tmp/bt-cli-test-download.txt
 fi
 
 # ─── Invoke Reactors ───────────────────────────────────────────────────────────
@@ -386,32 +652,41 @@ fi
 if should_run "reactors-invoke"; then
   section_header "Invoke Reactors"
 
-  echo -e "  ${YELLOW}Note: Reactor invoke tests require an existing reactor ID.${NC}"
-  echo -e "  ${YELLOW}Set REACTOR_ID env var to test. Skipping if not set.${NC}"
+  # Create a simple reactor for testing
+  REACTOR_CODE=$(mktemp /tmp/bt-cli-test-reactor-XXXXXX.js)
+  CLEANUP_TEMP_FILES+=("$REACTOR_CODE")
+  cat > "$REACTOR_CODE" << 'JSEOF'
+module.exports = async function (req) {
+  return { raw: { tokenId: req.args.tokenId, echo: true } };
+};
+JSEOF
 
-  if [[ -n "${REACTOR_ID:-}" ]]; then
+  REACTOR_ID=""
+  run_test "Create test reactor" \
+    $BT reactors create \
+      --name "CLI Test Reactor $(date +%s)" \
+      --code "$REACTOR_CODE" \
+      --image node-bt \
+      --async
+  if $LAST_TEST_PASSED; then
+    REACTOR_ID=$(extract_id)
+    [[ -n "$REACTOR_ID" ]] && CLEANUP_REACTORS+=("$REACTOR_ID")
+  fi
+
+  if [[ -n "$REACTOR_ID" ]]; then
+    # Wait for reactor to be ready
+    sleep 5
+
     run_test "Invoke reactor (sync)" \
       $BT reactors invoke "$REACTOR_ID" \
-        --data '{"args": {"test": true}}' \
-        $JSON_FLAG || true
+        --data '{"args": {"tokenId": "tok-test-123"}}' \
+        $JSON_FLAG
 
-    ASYNC_REQUEST_ID=""
-    if run_test "Invoke reactor (async)" \
-      $BT reactors invoke-async "$REACTOR_ID" \
-        --data '{"args": {"test": true}}' \
-        $JSON_FLAG; then
-      ASYNC_REQUEST_ID=$(extract_field "asyncReactorRequestId")
+    run_test "Delete test reactor ($REACTOR_ID)" \
+      $BT reactors delete "$REACTOR_ID" --yes
+    if $LAST_TEST_PASSED; then
+      CLEANUP_REACTORS=("${CLEANUP_REACTORS[@]/$REACTOR_ID/}")
     fi
-
-    if [[ -n "$ASYNC_REQUEST_ID" ]]; then
-      sleep 2
-      run_test "Get async reactor result" \
-        $BT reactors get-result "$REACTOR_ID" "$ASYNC_REQUEST_ID" $JSON_FLAG || true
-    fi
-  else
-    skip_test "Invoke reactor (sync) — REACTOR_ID not set"
-    skip_test "Invoke reactor (async) — REACTOR_ID not set"
-    skip_test "Get async result — REACTOR_ID not set"
   fi
 fi
 
@@ -440,8 +715,9 @@ if should_run "account-updater"; then
     $BT account-updater jobs $JSON_FLAG || true
 
   JOB_ID=""
-  if run_test "Create account updater job" \
-    $BT account-updater jobs create $JSON_FLAG; then
+  run_test "Create account updater job" \
+    $BT account-updater jobs create $JSON_FLAG
+  if $LAST_TEST_PASSED; then
     JOB_ID=$(extract_id)
   fi
 
@@ -466,16 +742,18 @@ fi
 # ─── Network Tokens ────────────────────────────────────────────────────────────
 
 if should_run "network-tokens"; then
-  section_header "Network Tokens"
+  section_header "[Beta] Network Tokens"
 
   echo -e "  ${YELLOW}Note: Network token operations require valid card tokens.${NC}"
   echo -e "  ${YELLOW}Set NT_TOKEN_ID env var to test creation. Skipping if not set.${NC}"
 
   if [[ -n "${NT_TOKEN_ID:-}" ]]; then
     NT_ID=""
-    if run_test "Create network token" \
-      $BT network-tokens create --token-id "$NT_TOKEN_ID" $JSON_FLAG; then
+    run_test "Create network token" \
+      $BT network-tokens create --token-id "$NT_TOKEN_ID" $JSON_FLAG
+    if $LAST_TEST_PASSED; then
       NT_ID=$(extract_id)
+      [[ -n "$NT_ID" ]] && CLEANUP_NETWORK_TOKENS+=("$NT_ID")
     fi
 
     if [[ -n "$NT_ID" ]]; then
@@ -483,19 +761,18 @@ if should_run "network-tokens"; then
         $BT network-tokens get "$NT_ID" $JSON_FLAG
 
       run_test "Generate cryptogram ($NT_ID)" \
-        $BT network-tokens cryptogram "$NT_ID" $JSON_FLAG || true
+        $BT network-tokens cryptogram "$NT_ID" $JSON_FLAG
 
       run_test "Suspend network token ($NT_ID)" \
-        $BT network-tokens suspend "$NT_ID" $JSON_FLAG || true
+        $BT network-tokens suspend "$NT_ID" $JSON_FLAG
 
       run_test "Resume network token ($NT_ID)" \
-        $BT network-tokens resume "$NT_ID" $JSON_FLAG || true
+        $BT network-tokens resume "$NT_ID" $JSON_FLAG
 
-      if ! $SKIP_DESTRUCTIVE; then
-        run_test "Delete network token ($NT_ID)" \
-          $BT network-tokens delete "$NT_ID" --force $JSON_FLAG
-      else
-        skip_test "Delete network token (--skip-destructive)"
+      run_test "Delete network token ($NT_ID)" \
+        $BT network-tokens delete "$NT_ID" --force $JSON_FLAG
+      if $LAST_TEST_PASSED; then
+        CLEANUP_NETWORK_TOKENS=("${CLEANUP_NETWORK_TOKENS[@]/$NT_ID/}")
       fi
     fi
   else
@@ -507,15 +784,16 @@ fi
 # ─── 3DS Sessions ──────────────────────────────────────────────────────────────
 
 if should_run "3ds"; then
-  section_header "3DS Sessions"
+  section_header "[Beta] 3DS Sessions"
 
   echo -e "  ${YELLOW}Note: 3DS requires a valid card token or token intent.${NC}"
   echo -e "  ${YELLOW}Set THREEDS_TOKEN_ID env var to test. Skipping if not set.${NC}"
 
   if [[ -n "${THREEDS_TOKEN_ID:-}" ]]; then
     SESSION_ID=""
-    if run_test "Create 3DS session" \
-      $BT 3ds sessions create --token-id "$THREEDS_TOKEN_ID" $JSON_FLAG; then
+    run_test "Create 3DS session" \
+      $BT 3ds sessions create --token-id "$THREEDS_TOKEN_ID" $JSON_FLAG
+    if $LAST_TEST_PASSED; then
       SESSION_ID=$(extract_id)
     fi
 
@@ -540,7 +818,7 @@ fi
 # ─── Enrichments ────────────────────────────────────────────────────────────────
 
 if should_run "enrichments"; then
-  section_header "Enrichments"
+  section_header "[Beta] Enrichments"
 
   echo -e "  ${YELLOW}Note: Bank account verification requires a valid bank token.${NC}"
   echo -e "  ${YELLOW}Set BANK_TOKEN_ID env var to test. Skipping if not set.${NC}"
@@ -559,7 +837,7 @@ fi
 # ─── Apple Pay ──────────────────────────────────────────────────────────────────
 
 if should_run "apple-pay"; then
-  section_header "Apple Pay"
+  section_header "[Beta] Apple Pay"
 
   run_test "List Apple Pay domains" \
     $BT apple-pay domains $JSON_FLAG || true
@@ -578,7 +856,7 @@ fi
 # ─── Google Pay ─────────────────────────────────────────────────────────────────
 
 if should_run "google-pay"; then
-  section_header "Google Pay"
+  section_header "[Beta] Google Pay"
 
   echo -e "  ${YELLOW}Note: Google Pay operations require real payment data and merchant setup.${NC}"
   echo -e "  ${YELLOW}Most operations will fail without proper configuration.${NC}"
@@ -607,20 +885,20 @@ if should_run "connections"; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# EXISTING ENDPOINTS (Smoke Tests)
+# MANAGEMENT LISTING (Smoke Tests)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if should_run "existing"; then
-  section_header "Existing Endpoints (Smoke Tests)"
+  section_header "Management Listings"
 
   run_test "List applications" \
-    $BT applications --page 1
+    $BT applications $JSON_FLAG
 
   run_test "List reactors" \
-    $BT reactors --page 1
+    $BT reactors $JSON_FLAG
 
   run_test "List proxies" \
-    $BT proxies --page 1
+    $BT proxies $JSON_FLAG
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════

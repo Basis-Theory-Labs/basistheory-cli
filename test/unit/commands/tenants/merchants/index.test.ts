@@ -1,13 +1,22 @@
+import { BasisTheoryClient } from '@basis-theory/node-sdk';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { tenantMerchantFixtures } from '../../../fixtures/tenants';
+import { tenantFixture, tenantMerchantFixtures } from '../../../fixtures/tenants';
 import { runCommand } from '../../../helpers/run-command';
 
 describe('tenants merchants', () => {
   let fetchStub: sinon.SinonStub;
+  let tenantSelfGetStub: sinon.SinonStub;
 
   beforeEach(() => {
     fetchStub = sinon.stub(global, 'fetch');
+    tenantSelfGetStub = sinon.stub();
+
+    sinon.stub(BasisTheoryClient.prototype, 'tenants').get(() => ({
+      self: { get: tenantSelfGetStub },
+    }));
+
+    tenantSelfGetStub.resolves(tenantFixture);
 
     fetchStub.resolves(
       new Response(JSON.stringify({ data: tenantMerchantFixtures }), {

@@ -1,15 +1,12 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
-import * as confirm from '@inquirer/confirm';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { runCommand } from '../../helpers/run-command';
 
 describe('applications delete', () => {
-  let confirmStub: sinon.SinonStub;
   let applicationsDeleteStub: sinon.SinonStub;
 
   beforeEach(() => {
-    confirmStub = sinon.stub(confirm, 'default');
     applicationsDeleteStub = sinon.stub();
 
     sinon.stub(BasisTheoryClient.prototype, 'applications').get(() => ({
@@ -17,55 +14,37 @@ describe('applications delete', () => {
     }));
 
     applicationsDeleteStub.resolves(undefined);
-    confirmStub.resolves(true);
   });
 
   afterEach(() => {
     sinon.restore();
   });
 
-  describe('with --yes flag', () => {
-    it('deletes application without confirmation prompt', async () => {
-      const result = await runCommand([
-        'applications:delete',
-        'app-123',
-        '--yes',
-      ]);
+  it('deletes application', async () => {
+    const result = await runCommand(['applications:delete', 'app-123']);
 
-      expect(result.stdout).to.contain('Application deleted successfully!');
-      expect(applicationsDeleteStub.calledOnce).to.be.true;
-      expect(applicationsDeleteStub.calledWith('app-123')).to.be.true;
-      expect(confirmStub.called).to.be.false;
-    });
-
-    it('accepts -y shorthand flag', async () => {
-      const result = await runCommand(['applications:delete', 'app-456', '-y']);
-
-      expect(result.stdout).to.contain('Application deleted successfully!');
-      expect(applicationsDeleteStub.calledWith('app-456')).to.be.true;
-    });
+    expect(result.stdout).to.contain('Application deleted successfully!');
+    expect(applicationsDeleteStub.calledOnce).to.be.true;
+    expect(applicationsDeleteStub.calledWith('app-123')).to.be.true;
   });
 
-  describe('with confirmation prompt', () => {
-    it('deletes application when user confirms', async () => {
-      confirmStub.resolves(true);
+  it('accepts --yes flag', async () => {
+    const result = await runCommand([
+      'applications:delete',
+      'app-123',
+      '--yes',
+    ]);
 
-      const result = await runCommand(['applications:delete', 'app-123']);
+    expect(result.stdout).to.contain('Application deleted successfully!');
+    expect(applicationsDeleteStub.calledOnce).to.be.true;
+    expect(applicationsDeleteStub.calledWith('app-123')).to.be.true;
+  });
 
-      expect(result.stdout).to.contain('Application deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(applicationsDeleteStub.calledOnce).to.be.true;
-    });
+  it('accepts -y shorthand flag', async () => {
+    const result = await runCommand(['applications:delete', 'app-456', '-y']);
 
-    it('does not delete application when user declines', async () => {
-      confirmStub.resolves(false);
-
-      const result = await runCommand(['applications:delete', 'app-123']);
-
-      expect(result.stdout).to.not.contain('Application deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(applicationsDeleteStub.called).to.be.false;
-    });
+    expect(result.stdout).to.contain('Application deleted successfully!');
+    expect(applicationsDeleteStub.calledWith('app-456')).to.be.true;
   });
 
   describe('required arguments', () => {

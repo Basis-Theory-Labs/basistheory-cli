@@ -8,6 +8,7 @@ import type {
   Input,
   ParserOutput,
 } from '@oclif/core/lib/interfaces/parser';
+import { loadConfig } from './config';
 
 const formatApiError = (
   body: BasisTheory.ValidationProblemDetails | BasisTheory.ProblemDetails
@@ -80,13 +81,15 @@ export abstract class ApiCommand extends Command {
     }
   > {
     const { flags, ...parsed } = await super.parse(options, argv);
+    const config = loadConfig();
     const {
       'api-key': apiKey,
       'management-key': managementKey,
       'api-base-url': apiBaseUrl,
     } = flags;
 
-    const key = apiKey || managementKey;
+    const key =
+      apiKey || managementKey || config.apiKey || config.managementApiKey;
 
     if (!key) {
       this.error(
@@ -94,9 +97,11 @@ export abstract class ApiCommand extends Command {
       );
     }
 
+    const effectiveBaseUrl = apiBaseUrl || config.apiBaseUrl;
+
     const bt = new BasisTheoryClient({
       apiKey: key,
-      ...(apiBaseUrl ? { environment: apiBaseUrl } : {}),
+      ...(effectiveBaseUrl ? { environment: effectiveBaseUrl } : {}),
     });
 
     return {

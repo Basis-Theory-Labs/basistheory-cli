@@ -1,73 +1,6 @@
 import type { BasisTheory, BasisTheoryClient } from '@basis-theory/node-sdk';
-import confirm from '@inquirer/confirm';
-import { ux } from '@oclif/core';
-import type { TableRow } from '../types';
-import { selectOrNavigate, PaginatedList } from '../utils';
 
 const debug = require('debug')('reactors:management');
-
-const listReactors = async (
-  bt: BasisTheoryClient,
-  page: number
-): Promise<PaginatedList<BasisTheory.Reactor>> => {
-  const size = 5;
-
-  debug('Listing reactors', `page: ${page}`, `size: ${size}`);
-
-  const reactorsPage = await bt.reactors.list({
-    size,
-    page,
-  });
-
-  let data: TableRow<BasisTheory.Reactor>[] = [];
-
-  if (reactorsPage.data.length) {
-    const last = (page - 1) * size;
-
-    data = reactorsPage.data.map((reactor, index) => ({
-      '#': last + (index + 1),
-      ...reactor,
-    }));
-
-    ux.table(data, {
-      '#': {},
-      id: {},
-      name: {},
-      state: {},
-    });
-  } else {
-    ux.log('No reactors found.');
-  }
-
-  return {
-    data,
-    page,
-    hasNextPage: reactorsPage.hasNextPage(),
-  };
-};
-
-const selectReactor = async (
-  bt: BasisTheoryClient,
-  page: number
-): Promise<BasisTheory.Reactor | undefined> => {
-  const reactors = await listReactors(bt, page);
-
-  if (!reactors.data.length) {
-    return undefined;
-  }
-
-  const selection = await selectOrNavigate(reactors, '#');
-
-  if (selection === 'previous') {
-    return selectReactor(bt, page - 1);
-  }
-
-  if (selection === 'next') {
-    return selectReactor(bt, page + 1);
-  }
-
-  return selection;
-};
 
 const createReactor = (
   bt: BasisTheoryClient,
@@ -80,20 +13,8 @@ const createReactor = (
 
 const deleteReactor = async (
   bt: BasisTheoryClient,
-  id: string,
-  force = false
+  id: string
 ): Promise<boolean> => {
-  if (!force) {
-    const proceed = await confirm({
-      message: `Are you sure you want to delete this Reactor (${id})?`,
-      default: false,
-    });
-
-    if (!proceed) {
-      return false;
-    }
-  }
-
   debug(`Deleting Reactor`, id);
 
   await bt.reactors.delete(id);
@@ -120,10 +41,4 @@ const getReactor = (
   return bt.reactors.get(id);
 };
 
-export {
-  selectReactor,
-  createReactor,
-  patchReactor,
-  deleteReactor,
-  getReactor,
-};
+export { createReactor, patchReactor, deleteReactor, getReactor };

@@ -1,15 +1,12 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
-import * as confirm from '@inquirer/confirm';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { runCommand } from '../../../helpers/run-command';
 
 describe('tenants members delete', () => {
-  let confirmStub: sinon.SinonStub;
   let membersDeleteStub: sinon.SinonStub;
 
   beforeEach(() => {
-    confirmStub = sinon.stub(confirm, 'default');
     membersDeleteStub = sinon.stub();
 
     sinon.stub(BasisTheoryClient.prototype, 'tenants').get(() => ({
@@ -17,59 +14,41 @@ describe('tenants members delete', () => {
     }));
 
     membersDeleteStub.resolves(undefined);
-    confirmStub.resolves(true);
   });
 
   afterEach(() => {
     sinon.restore();
   });
 
-  describe('with --force flag', () => {
-    it('deletes member without confirmation prompt', async () => {
-      const result = await runCommand([
-        'tenants:members:delete',
-        'member-123',
-        '--force',
-      ]);
+  it('deletes member', async () => {
+    const result = await runCommand(['tenants:members:delete', 'member-123']);
 
-      expect(result.stdout).to.contain('Member deleted successfully!');
-      expect(membersDeleteStub.calledOnce).to.be.true;
-      expect(membersDeleteStub.calledWith('member-123')).to.be.true;
-      expect(confirmStub.called).to.be.false;
-    });
-
-    it('accepts -f shorthand flag', async () => {
-      const result = await runCommand([
-        'tenants:members:delete',
-        'member-456',
-        '-f',
-      ]);
-
-      expect(result.stdout).to.contain('Member deleted successfully!');
-      expect(membersDeleteStub.calledWith('member-456')).to.be.true;
-    });
+    expect(result.stdout).to.contain('Member deleted successfully!');
+    expect(membersDeleteStub.calledOnce).to.be.true;
+    expect(membersDeleteStub.calledWith('member-123')).to.be.true;
   });
 
-  describe('with confirmation prompt', () => {
-    it('deletes member when user confirms', async () => {
-      confirmStub.resolves(true);
+  it('accepts --force flag', async () => {
+    const result = await runCommand([
+      'tenants:members:delete',
+      'member-123',
+      '--force',
+    ]);
 
-      const result = await runCommand(['tenants:members:delete', 'member-123']);
+    expect(result.stdout).to.contain('Member deleted successfully!');
+    expect(membersDeleteStub.calledOnce).to.be.true;
+    expect(membersDeleteStub.calledWith('member-123')).to.be.true;
+  });
 
-      expect(result.stdout).to.contain('Member deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(membersDeleteStub.calledOnce).to.be.true;
-    });
+  it('accepts -f shorthand flag', async () => {
+    const result = await runCommand([
+      'tenants:members:delete',
+      'member-456',
+      '-f',
+    ]);
 
-    it('does not delete member when user declines', async () => {
-      confirmStub.resolves(false);
-
-      const result = await runCommand(['tenants:members:delete', 'member-123']);
-
-      expect(result.stdout).to.not.contain('Member deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(membersDeleteStub.called).to.be.false;
-    });
+    expect(result.stdout).to.contain('Member deleted successfully!');
+    expect(membersDeleteStub.calledWith('member-456')).to.be.true;
   });
 
   describe('required arguments', () => {

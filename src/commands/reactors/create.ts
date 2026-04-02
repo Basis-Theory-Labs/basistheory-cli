@@ -8,11 +8,9 @@ import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
 import {
   buildRuntime,
   isLegacyRuntimeImage,
-  promptRuntimeImage,
   promptRuntimeOptions,
   waitForResourceState,
 } from '../../runtime';
-import { promptStringIfUndefined } from '../../utils';
 
 export default class Create extends BaseCommand {
   public static description =
@@ -63,32 +61,18 @@ export default class Create extends BaseCommand {
       async: asyncFlag,
     } = flags;
 
-    const image = await promptRuntimeImage(flags.image);
+    const image = flags.image ?? '';
 
     validateReactorRuntimeFlags(flags as Record<string, unknown>, image);
     validateReactorApplicationId(applicationId, image);
 
-    const name = await promptStringIfUndefined(flags.name, {
-      message: 'What is the Reactor name?',
-      validate: (value) => Boolean(value),
-    });
+    const name = flags.name ?? '';
+    const code = flags['code'] ?? '';
+    const configuration = flags.configuration ?? '';
 
-    const code = await promptStringIfUndefined(flags['code'], {
-      message: 'Enter the Reactor code file path:',
-      validate: (value) => Boolean(value),
-    });
-
-    const configuration = await promptStringIfUndefined(flags.configuration, {
-      message: '(Optional) Enter the configuration file path (.env format):',
-    });
-
-    let promptedApplicationId: string | undefined;
-
-    if (isLegacyRuntimeImage(image)) {
-      promptedApplicationId = await promptStringIfUndefined(applicationId, {
-        message: '(Optional) Enter the Application ID to use in the Reactor:',
-      });
-    }
+    const promptedApplicationId = isLegacyRuntimeImage(image)
+      ? applicationId ?? ''
+      : undefined;
 
     let runtime;
 

@@ -1,4 +1,3 @@
-import confirm from '@inquirer/confirm';
 import { Args, Flags } from '@oclif/core';
 import { ApiCommand } from '../../api-command';
 
@@ -26,19 +25,7 @@ export default class Delete extends ApiCommand {
     const {
       bt,
       args: { id },
-      flags: { force },
     } = await this.parse(Delete);
-
-    if (!force) {
-      const proceed = await confirm({
-        message: `Are you sure you want to delete this Apple Pay token (${id})?`,
-        default: false,
-      });
-
-      if (!proceed) {
-        return;
-      }
-    }
 
     await bt.applePay.delete(id);
 

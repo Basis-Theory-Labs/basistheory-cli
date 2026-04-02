@@ -8,6 +8,7 @@ import type {
   Input,
   ParserOutput,
 } from '@oclif/core/lib/interfaces/parser';
+import { loadConfig } from './config';
 
 const formatApiError = (
   body: BasisTheory.ValidationProblemDetails | BasisTheory.ProblemDetails
@@ -51,7 +52,6 @@ export abstract class BaseCommand extends Command {
       env: 'BT_MANAGEMENT_KEY',
       description:
         'management key used for connecting with the reactor / proxy',
-      required: true,
     }),
     'api-base-url': Flags.string({
       env: 'BT_API_BASE_URL',
@@ -77,12 +77,23 @@ export abstract class BaseCommand extends Command {
     }
   > {
     const { flags, ...parsed } = await super.parse(options, argv);
+    const config = loadConfig();
     const { 'management-key': managementKey, 'api-base-url': apiBaseUrl } =
       flags;
 
+    const effectiveKey = managementKey || config.managementApiKey;
+
+    if (!effectiveKey) {
+      throw new Errors.CLIError(
+        '--management-key (BT_MANAGEMENT_KEY) must be provided via flag, environment variable, or ~/.basistheory/cli.json.'
+      );
+    }
+
+    const effectiveBaseUrl = apiBaseUrl || config.apiBaseUrl;
+
     const bt = new BasisTheoryClient({
-      apiKey: managementKey,
-      ...(apiBaseUrl ? { environment: apiBaseUrl } : {}),
+      apiKey: effectiveKey,
+      ...(effectiveBaseUrl ? { environment: effectiveBaseUrl } : {}),
     });
 
     return {

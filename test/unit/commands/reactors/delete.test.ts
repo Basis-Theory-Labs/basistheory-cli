@@ -1,15 +1,12 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
-import * as confirm from '@inquirer/confirm';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { runCommand } from '../../helpers/run-command';
 
 describe('reactors delete', () => {
-  let confirmStub: sinon.SinonStub;
   let reactorsDeleteStub: sinon.SinonStub;
 
   beforeEach(() => {
-    confirmStub = sinon.stub(confirm, 'default');
     reactorsDeleteStub = sinon.stub();
 
     sinon.stub(BasisTheoryClient.prototype, 'reactors').get(() => ({
@@ -17,55 +14,37 @@ describe('reactors delete', () => {
     }));
 
     reactorsDeleteStub.resolves(undefined);
-    confirmStub.resolves(true);
   });
 
   afterEach(() => {
     sinon.restore();
   });
 
-  describe('with --yes flag', () => {
-    it('deletes reactor without confirmation prompt', async () => {
-      const result = await runCommand([
-        'reactors:delete',
-        'reactor-123',
-        '--yes',
-      ]);
+  it('deletes reactor', async () => {
+    const result = await runCommand(['reactors:delete', 'reactor-123']);
 
-      expect(result.stdout).to.contain('Reactor deleted successfully!');
-      expect(reactorsDeleteStub.calledOnce).to.be.true;
-      expect(reactorsDeleteStub.calledWith('reactor-123')).to.be.true;
-      expect(confirmStub.called).to.be.false;
-    });
-
-    it('accepts -y shorthand flag', async () => {
-      const result = await runCommand(['reactors:delete', 'reactor-456', '-y']);
-
-      expect(result.stdout).to.contain('Reactor deleted successfully!');
-      expect(reactorsDeleteStub.calledWith('reactor-456')).to.be.true;
-    });
+    expect(result.stdout).to.contain('Reactor deleted successfully!');
+    expect(reactorsDeleteStub.calledOnce).to.be.true;
+    expect(reactorsDeleteStub.calledWith('reactor-123')).to.be.true;
   });
 
-  describe('with confirmation prompt', () => {
-    it('deletes reactor when user confirms', async () => {
-      confirmStub.resolves(true);
+  it('accepts --yes flag', async () => {
+    const result = await runCommand([
+      'reactors:delete',
+      'reactor-123',
+      '--yes',
+    ]);
 
-      const result = await runCommand(['reactors:delete', 'reactor-123']);
+    expect(result.stdout).to.contain('Reactor deleted successfully!');
+    expect(reactorsDeleteStub.calledOnce).to.be.true;
+    expect(reactorsDeleteStub.calledWith('reactor-123')).to.be.true;
+  });
 
-      expect(result.stdout).to.contain('Reactor deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(reactorsDeleteStub.calledOnce).to.be.true;
-    });
+  it('accepts -y shorthand flag', async () => {
+    const result = await runCommand(['reactors:delete', 'reactor-456', '-y']);
 
-    it('does not delete reactor when user declines', async () => {
-      confirmStub.resolves(false);
-
-      const result = await runCommand(['reactors:delete', 'reactor-123']);
-
-      expect(result.stdout).to.not.contain('Reactor deleted successfully!');
-      expect(confirmStub.calledOnce).to.be.true;
-      expect(reactorsDeleteStub.called).to.be.false;
-    });
+    expect(result.stdout).to.contain('Reactor deleted successfully!');
+    expect(reactorsDeleteStub.calledWith('reactor-456')).to.be.true;
   });
 
   describe('required arguments', () => {

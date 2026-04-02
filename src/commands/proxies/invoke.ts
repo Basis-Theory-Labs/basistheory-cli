@@ -1,5 +1,6 @@
 import { Flags } from '@oclif/core';
 import { ApiCommand } from '../../api-command';
+import { loadConfig } from '../../config';
 import { readJsonInput } from '../../json-input';
 
 export default class Invoke extends ApiCommand {
@@ -52,14 +53,23 @@ export default class Invoke extends ApiCommand {
       this.error('Either --proxy-url or --proxy-key must be provided.');
     }
 
-    const key = apiKey || managementKey;
+    const config = loadConfig();
+    const key =
+      apiKey || managementKey || config.apiKey || config.managementApiKey;
 
-    const baseUrl = apiBaseUrl || 'https://api.basistheory.com';
+    if (!key) {
+      this.error(
+        'Either --api-key (BT_API_KEY) or --management-key (BT_MANAGEMENT_KEY) must be provided.'
+      );
+    }
+
+    const baseUrl =
+      apiBaseUrl || config.apiBaseUrl || 'https://api.basistheory.com';
     const urlPath = proxyPath ? `/proxy/${proxyPath}` : '/proxy';
     const url = `${baseUrl}${urlPath}`;
 
     const headers: Record<string, string> = {
-      'BT-API-KEY': key!,
+      'BT-API-KEY': key,
       'Content-Type': 'application/json',
     };
 
