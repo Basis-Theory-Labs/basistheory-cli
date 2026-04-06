@@ -1,11 +1,23 @@
-import { BasisTheory, BasisTheoryEnvironment } from '@basis-theory/node-sdk';
-import { BasisTheoryClient, BasisTheoryError } from '@basis-theory/node-sdk';
+import {
+  BasisTheory,
+  BasisTheoryEnvironment,
+  BasisTheoryClient,
+  BasisTheoryError,
+} from '@basis-theory/node-sdk';
 import { Command, Errors, Flags } from '@oclif/core';
 import type { CommandError } from '@oclif/core/lib/interfaces';
-import type { ArgOutput, FlagOutput, Input, ParserOutput } from '@oclif/core/lib/interfaces/parser';
+import type {
+  ArgOutput,
+  FlagOutput,
+  Input,
+  ParserOutput,
+} from '@oclif/core/lib/interfaces/parser';
 
 const formatApiError = (
-  body: BasisTheory.ValidationProblemDetails | BasisTheory.ProblemDetails | unknown
+  body:
+    | BasisTheory.ValidationProblemDetails
+    | BasisTheory.ProblemDetails
+    | unknown
 ): string => {
   if (typeof body === 'string') {
     return body;
