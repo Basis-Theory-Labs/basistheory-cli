@@ -4,24 +4,36 @@ import { Command, Errors, Flags } from '@oclif/core';
 import type { CommandError } from '@oclif/core/lib/interfaces';
 import type { ArgOutput, FlagOutput, Input, ParserOutput } from '@oclif/core/lib/interfaces/parser';
 
-
 const formatApiError = (
-  body: BasisTheory.ValidationProblemDetails | BasisTheory.ProblemDetails
+  body: BasisTheory.ValidationProblemDetails | BasisTheory.ProblemDetails | unknown
 ): string => {
+  if (typeof body === 'string') {
+    return body;
+  }
+
+  if (!body || typeof body !== 'object') {
+    return '';
+  }
+
+  const problem = body as Partial<
+    BasisTheory.ValidationProblemDetails & BasisTheory.ProblemDetails
+  > & {
+    errors?: Record<string, unknown>;
+  };
   const parts: string[] = [];
 
-  if (body.title) {
-    const status = body.status ? ` [${body.status}]` : '';
+  if (problem.title) {
+    const status = problem.status ? ` [${problem.status}]` : '';
 
-    parts.push(`${body.title}${status}`);
+    parts.push(`${problem.title}${status}`);
   }
 
-  if (body.detail) {
-    parts.push(`Detail: ${body.detail}`);
+  if (problem.detail) {
+    parts.push(`Detail: ${problem.detail}`);
   }
 
-  if ('errors' in body && body.errors) {
-    for (const [field, messages] of Object.entries(body.errors)) {
+  if (problem.errors) {
+    for (const [field, messages] of Object.entries(problem.errors)) {
       if (Array.isArray(messages)) {
         for (const message of messages) {
           parts.push(`  - ${field}: ${message}`);
@@ -69,7 +81,7 @@ export abstract class BaseCommand extends Command {
     const bt = new BasisTheoryClient({
       apiKey: managementKey,
       ...(apiBaseUrl
-        ? { environment: apiBaseUrl }
+        ? { baseUrl: apiBaseUrl }
         : { environment: BasisTheoryEnvironment.Test }),
     });
 
@@ -86,7 +98,9 @@ export abstract class BaseCommand extends Command {
         err.body as BasisTheory.ValidationProblemDetails
       );
 
-      return super.catch(new Errors.CLIError(formatted) as CommandError);
+      return super.catch(
+        new Errors.CLIError(formatted || err.message) as CommandError
+      );
     }
 
     return super.catch(err as CommandError);

@@ -789,6 +789,26 @@ describe('proxies create', () => {
       );
     });
 
+    it('preserves non-ProblemDetails BasisTheoryError bodies', async () => {
+      const error = new BasisTheoryError({
+        statusCode: 404,
+        body: 'Not Found',
+      });
+
+      proxiesCreateStub.rejects(error);
+
+      const result = await runCommand([
+        'proxies:create',
+        '--name',
+        'Test Proxy',
+        '--destination-url',
+        'https://example.com/api',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain('Not Found');
+    });
+
     it('errors when dependencies file contains invalid JSON', async () => {
       inputStub
         .onCallResolves(
