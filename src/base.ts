@@ -44,7 +44,8 @@ export abstract class BaseCommand extends Command {
     }),
     'api-base-url': Flags.string({
       env: 'BT_API_BASE_URL',
-      description: 'base API URL to use in Basis Theory SDK',
+      description:
+        'base API URL to use in Basis Theory SDK; defaults to Test when omitted',
       hidden: true,
     }),
   };
