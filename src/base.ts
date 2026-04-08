@@ -93,7 +93,7 @@ export abstract class BaseCommand extends Command {
 
     const bt = new BasisTheoryClient({
       apiKey: effectiveKey,
-      ...(effectiveBaseUrl ? { environment: effectiveBaseUrl } : {}),
+      ...(effectiveBaseUrl ? { baseUrl: effectiveBaseUrl } : {}),
     });
 
     return {
