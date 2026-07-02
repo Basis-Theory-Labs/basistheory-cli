@@ -53,13 +53,15 @@ const createLogServer = async (_port: number): Promise<string> => {
   });
 
   debug('creating http server');
-  const fastify = createHttpServer(logger);
+  const server = createHttpServer(logger);
 
   debug('creating socket server');
-  createSocketServer(fastify.server, logger);
+  createSocketServer(server, logger);
 
   debug(`server listening on port ${port}`);
-  await fastify.listen({ port });
+  await new Promise<void>((resolve) => {
+    server.listen(port, resolve);
+  });
 
   ux.action.stop(`✅\tListening at http://localhost:${port}`);
   ux.action.start('Creating tunnel');
