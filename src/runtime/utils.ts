@@ -1,11 +1,5 @@
 import type { BasisTheory } from '@basis-theory/node-sdk';
 import { readFileContents } from '../files';
-import {
-  promptCommaSeparatedIfUndefined,
-  promptIntegerIfUndefined,
-  promptSelectIfUndefined,
-  promptStringIfUndefined,
-} from '../utils';
 
 const LEGACY_RUNTIME_IMAGE = 'node-bt';
 
@@ -210,79 +204,22 @@ const buildRuntime = (
   return runtime;
 };
 
-const promptRuntimeOptions = async (
-  flags: RuntimeFlags,
-  labelPrefix?: string
-): Promise<ConfigurableRuntimeOptions> => {
-  const prefix = labelPrefix ? `${labelPrefix}: ` : '';
-
-  const timeout = await promptIntegerIfUndefined(flags.timeout, {
-    message: `${prefix}Timeout in seconds (1-30, press Enter for default: 10):`,
-    min: 1,
-    max: 30,
+const promptRuntimeOptions = (
+  flags: RuntimeFlags
+): Promise<ConfigurableRuntimeOptions> =>
+  Promise.resolve({
+    timeout: flags.timeout,
+    warmConcurrency: flags['warm-concurrency'],
+    resources: flags.resources,
+    packageJson: flags['package-json'] || undefined,
+    permissions:
+      flags.permissions && flags.permissions.length > 0
+        ? flags.permissions
+        : undefined,
   });
 
-  const warmConcurrency = await promptIntegerIfUndefined(
-    flags['warm-concurrency'],
-    {
-      message: `${prefix}Warm concurrency (0-1, press Enter for default: 0):`,
-      min: 0,
-      max: 1,
-    }
-  );
-
-  const resources = await promptSelectIfUndefined(flags.resources, {
-    message: `${prefix}Resource tier:`,
-    choices: [
-      {
-        value: 'standard',
-        name: 'standard (default)',
-      },
-      {
-        value: 'large',
-        name: 'large',
-      },
-      {
-        value: 'xlarge',
-        name: 'xlarge',
-      },
-    ],
-  });
-
-  const packageJson = await promptStringIfUndefined(flags['package-json'], {
-    message: `${prefix}(Optional) Runtime package.json file path (JSON format):`,
-  });
-
-  const permissions = await promptCommaSeparatedIfUndefined(flags.permissions, {
-    message: `${prefix}(Optional) Permissions (comma-separated, e.g. token:read, token:create):`,
-  });
-
-  return {
-    timeout,
-    warmConcurrency,
-    resources,
-    packageJson: packageJson || undefined,
-    permissions,
-  };
-};
-
-const promptRuntimeImage = (
-  image: string | undefined,
-  message = 'Which runtime do you want to use?'
-): Promise<string> =>
-  promptSelectIfUndefined(image, {
-    message,
-    choices: [
-      {
-        value: LEGACY_RUNTIME_IMAGE,
-        name: `${LEGACY_RUNTIME_IMAGE} (legacy)`,
-      },
-      ...CONFIGURABLE_RUNTIME_IMAGES.map((runtime) => ({
-        value: runtime,
-        name: `${runtime} (configurable)`,
-      })),
-    ],
-  });
+const promptRuntimeImage = (image: string | undefined): Promise<string> =>
+  Promise.resolve(image ?? '');
 
 export {
   LEGACY_RUNTIME_IMAGE,

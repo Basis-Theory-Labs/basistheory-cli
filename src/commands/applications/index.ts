@@ -1,9 +1,4 @@
-import select from '@inquirer/select';
-import { Flags } from '@oclif/core';
-import {
-  deleteApplication,
-  selectApplication,
-} from '../../applications/management';
+import { Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
 
 export default class Applications extends BaseCommand {
@@ -18,47 +13,41 @@ export default class Applications extends BaseCommand {
       description: 'Applications list page to fetch',
       default: 1,
     }),
+    size: Flags.integer({
+      char: 's',
+      description: 'number of items per page',
+      default: 20,
+    }),
   };
 
   public async run(): Promise<void> {
     const {
       bt,
-      flags: { page },
+      flags: { page, size, json },
     } = await this.parse(Applications);
 
-    const application = await selectApplication(bt, page);
-
-    if (!application) {
-      return undefined;
-    }
-
-    const action = await select({
-      message: 'Select action to perform',
-      choices: [
-        {
-          name: 'See details',
-          value: 'details',
-        },
-        {
-          name: 'Delete',
-          value: 'delete',
-        },
-      ],
+    const applications = await bt.applications.list({
+      page,
+      size,
     });
 
-    if (action === 'details') {
-      this.logJson(application);
+    if (json) {
+      this.logJson(applications);
 
-      return undefined;
+      return;
     }
 
-    if (
-      action === 'delete' &&
-      (await deleteApplication(bt, application.id ?? ''))
-    ) {
-      return this.log('Application deleted successfully!');
+    if (!applications.data.length) {
+      this.log('No applications found.');
+
+      return;
     }
 
-    return undefined;
+    ux.table(applications.data as unknown as Record<string, unknown>[], {
+      id: {},
+      name: {},
+      type: {},
+      createdAt: { header: 'Created At' },
+    });
   }
 }

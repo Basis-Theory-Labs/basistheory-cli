@@ -1,6 +1,6 @@
 {
   "name": "@basis-theory-labs/cli",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Basis Theory CLI tool",
   "author": "Davi Aquino @djejaquino",
   "bin": {
@@ -71,6 +71,9 @@
     "bin": "bt",
     "dirname": "bt",
     "commands": "./dist/commands",
+    "hooks": {
+      "init": "./dist/hooks/init"
+    },
     "plugins": [],
     "topicSeparator": " ",
     "topics": {
@@ -79,6 +82,81 @@
       },
       "reactors": {
         "description": "Manage Reactors"
+      },
+      "tenants": {
+        "description": "Manage Tenants"
+      },
+      "tenants members": {
+        "description": "Manage Tenant Members"
+      },
+      "tenants invitations": {
+        "description": "Manage Tenant Invitations"
+      },
+      "tenants merchants": {
+        "description": "View Tenant Merchants"
+      },
+      "logs": {
+        "description": "View Audit Logs"
+      },
+      "webhooks": {
+        "description": "Manage Webhooks"
+      },
+      "keys": {
+        "description": "Manage Client Encryption Keys"
+      },
+      "tokens": {
+        "description": "Manage Tokens"
+      },
+      "token-intents": {
+        "description": "Manage Token Intents"
+      },
+      "documents": {
+        "description": "Manage Documents"
+      },
+      "apple-pay": {
+        "description": "[Beta] Manage Apple Pay"
+      },
+      "apple-pay domains": {
+        "description": "[Beta] Manage Apple Pay Domains"
+      },
+      "apple-pay merchants": {
+        "description": "[Beta] Manage Apple Pay Merchants"
+      },
+      "apple-pay merchants certificates": {
+        "description": "[Beta] Manage Apple Pay Merchant Certificates"
+      },
+      "google-pay": {
+        "description": "[Beta] Manage Google Pay"
+      },
+      "google-pay merchants": {
+        "description": "[Beta] Manage Google Pay Merchants"
+      },
+      "google-pay merchants certificates": {
+        "description": "[Beta] Manage Google Pay Merchant Certificates"
+      },
+      "account-updater": {
+        "description": "Account Updater Operations"
+      },
+      "account-updater jobs": {
+        "description": "Manage Account Updater Batch Jobs"
+      },
+      "network-tokens": {
+        "description": "[Beta] Manage Network Tokens"
+      },
+      "3ds": {
+        "description": "[Beta] 3D Secure Operations"
+      },
+      "3ds sessions": {
+        "description": "[Beta] Manage 3DS Sessions"
+      },
+      "enrichments": {
+        "description": "[Beta] Data Enrichment Operations"
+      },
+      "connections": {
+        "description": "Manage Connections"
+      },
+      "connections stripe-forward": {
+        "description": "Stripe Forward Connection"
       }
     }
   },

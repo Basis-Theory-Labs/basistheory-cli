@@ -1,8 +1,4 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
-import * as checkbox from '@inquirer/checkbox';
-import * as confirm from '@inquirer/confirm';
-import * as input from '@inquirer/input';
-import * as select from '@inquirer/select';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import {
@@ -11,13 +7,8 @@ import {
   applicationTemplateFixtures,
 } from '../../fixtures/applications';
 import { runCommand } from '../../helpers/run-command';
-import { PromptStub } from '../../helpers/types';
 
 describe('applications create', () => {
-  let inputStub: PromptStub;
-  let selectStub: PromptStub;
-  let checkboxStub: PromptStub;
-  let confirmStub: PromptStub;
   let applicationsCreateStub: sinon.SinonStub;
   let applicationsGetStub: sinon.SinonStub;
   let permissionsListStub: sinon.SinonStub;
@@ -25,10 +16,6 @@ describe('applications create', () => {
   let applicationTemplatesGetStub: sinon.SinonStub;
 
   beforeEach(() => {
-    inputStub = new PromptStub(sinon.stub(input, 'default'));
-    selectStub = new PromptStub(sinon.stub(select, 'default'));
-    checkboxStub = new PromptStub(sinon.stub(checkbox, 'default'));
-    confirmStub = new PromptStub(sinon.stub(confirm, 'default'));
     applicationsCreateStub = sinon.stub();
     applicationsGetStub = sinon.stub();
     permissionsListStub = sinon.stub();
@@ -131,48 +118,6 @@ describe('applications create', () => {
       expect(result.stdout).to.contain('Application created successfully!');
       expect(applicationTemplatesGetStub.calledWith('template-1')).to.be.true;
       expect(applicationsCreateStub.calledOnce).to.be.true;
-    });
-  });
-
-  describe('with prompts', () => {
-    it('prompts for all fields when no flags provided', async () => {
-      confirmStub.resolves(false); // Don't use template
-      inputStub.onCallResolves('What is the Application name?', 'Prompted App');
-      selectStub.onCallResolves('What is the Application type?', 'private');
-      checkboxStub.onCallResolves(
-        'Select the permissions for the Application',
-        ['token:read']
-      );
-
-      const result = await runCommand(['applications:create']);
-
-      expect(result.stdout).to.contain('Application created successfully!');
-      confirmStub.expectCalledWith(
-        'Do you want to use an application template?'
-      );
-      inputStub.verifyExpectations();
-      selectStub.verifyExpectations();
-      checkboxStub.verifyExpectations();
-    });
-
-    it('prompts for template when no flags provided', async () => {
-      confirmStub.resolves(true); // Use template
-      selectStub
-        .onCallResolves('Which template type do you want to use?', 'official')
-        .onCallResolves('Choose a template', applicationTemplateFixtures[0]);
-      inputStub.onCallResolves(
-        'What is the Application name?',
-        'App from Template'
-      );
-
-      const result = await runCommand(['applications:create']);
-
-      expect(result.stdout).to.contain('Application created successfully!');
-      confirmStub.expectCalledWith(
-        'Do you want to use an application template?'
-      );
-      selectStub.verifyExpectations();
-      inputStub.verifyExpectations();
     });
   });
 

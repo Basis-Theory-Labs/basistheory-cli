@@ -107,13 +107,7 @@ const promptTransformRuntime = async (
       | undefined,
   };
 
-  const labelPrefix = `${prefix.charAt(0).toUpperCase()}${prefix.slice(
-    1
-  )} transform`;
-  const runtimeOptions = await promptRuntimeOptions(
-    transformFlags,
-    labelPrefix
-  );
+  const runtimeOptions = await promptRuntimeOptions(transformFlags);
 
   return buildRuntime({
     image,

@@ -1,8 +1,5 @@
-import select from '@inquirer/select';
-import { Flags } from '@oclif/core';
+import { Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
-import { showProxyLogs } from '../../logs';
-import { deleteProxy, selectProxy } from '../../proxies/management';
 
 export default class Proxies extends BaseCommand {
   public static description =
@@ -16,55 +13,52 @@ export default class Proxies extends BaseCommand {
       description: 'Proxies list page to fetch',
       default: 1,
     }),
+    size: Flags.integer({
+      char: 's',
+      description: 'number of items per page',
+      default: 20,
+    }),
   };
-
-  public static args = {};
 
   public async run(): Promise<void> {
     const {
-      flags: { page },
       bt,
+      flags: { page, size, json },
     } = await this.parse(Proxies);
 
-    const proxy = await selectProxy(bt, page);
-
-    if (!proxy) {
-      return undefined;
-    }
-
-    const action = await select({
-      message: 'Select action to perform',
-      choices: [
-        {
-          name: 'See details',
-          value: 'details',
-        },
-        {
-          name: 'Logs',
-          value: 'logs',
-          description: 'See Proxy Transforms real-time logs',
-        },
-        {
-          name: 'Delete',
-          value: 'delete',
-        },
-      ],
+    const proxies = await bt.proxies.list({
+      page,
+      size,
     });
 
-    if (action === 'details') {
-      this.logJson(proxy);
+    if (json) {
+      this.logJson(proxies);
 
-      return undefined;
+      return;
     }
 
-    if (action === 'logs') {
-      return showProxyLogs(bt, proxy.id ?? '');
+    if (!proxies.data.length) {
+      this.log('No proxies found.');
+
+      return;
     }
 
-    if (action === 'delete' && (await deleteProxy(bt, proxy.id ?? ''))) {
-      return this.log('Proxy deleted successfully!');
-    }
-
-    return undefined;
+    ux.table(proxies.data as unknown as Record<string, unknown>[], {
+      id: {},
+      name: {},
+      key: {},
+      state: {},
+      /* eslint-disable camelcase */
+      destination_url: {
+        header: 'Destination URL',
+        get: (proxy: Record<string, unknown>) => proxy.destinationUrl as string,
+      },
+      require_auth: {
+        header: 'Require Auth',
+        get: (proxy: Record<string, unknown>) =>
+          proxy.requireAuth ? 'yes' : 'no',
+      },
+      /* eslint-enable camelcase */
+    });
   }
 }

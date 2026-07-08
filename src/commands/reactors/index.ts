@@ -1,8 +1,5 @@
-import select from '@inquirer/select';
-import { Flags } from '@oclif/core';
+import { Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
-import { showReactorLogs } from '../../logs';
-import { deleteReactor, selectReactor } from '../../reactors/management';
 
 export default class Reactors extends BaseCommand {
   public static description =
@@ -16,55 +13,41 @@ export default class Reactors extends BaseCommand {
       description: 'Reactors list page to fetch',
       default: 1,
     }),
+    size: Flags.integer({
+      char: 's',
+      description: 'number of items per page',
+      default: 20,
+    }),
   };
-
-  public static args = {};
 
   public async run(): Promise<void> {
     const {
       bt,
-      flags: { page },
+      flags: { page, size, json },
     } = await this.parse(Reactors);
 
-    const reactor = await selectReactor(bt, page);
-
-    if (!reactor) {
-      return undefined;
-    }
-
-    const action = await select({
-      message: 'Select action to perform',
-      choices: [
-        {
-          name: 'See details',
-          value: 'details',
-        },
-        {
-          name: 'Logs',
-          value: 'logs',
-          description: 'See Reactor real-time logs',
-        },
-        {
-          name: 'Delete',
-          value: 'delete',
-        },
-      ],
+    const reactors = await bt.reactors.list({
+      page,
+      size,
     });
 
-    if (action === 'details') {
-      this.logJson(reactor);
+    if (json) {
+      this.logJson(reactors);
 
-      return undefined;
+      return;
     }
 
-    if (action === 'logs') {
-      return showReactorLogs(bt, reactor.id ?? '');
+    if (!reactors.data.length) {
+      this.log('No reactors found.');
+
+      return;
     }
 
-    if (action === 'delete' && (await deleteReactor(bt, reactor.id ?? ''))) {
-      return this.log('Reactor deleted successfully!');
-    }
-
-    return undefined;
+    ux.table(reactors.data as unknown as Record<string, unknown>[], {
+      id: {},
+      name: {},
+      state: {},
+      createdAt: { header: 'Created At' },
+    });
   }
 }

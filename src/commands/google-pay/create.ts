@@ -1,0 +1,42 @@
+import type { BasisTheory } from '@basis-theory/node-sdk';
+import { Flags } from '@oclif/core';
+import { ApiCommand } from '../../api-command';
+import { requireJsonInput } from '../../json-input';
+
+export default class Create extends ApiCommand {
+  public static description = 'Create a Google Pay token';
+
+  public static examples = ['<%= config.bin %> <%= command.id %>'];
+
+  public static flags = {
+    data: Flags.string({
+      description: 'Google payment data as JSON string',
+    }),
+    file: Flags.string({
+      description: 'path to JSON file containing Google payment data',
+    }),
+    'expires-at': Flags.string({
+      description: 'expiration date for the token',
+    }),
+    'merchant-registration-id': Flags.string({
+      description: 'merchant registration ID',
+    }),
+  };
+
+  public async run(): Promise<void> {
+    const { bt, flags } = await this.parse(Create);
+
+    const data = requireJsonInput({
+      data: flags.data,
+      file: flags.file,
+    });
+
+    const result = await bt.googlePay.create({
+      googlePaymentData: data as BasisTheory.GooglePayMethodToken,
+      expiresAt: flags['expires-at'],
+      merchantRegistrationId: flags['merchant-registration-id'],
+    });
+
+    this.logJson(result);
+  }
+}

@@ -1,23 +1,16 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
-import * as input from '@inquirer/input';
-import * as select from '@inquirer/select';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import * as files from '../../../../src/files';
 import { reactorFixtures } from '../../fixtures/reactors';
 import { runCommand } from '../../helpers/run-command';
-import { PromptStub } from '../../helpers/types';
 
 describe('reactors create', () => {
-  let inputStub: PromptStub;
-  let selectStub: PromptStub;
   let readFileStub: sinon.SinonStub;
   let reactorsCreateStub: sinon.SinonStub;
   let reactorsGetStub: sinon.SinonStub;
 
   beforeEach(() => {
-    inputStub = new PromptStub(sinon.stub(input, 'default'));
-    selectStub = new PromptStub(sinon.stub(select, 'default'));
     readFileStub = sinon.stub(files, 'readFileContents');
     reactorsCreateStub = sinon.stub();
     reactorsGetStub = sinon.stub();
@@ -100,29 +93,6 @@ describe('reactors create', () => {
 
   describe('with runtime flags', () => {
     it('creates reactor with --image node22 flag', async () => {
-      inputStub
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
-          ''
-        )
-        .onCallResolves(
-          'Warm concurrency (0-1, press Enter for default: 0):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Runtime package.json file path (JSON format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
-        );
-      selectStub.onCallResolves('Resource tier:', 'standard');
-
       const result = await runCommand([
         'reactors:create',
         '--name',
@@ -131,6 +101,8 @@ describe('reactors create', () => {
         './reactor.js',
         '--image',
         'node22',
+        '--resources',
+        'standard',
       ]);
 
       expect(result.stdout).to.contain('Reactor created successfully!');
@@ -225,27 +197,6 @@ describe('reactors create', () => {
     });
 
     it('waits for reactor to be ready by default for node22', async () => {
-      inputStub
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
-          ''
-        )
-        .onCallResolves(
-          'Warm concurrency (0-1, press Enter for default: 0):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Runtime package.json file path (JSON format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
-        );
       reactorsCreateStub.resolves({
         ...reactorFixtures.creating,
         id: 'reactor-wait',
@@ -269,27 +220,6 @@ describe('reactors create', () => {
     });
 
     it('skips waiting when --async flag is set', async () => {
-      inputStub
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
-          ''
-        )
-        .onCallResolves(
-          'Warm concurrency (0-1, press Enter for default: 0):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Runtime package.json file path (JSON format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
-        );
       reactorsCreateStub.resolves({
         ...reactorFixtures.active,
         id: 'reactor-async',
@@ -310,160 +240,6 @@ describe('reactors create', () => {
 
       expect(result.stdout).to.contain('Reactor created successfully!');
       expect(reactorsGetStub.called).to.be.false;
-    });
-  });
-
-  describe('with prompts', () => {
-    it('prompts for image first, then name and code', async () => {
-      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
-      inputStub
-        .onCallResolves('What is the Reactor name?', 'Prompted Reactor')
-        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Enter the Application ID to use in the Reactor:',
-          ''
-        );
-
-      const result = await runCommand(['reactors:create']);
-
-      expect(result.stdout).to.contain('Reactor created successfully!');
-      expect(reactorsCreateStub.firstCall.args[0].name).to.equal(
-        'Prompted Reactor'
-      );
-      selectStub.verifyExpectations();
-      inputStub.verifyExpectations();
-    });
-
-    it('only prompts for missing fields', async () => {
-      inputStub
-        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Enter the Application ID to use in the Reactor:',
-          ''
-        );
-
-      const result = await runCommand([
-        'reactors:create',
-        '--name',
-        'Test Reactor',
-        '--image',
-        'node-bt',
-      ]);
-
-      expect(result.stdout).to.contain('Reactor created successfully!');
-      expect(reactorsCreateStub.firstCall.args[0].name).to.equal(
-        'Test Reactor'
-      );
-
-      // Name was provided via flag, so should NOT prompt for it
-      inputStub.expectNotCalledWith('What is the Reactor name?');
-      // Image was provided via flag, so should NOT prompt for it
-      selectStub.expectNotCalledWith('Which runtime do you want to use?');
-      inputStub.verifyExpectations();
-    });
-
-    it('prompts for optional application-id when node-bt selected', async () => {
-      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
-      inputStub
-        .onCallResolves('What is the Reactor name?', 'Prompted Reactor')
-        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Enter the Application ID to use in the Reactor:',
-          'app-456'
-        );
-
-      const result = await runCommand(['reactors:create']);
-
-      expect(result.stdout).to.contain('Reactor created successfully!');
-      expect(reactorsCreateStub.firstCall.args[0].application).to.deep.equal({
-        id: 'app-456',
-      });
-      selectStub.verifyExpectations();
-      inputStub.verifyExpectations();
-    });
-
-    it('prompts for node22 options when node22 selected', async () => {
-      selectStub
-        .onCallResolves('Which runtime do you want to use?', 'node22')
-        .onCallResolves('Resource tier:', 'large');
-      inputStub
-        .onCallResolves('What is the Reactor name?', 'Node22 Reactor')
-        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
-          '20'
-        )
-        .onCallResolves(
-          'Warm concurrency (0-1, press Enter for default: 0):',
-          '1'
-        )
-        .onCallResolves(
-          '(Optional) Runtime package.json file path (JSON format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
-        );
-
-      const result = await runCommand(['reactors:create']);
-
-      expect(result.stdout).to.contain('Reactor created successfully!');
-      const [createArg] = reactorsCreateStub.firstCall.args;
-
-      expect(createArg.runtime.image).to.equal('node22');
-      expect(createArg.runtime.timeout).to.equal(20);
-      expect(createArg.runtime.warmConcurrency).to.equal(1);
-      expect(createArg.runtime.resources).to.equal('large');
-      // Application ID should not be prompted for node22
-      inputStub.expectNotCalledWith(
-        '(Optional) Enter the Application ID to use in the Reactor:'
-      );
-      inputStub.verifyExpectations();
-      selectStub.verifyExpectations();
-    });
-
-    it('skips node22 options when node-bt selected', async () => {
-      selectStub.onCallResolves('Which runtime do you want to use?', 'node-bt');
-      inputStub
-        .onCallResolves('What is the Reactor name?', 'Legacy Reactor')
-        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Enter the Application ID to use in the Reactor:',
-          ''
-        );
-
-      const result = await runCommand(['reactors:create']);
-
-      expect(result.stdout).to.contain('Reactor created successfully!');
-      const [createArg] = reactorsCreateStub.firstCall.args;
-
-      expect(createArg.runtime).to.be.undefined;
-      // Should not have prompted for timeout, resources, etc.
-      inputStub.expectNotCalledWith(
-        'Timeout in seconds (1-30, press Enter for default: 10):'
-      );
-      selectStub.expectNotCalledWith('Resource tier:');
     });
   });
 
@@ -568,26 +344,6 @@ describe('reactors create', () => {
     });
 
     it('errors when --application-id used with node22', async () => {
-      inputStub
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default):',
-          ''
-        )
-        .onCallResolves('Warm concurrency (0-1, press Enter for default):', '')
-        .onCallResolves(
-          '(Optional) Runtime package.json file path (JSON format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
-        );
-      selectStub.onCallResolves('Resource tier:', 'standard');
-
       const result = await runCommand([
         'reactors:create',
         '--name',
@@ -626,23 +382,6 @@ describe('reactors create', () => {
     });
 
     it('errors when dependencies file contains invalid JSON', async () => {
-      inputStub
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
-          ''
-        )
-        .onCallResolves(
-          'Warm concurrency (0-1, press Enter for default: 0):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
-        );
       readFileStub.withArgs('./invalid.json').returns('not valid json');
 
       const result = await runCommand([
@@ -666,23 +405,6 @@ describe('reactors create', () => {
     });
 
     it('errors when dependencies file does not exist', async () => {
-      inputStub
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
-          ''
-        )
-        .onCallResolves(
-          'Warm concurrency (0-1, press Enter for default: 0):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
-        );
       readFileStub
         .withArgs('./missing.json')
         .throws(new Error('ENOENT: no such file or directory'));
