@@ -109,7 +109,7 @@ export default class Update extends BaseCommand {
       'response-transform-warm-concurrency': responseTransformWarmConcurrency,
       'response-transform-resources': responseTransformResources,
       'response-transform-permissions': responseTransformPermissions,
-      async: asyncFlag,
+      'no-wait': noWait,
       watch,
       logs,
     } = flags;
@@ -153,7 +153,7 @@ export default class Update extends BaseCommand {
     const proxy = await getProxy(bt, id);
     const isConfigurableRuntime = needsPolling(proxy.state);
 
-    if (!asyncFlag) {
+    if (!noWait) {
       await waitForResourceState(bt, 'proxy', id, proxy.state);
     }
 

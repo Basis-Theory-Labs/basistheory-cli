@@ -29,7 +29,7 @@ const RUNTIME_FLAGS = {
     description: 'permission to grant, repeatable (node22 only)',
     multiple: true,
   }),
-  async: Flags.boolean({
+  'no-wait': Flags.boolean({
     description: 'do not wait for resource provisioning to complete',
     default: false,
   }),

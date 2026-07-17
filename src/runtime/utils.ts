@@ -51,7 +51,7 @@ const CONFIGURABLE_RUNTIME_FLAGS = [
 
 const REACTOR_CONFIGURABLE_RUNTIME_FLAGS = [
   ...CONFIGURABLE_RUNTIME_FLAGS,
-  'runtime-async',
+  'async',
 ] as const;
 
 interface RuntimeFlagProps {

@@ -180,7 +180,7 @@ export default class Create extends BaseCommand {
 
     const proxy = await createProxy(bt, model);
 
-    if (!flags.async && proxy.id) {
+    if (!flags['no-wait'] && proxy.id) {
       try {
         await waitForResourceState(bt, 'proxy', proxy.id, proxy.state);
         this.log('Proxy created successfully!');
