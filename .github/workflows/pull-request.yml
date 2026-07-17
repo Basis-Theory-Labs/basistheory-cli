@@ -12,10 +12,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Use Node 18
+      - name: Use Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 22.x
 
       - name: Install deps (with cache)
         uses: bahmutov/npm-install@v1
