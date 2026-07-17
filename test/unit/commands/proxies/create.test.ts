@@ -365,7 +365,7 @@ describe('proxies create', () => {
       expect(proxiesGetStub.called).to.be.true;
     });
 
-    it('skips waiting when --async flag is set', async () => {
+    it('skips waiting when --no-wait flag is set', async () => {
       inputStub
         .onCallResolves(
           '(Optional) Enter the Response Transform code file path:',
@@ -398,7 +398,7 @@ describe('proxies create', () => {
       confirmStub.resolves(true);
       proxiesCreateStub.resolves({
         ...proxyFixtures.active,
-        id: 'proxy-async',
+        id: 'proxy-no-wait',
       });
 
       const result = await runCommand([
@@ -413,7 +413,7 @@ describe('proxies create', () => {
         'node22',
         '--request-transform-resources',
         'standard',
-        '--async',
+        '--no-wait',
       ]);
 
       expect(result.stdout).to.contain('Proxy created successfully!');

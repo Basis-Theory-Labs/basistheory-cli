@@ -140,7 +140,7 @@ describe('reactors update', () => {
         'reactor-123',
         '--image',
         'node22',
-        '--runtime-async',
+        '--async',
         '--timeout',
         '900',
         '--warm-concurrency',
@@ -179,7 +179,7 @@ describe('reactors update', () => {
       const result = await runCommand([
         'reactors:update',
         'reactor-123',
-        '--no-runtime-async',
+        '--no-async',
       ]);
 
       expect(result.error).to.not.exist;
@@ -194,7 +194,7 @@ describe('reactors update', () => {
       const result = await runCommand([
         'reactors:update',
         'reactor-123',
-        '--runtime-async',
+        '--async',
         '--warm-concurrency',
         '0',
       ]);
@@ -265,19 +265,16 @@ describe('reactors update', () => {
       expect(reactorsGetStub.called).to.be.true;
     });
 
-    it('skips waiting when --async flag is set', async () => {
+    it('skips waiting when --no-wait flag is set', async () => {
       const result = await runCommand([
         'reactors:update',
         'reactor-123',
-        '--image',
-        'node22',
-        '--runtime-async',
-        '--async',
+        '--no-wait',
       ]);
 
       expect(result.stdout).to.contain('Reactor updated successfully!');
-      expect(reactorsGetStub.calledTwice).to.be.true;
-      expect(reactorsPatchStub.firstCall.args[1].runtime.async).to.equal(true);
+      expect(reactorsGetStub.calledOnce).to.be.true;
+      expect(reactorsPatchStub.firstCall.args[1].runtime).to.be.undefined;
     });
   });
 
@@ -288,12 +285,12 @@ describe('reactors update', () => {
         'reactor-123',
         '--image',
         'node-bt',
-        '--no-runtime-async',
+        '--no-async',
       ]);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--runtime-async) require --image node22'
+        'Configurable runtime flags (--async) require --image node22'
       );
       expect(reactorsPatchStub.called).to.be.false;
     });
@@ -321,7 +318,7 @@ describe('reactors update', () => {
       const result = await runCommand([
         'reactors:update',
         'reactor-123',
-        '--no-runtime-async',
+        '--no-async',
       ]);
 
       expect(result.error).to.exist;

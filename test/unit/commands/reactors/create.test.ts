@@ -158,7 +158,7 @@ describe('reactors create', () => {
         './reactor.js',
         '--image',
         'node22',
-        '--runtime-async',
+        '--async',
         '--timeout',
         '900',
         '--warm-concurrency',
@@ -191,7 +191,7 @@ describe('reactors create', () => {
       });
     });
 
-    it('creates a synchronous reactor with --no-runtime-async', async () => {
+    it('creates a synchronous reactor with --no-async', async () => {
       inputStub.resolves('');
 
       const result = await runCommand([
@@ -202,7 +202,7 @@ describe('reactors create', () => {
         './reactor.js',
         '--image',
         'node22',
-        '--no-runtime-async',
+        '--no-async',
         '--timeout',
         '30',
         '--warm-concurrency',
@@ -300,7 +300,7 @@ describe('reactors create', () => {
       expect(reactorsGetStub.called).to.be.true;
     });
 
-    it('skips waiting when --async flag is set', async () => {
+    it('configures async execution and skips waiting when both flags are set', async () => {
       inputStub
         .onCallResolves(
           '(Optional) Enter the configuration file path (.env format):',
@@ -324,7 +324,7 @@ describe('reactors create', () => {
         );
       reactorsCreateStub.resolves({
         ...reactorFixtures.active,
-        id: 'reactor-async',
+        id: 'reactor-no-wait',
       });
 
       const result = await runCommand([
@@ -337,8 +337,8 @@ describe('reactors create', () => {
         'node22',
         '--resources',
         'standard',
-        '--runtime-async',
         '--async',
+        '--no-wait',
       ]);
 
       expect(result.stdout).to.contain('Reactor created successfully!');
@@ -649,7 +649,7 @@ describe('reactors create', () => {
       );
     });
 
-    it('errors when --no-runtime-async is used with node-bt', async () => {
+    it('errors when --no-async is used with node-bt', async () => {
       const result = await runCommand([
         'reactors:create',
         '--name',
@@ -658,12 +658,12 @@ describe('reactors create', () => {
         './reactor.js',
         '--image',
         'node-bt',
-        '--no-runtime-async',
+        '--no-async',
       ]);
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--runtime-async) require --image node22'
+        'Configurable runtime flags (--async) require --image node22'
       );
     });
 
@@ -676,7 +676,7 @@ describe('reactors create', () => {
         './reactor.js',
         '--image',
         'node22',
-        '--no-runtime-async',
+        '--no-async',
         '--timeout',
         '31',
       ]);
@@ -697,7 +697,7 @@ describe('reactors create', () => {
         './reactor.js',
         '--image',
         'node22',
-        '--runtime-async',
+        '--async',
         '--timeout',
         '9',
       ]);
@@ -715,7 +715,7 @@ describe('reactors create', () => {
         './reactor.js',
         '--image',
         'node22',
-        '--runtime-async',
+        '--async',
         '--timeout',
         '901',
       ]);
