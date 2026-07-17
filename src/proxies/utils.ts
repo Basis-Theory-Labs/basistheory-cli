@@ -47,8 +47,8 @@ const PROXY_FLAGS = {
       'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
   }),
   'request-transform-timeout': Flags.integer({
-    description: 'request-transform timeout in seconds, 1-30 (node22 only)',
-    min: 1,
+    description: 'request-transform timeout in seconds, 10-30 (node22 only)',
+    min: 10,
     max: 30,
   }),
   'request-transform-warm-concurrency': Flags.integer({
@@ -76,8 +76,8 @@ const PROXY_FLAGS = {
       'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
   }),
   'response-transform-timeout': Flags.integer({
-    description: 'response-transform timeout in seconds, 1-30 (node22 only)',
-    min: 1,
+    description: 'response-transform timeout in seconds, 10-30 (node22 only)',
+    min: 10,
     max: 30,
   }),
   'response-transform-warm-concurrency': Flags.integer({

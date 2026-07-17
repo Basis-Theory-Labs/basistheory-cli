@@ -8,15 +8,15 @@ jobs:
   build-release:
     name: Build and Release
     runs-on: ubuntu-latest
-    # permissions:
-    #   id-token: write # Required for OIDC NPMJS uses OIDC Trusted Publishing
-    #   contents: write
-    #   actions: read
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.SEMANTIC_RELEASE_PAT }}
+          fetch-depth: 0
 
       - name: Use Node 18
         uses: actions/setup-node@v4
@@ -32,7 +32,7 @@ jobs:
       - name: Release
         run: yarn release
         env:
-          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
 
 #      - name: Slack Deploy / Release Alert

@@ -3,12 +3,17 @@ import { BaseCommand } from '../../base';
 import { watchForChanges } from '../../files';
 import { showReactorLogs } from '../../logs';
 import { getReactor, patchReactor } from '../../reactors/management';
-import { validateReactorApplicationId } from '../../reactors/runtime';
+import {
+  hasReactorRuntimeFlags,
+  validateReactorApplicationId,
+  validateReactorRuntimeFlags,
+} from '../../reactors/runtime';
 import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
 import {
-  buildRuntime,
+  buildReactorRuntime,
   CONFIGURABLE_RUNTIME_IMAGES,
   needsPolling,
+  validateRuntimeTimeout,
   waitForResourceState,
 } from '../../runtime';
 
@@ -35,6 +40,7 @@ export default class Update extends BaseCommand {
         '--code ./reactor.js ' +
         '--configuration ./config.env ' +
         '--image node22 ' +
+        '--runtime-async ' +
         '--timeout 10 ' +
         '--warm-concurrency 0 ' +
         '--resources standard ' +
@@ -86,19 +92,40 @@ export default class Update extends BaseCommand {
       resources,
       permissions,
       async: asyncFlag,
+      'runtime-async': runtimeAsync,
       watch,
       logs,
     } = flags;
 
-    validateReactorApplicationId(applicationId, image);
+    const existingReactor =
+      hasReactorRuntimeFlags(flags as Record<string, unknown>) ||
+      (applicationId !== undefined && image === undefined)
+        ? await getReactor(bt, id)
+        : undefined;
 
-    const runtime = buildRuntime({
+    const effectiveImage = image ?? existingReactor?.runtime?.image;
+    const effectiveRuntimeAsync =
+      runtimeAsync ?? existingReactor?.runtime?.async ?? false;
+    const effectiveTimeout = timeout ?? existingReactor?.runtime?.timeout;
+
+    validateReactorRuntimeFlags(
+      flags as Record<string, unknown>,
+      effectiveImage
+    );
+    validateReactorApplicationId(applicationId, effectiveImage);
+
+    if (timeout !== undefined || runtimeAsync !== undefined) {
+      validateRuntimeTimeout(effectiveTimeout, effectiveRuntimeAsync);
+    }
+
+    const runtime = buildReactorRuntime({
       image,
       packageJson,
       timeout,
       warmConcurrency,
       resources,
       permissions,
+      async: runtimeAsync,
     });
 
     const model = createModelFromFlags({

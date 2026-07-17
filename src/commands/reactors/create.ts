@@ -6,13 +6,15 @@ import {
 } from '../../reactors/runtime';
 import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
 import {
-  buildRuntime,
+  buildReactorRuntime,
+  getMaxRuntimeTimeout,
   isLegacyRuntimeImage,
   promptRuntimeImage,
   promptRuntimeOptions,
+  validateRuntimeTimeout,
   waitForResourceState,
 } from '../../runtime';
-import { promptStringIfUndefined } from '../../utils';
+import { promptBooleanIfUndefined, promptStringIfUndefined } from '../../utils';
 
 export default class Create extends BaseCommand {
   public static description =
@@ -37,6 +39,7 @@ export default class Create extends BaseCommand {
         '--code ./reactor.js ' +
         '--configuration ./config.env ' +
         '--image node22 ' +
+        '--runtime-async ' +
         '--timeout 10 ' +
         '--warm-concurrency 0 ' +
         '--resources standard ' +
@@ -61,6 +64,7 @@ export default class Create extends BaseCommand {
       permissions,
       'application-id': applicationId,
       async: asyncFlag,
+      'runtime-async': runtimeAsyncFlag,
     } = flags;
 
     const image = await promptRuntimeImage(flags.image);
@@ -93,16 +97,30 @@ export default class Create extends BaseCommand {
     let runtime;
 
     if (!isLegacyRuntimeImage(image)) {
-      const runtimeOptions = await promptRuntimeOptions({
-        timeout,
-        'warm-concurrency': warmConcurrency,
-        resources,
-        'package-json': packageJson,
-        permissions,
+      const runtimeAsync = await promptBooleanIfUndefined(runtimeAsyncFlag, {
+        message: 'Execute Reactor invocations asynchronously?',
+        default: false,
       });
 
-      runtime = buildRuntime({
+      validateRuntimeTimeout(timeout, runtimeAsync);
+
+      const runtimeOptions = await promptRuntimeOptions(
+        {
+          timeout,
+          'warm-concurrency': warmConcurrency,
+          resources,
+          'package-json': packageJson,
+          permissions,
+        },
+        undefined,
+        getMaxRuntimeTimeout(runtimeAsync)
+      );
+
+      validateRuntimeTimeout(runtimeOptions.timeout, runtimeAsync);
+
+      runtime = buildReactorRuntime({
         image,
+        async: runtimeAsync,
         ...runtimeOptions,
       });
     }

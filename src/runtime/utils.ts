@@ -16,6 +16,10 @@ const VALID_RUNTIME_IMAGES = [
   ...CONFIGURABLE_RUNTIME_IMAGES,
 ] as const;
 
+const MIN_RUNTIME_TIMEOUT = 10;
+const MAX_SYNC_RUNTIME_TIMEOUT = 30;
+const MAX_ASYNC_RUNTIME_TIMEOUT = 900;
+
 const isLegacyRuntimeImage = (image: string | undefined): boolean =>
   image === undefined || image === LEGACY_RUNTIME_IMAGE;
 
@@ -45,6 +49,11 @@ const CONFIGURABLE_RUNTIME_FLAGS = [
   'package-json',
 ] as const;
 
+const REACTOR_CONFIGURABLE_RUNTIME_FLAGS = [
+  ...CONFIGURABLE_RUNTIME_FLAGS,
+  'runtime-async',
+] as const;
+
 interface RuntimeFlagProps {
   image?: string;
   packageJson?: string; // path to runtime package.json file
@@ -52,6 +61,10 @@ interface RuntimeFlagProps {
   warmConcurrency?: number;
   resources?: string;
   permissions?: string[];
+}
+
+interface ReactorRuntimeFlagProps extends RuntimeFlagProps {
+  async?: boolean;
 }
 
 interface RuntimeFlags {
@@ -160,7 +173,7 @@ const buildRuntime = (
     !image &&
     !packageJson &&
     !timeout &&
-    !warmConcurrency &&
+    warmConcurrency === undefined &&
     !resources &&
     !permissions?.length
   ) {
@@ -184,11 +197,7 @@ const buildRuntime = (
   }
 
   if (parsedPackageFile?.resolutions) {
-    (
-      runtime as BasisTheory.Runtime & {
-        resolutions?: Record<string, string>;
-      }
-    ).resolutions = parsedPackageFile.resolutions;
+    runtime.resolutions = parsedPackageFile.resolutions;
   }
 
   if (timeout !== undefined) {
@@ -210,16 +219,55 @@ const buildRuntime = (
   return runtime;
 };
 
+const buildReactorRuntime = (
+  props: ReactorRuntimeFlagProps
+): BasisTheory.ReactorRuntime | undefined => {
+  const { async: runtimeAsync, ...runtimeProps } = props;
+  const runtime = buildRuntime(runtimeProps);
+
+  if (!runtime && runtimeAsync === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...runtime,
+    ...(runtimeAsync !== undefined ? { async: runtimeAsync } : {}),
+  };
+};
+
+const getMaxRuntimeTimeout = (runtimeAsync: boolean): number =>
+  runtimeAsync ? MAX_ASYNC_RUNTIME_TIMEOUT : MAX_SYNC_RUNTIME_TIMEOUT;
+
+const validateRuntimeTimeout = (
+  timeout: number | undefined,
+  runtimeAsync: boolean
+): void => {
+  if (timeout === undefined) {
+    return;
+  }
+
+  const max = getMaxRuntimeTimeout(runtimeAsync);
+
+  if (timeout < MIN_RUNTIME_TIMEOUT || timeout > max) {
+    throw new Error(
+      `Runtime timeout must be between ${MIN_RUNTIME_TIMEOUT} and ${max} seconds when runtime async is ${
+        runtimeAsync ? 'enabled' : 'disabled'
+      }.`
+    );
+  }
+};
+
 const promptRuntimeOptions = async (
   flags: RuntimeFlags,
-  labelPrefix?: string
+  labelPrefix?: string,
+  timeoutMax = MAX_SYNC_RUNTIME_TIMEOUT
 ): Promise<ConfigurableRuntimeOptions> => {
   const prefix = labelPrefix ? `${labelPrefix}: ` : '';
 
   const timeout = await promptIntegerIfUndefined(flags.timeout, {
-    message: `${prefix}Timeout in seconds (1-30, press Enter for default: 10):`,
-    min: 1,
-    max: 30,
+    message: `${prefix}Timeout in seconds (${MIN_RUNTIME_TIMEOUT}-${timeoutMax}, press Enter for default: 10):`,
+    min: MIN_RUNTIME_TIMEOUT,
+    max: timeoutMax,
   });
 
   const warmConcurrency = await promptIntegerIfUndefined(
@@ -289,10 +337,14 @@ export {
   CONFIGURABLE_RUNTIME_IMAGES,
   VALID_RUNTIME_IMAGES,
   CONFIGURABLE_RUNTIME_FLAGS,
+  REACTOR_CONFIGURABLE_RUNTIME_FLAGS,
   isLegacyRuntimeImage,
   validateRuntimeImage,
   parseRuntimePackageJsonFile,
   buildRuntime,
+  buildReactorRuntime,
+  getMaxRuntimeTimeout,
+  validateRuntimeTimeout,
   promptRuntimeOptions,
   promptRuntimeImage,
   type RuntimeFlagProps,

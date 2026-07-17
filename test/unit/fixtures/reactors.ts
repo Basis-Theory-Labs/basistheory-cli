@@ -46,8 +46,19 @@ const baseFixtures = {
     ...baseReactor,
     state: 'active',
     runtime: {
+      async: false,
       image: 'node22',
       timeout: 30,
+      resources: 'large',
+    },
+  },
+  withAsyncRuntime: {
+    ...baseReactor,
+    state: 'active',
+    runtime: {
+      async: true,
+      image: 'node22',
+      timeout: 900,
       resources: 'large',
     },
   },
