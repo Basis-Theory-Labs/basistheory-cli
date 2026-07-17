@@ -1,8 +1,15 @@
 import {
-  CONFIGURABLE_RUNTIME_FLAGS,
   CONFIGURABLE_RUNTIME_IMAGES,
   isLegacyRuntimeImage,
+  REACTOR_CONFIGURABLE_RUNTIME_FLAGS,
 } from '../runtime';
+
+const hasReactorRuntimeFlags = (flags: Record<string, unknown>): boolean =>
+  REACTOR_CONFIGURABLE_RUNTIME_FLAGS.some((flag) => {
+    const value = flags[flag];
+
+    return value !== undefined && !(Array.isArray(value) && value.length === 0);
+  });
 
 const validateReactorRuntimeFlags = (
   flags: Record<string, unknown>,
@@ -10,12 +17,10 @@ const validateReactorRuntimeFlags = (
 ): void => {
   const setFlags: string[] = [];
 
-  for (const flag of CONFIGURABLE_RUNTIME_FLAGS) {
+  for (const flag of REACTOR_CONFIGURABLE_RUNTIME_FLAGS) {
     const value = flags[flag];
     const isSet =
-      value !== undefined &&
-      value !== false &&
-      !(Array.isArray(value) && value.length === 0);
+      value !== undefined && !(Array.isArray(value) && value.length === 0);
 
     if (isSet) {
       setFlags.push(flag);
@@ -46,4 +51,8 @@ const validateReactorApplicationId = (
   }
 };
 
-export { validateReactorRuntimeFlags, validateReactorApplicationId };
+export {
+  hasReactorRuntimeFlags,
+  validateReactorRuntimeFlags,
+  validateReactorApplicationId,
+};

@@ -7,18 +7,16 @@ const BT_LOGGING_CONFIGURATION = 'BT_LOGGING_CONFIGURATION';
 
 /**
  * Creates configuration object to connect/disconnect to a resource
- * @param url - server url for the resource to connect to. If `undefined`,
- * the logging configuration is cleared.
+ * @param url - server url for the resource to connect to. An empty string
+ * removes the logging configuration when disconnecting.
  */
-const createConfiguration = (
-  url?: string
-): Record<string, string | undefined> => ({
+const createConfiguration = (url?: string): Record<string, string> => ({
   [BT_LOGGING_CONFIGURATION]: url
     ? JSON.stringify({
         destination: url,
         date: Date.now(),
       })
-    : undefined,
+    : '',
 });
 
 const connectToReactor = async (

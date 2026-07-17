@@ -11,9 +11,10 @@ const RUNTIME_FLAGS = {
       'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
   }),
   timeout: Flags.integer({
-    description: 'timeout in seconds, 1-30 (node22 only, default: 10)',
-    min: 1,
-    max: 30,
+    description:
+      'timeout in seconds, 10-900 (node22 only; maximum 30 when runtime async is disabled; default: 10)',
+    min: 10,
+    max: 900,
   }),
   'warm-concurrency': Flags.integer({
     description: 'number of warm instances, 0-1 (node22 only, default: 0)',
@@ -29,7 +30,7 @@ const RUNTIME_FLAGS = {
     multiple: true,
   }),
   async: Flags.boolean({
-    description: 'do not wait for resource to be ready (node22 only)',
+    description: 'do not wait for resource provisioning to complete',
     default: false,
   }),
 };

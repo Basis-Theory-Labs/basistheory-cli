@@ -325,7 +325,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Request transform: Timeout in seconds (1-30, press Enter for default: 10):',
+          'Request transform: Timeout in seconds (10-30, press Enter for default: 10):',
           ''
         )
         .onCallResolves(
@@ -380,7 +380,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Request transform: Timeout in seconds (1-30, press Enter for default: 10):',
+          'Request transform: Timeout in seconds (10-30, press Enter for default: 10):',
           ''
         )
         .onCallResolves(
@@ -517,7 +517,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Request transform: Timeout in seconds (1-30, press Enter for default: 10):',
+          'Request transform: Timeout in seconds (10-30, press Enter for default: 10):',
           '20'
         )
         .onCallResolves(
@@ -629,6 +629,44 @@ describe('proxies create', () => {
       expect(result.error!.message).to.contain(
         'Configurable runtime flags (--request-transform-timeout) require --request-transform-image node22'
       );
+    });
+
+    it('errors when transform timeout is below 10 seconds', async () => {
+      const result = await runCommand([
+        'proxies:create',
+        '--name',
+        'Test Proxy',
+        '--destination-url',
+        'https://example.com/api',
+        '--request-transform-code',
+        './request.js',
+        '--request-transform-image',
+        'node22',
+        '--request-transform-timeout',
+        '9',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(proxiesCreateStub.called).to.be.false;
+    });
+
+    it('errors when transform timeout exceeds 30 seconds', async () => {
+      const result = await runCommand([
+        'proxies:create',
+        '--name',
+        'Test Proxy',
+        '--destination-url',
+        'https://example.com/api',
+        '--request-transform-code',
+        './request.js',
+        '--request-transform-image',
+        'node22',
+        '--request-transform-timeout',
+        '31',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(proxiesCreateStub.called).to.be.false;
     });
 
     it('errors when --response-transform-resources used with node-bt', async () => {
@@ -804,7 +842,7 @@ describe('proxies create', () => {
           ''
         )
         .onCallResolves(
-          'Request transform: Timeout in seconds (1-30, press Enter for default: 10):',
+          'Request transform: Timeout in seconds (10-30, press Enter for default: 10):',
           ''
         )
         .onCallResolves(

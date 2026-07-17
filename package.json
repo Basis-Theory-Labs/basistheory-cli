@@ -17,7 +17,7 @@
     "/oclif.manifest.json"
   ],
   "dependencies": {
-    "@basis-theory/node-sdk": "^5.2.0",
+    "@basis-theory/node-sdk": "^6.1.1",
     "@inquirer/checkbox": "^1.5.0",
     "@inquirer/confirm": "^2.0.15",
     "@inquirer/input": "^1.2.14",
@@ -51,7 +51,7 @@
     "@types/lodash.debounce": "^4.0.7",
     "@types/lodash.groupby": "^4.6.9",
     "@types/mocha": "^9.0.0",
-    "@types/node": "^16.18.36",
+    "@types/node": "^18.19.0",
     "@types/sinon": "^21.0.0",
     "chai": "^4",
     "eslint": "^7.32.0",
@@ -92,7 +92,7 @@
     "release": "semantic-release"
   },
   "engines": {
-    "node": ">=12.0.0"
+    "node": ">=18.0.0"
   },
   "bugs": "https://github.com/Basis-Theory-Labs/basistheory-cli/issues",
   "keywords": [

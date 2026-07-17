@@ -1,4 +1,5 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
+import * as confirm from '@inquirer/confirm';
 import * as input from '@inquirer/input';
 import * as select from '@inquirer/select';
 import { expect } from 'chai';
@@ -9,6 +10,7 @@ import { runCommand } from '../../helpers/run-command';
 import { PromptStub } from '../../helpers/types';
 
 describe('reactors create', () => {
+  let confirmStub: sinon.SinonStub;
   let inputStub: PromptStub;
   let selectStub: PromptStub;
   let readFileStub: sinon.SinonStub;
@@ -16,6 +18,7 @@ describe('reactors create', () => {
   let reactorsGetStub: sinon.SinonStub;
 
   beforeEach(() => {
+    confirmStub = sinon.stub(confirm, 'default').resolves(false);
     inputStub = new PromptStub(sinon.stub(input, 'default'));
     selectStub = new PromptStub(sinon.stub(select, 'default'));
     readFileStub = sinon.stub(files, 'readFileContents');
@@ -106,7 +109,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
+          'Timeout in seconds (10-30, press Enter for default: 10):',
           ''
         )
         .onCallResolves(
@@ -155,8 +158,9 @@ describe('reactors create', () => {
         './reactor.js',
         '--image',
         'node22',
+        '--runtime-async',
         '--timeout',
-        '30',
+        '900',
         '--warm-concurrency',
         '1',
         '--resources',
@@ -173,8 +177,9 @@ describe('reactors create', () => {
       const [createArg] = reactorsCreateStub.firstCall.args;
 
       expect(createArg.runtime).to.deep.equal({
+        async: true,
         image: 'node22',
-        timeout: 30,
+        timeout: 900,
         warmConcurrency: 1,
         resources: 'large',
         dependencies: { lodash: '4.17.21' },
@@ -184,6 +189,33 @@ describe('reactors create', () => {
         },
         permissions: ['token:read', 'token:write'],
       });
+    });
+
+    it('creates a synchronous reactor with --no-runtime-async', async () => {
+      inputStub.resolves('');
+
+      const result = await runCommand([
+        'reactors:create',
+        '--name',
+        'Test Reactor',
+        '--code',
+        './reactor.js',
+        '--image',
+        'node22',
+        '--no-runtime-async',
+        '--timeout',
+        '30',
+        '--warm-concurrency',
+        '0',
+        '--resources',
+        'standard',
+      ]);
+
+      expect(result.error).to.not.exist;
+      const [createArg] = reactorsCreateStub.firstCall.args;
+
+      expect(createArg.runtime.async).to.equal(false);
+      expect(createArg.runtime.timeout).to.equal(30);
     });
 
     it('uses overrides as resolutions when resolutions is not present', async () => {
@@ -231,7 +263,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
+          'Timeout in seconds (10-30, press Enter for default: 10):',
           ''
         )
         .onCallResolves(
@@ -275,7 +307,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
+          'Timeout in seconds (10-30, press Enter for default: 10):',
           ''
         )
         .onCallResolves(
@@ -305,11 +337,13 @@ describe('reactors create', () => {
         'node22',
         '--resources',
         'standard',
+        '--runtime-async',
         '--async',
       ]);
 
       expect(result.stdout).to.contain('Reactor created successfully!');
       expect(reactorsGetStub.called).to.be.false;
+      expect(reactorsCreateStub.firstCall.args[0].runtime.async).to.equal(true);
     });
   });
 
@@ -406,7 +440,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
+          'Timeout in seconds (10-30, press Enter for default: 10):',
           '20'
         )
         .onCallResolves(
@@ -428,6 +462,7 @@ describe('reactors create', () => {
       const [createArg] = reactorsCreateStub.firstCall.args;
 
       expect(createArg.runtime.image).to.equal('node22');
+      expect(createArg.runtime.async).to.equal(false);
       expect(createArg.runtime.timeout).to.equal(20);
       expect(createArg.runtime.warmConcurrency).to.equal(1);
       expect(createArg.runtime.resources).to.equal('large');
@@ -437,6 +472,53 @@ describe('reactors create', () => {
       );
       inputStub.verifyExpectations();
       selectStub.verifyExpectations();
+      expect(
+        confirmStub.calledWith(
+          sinon.match({
+            message: 'Execute Reactor invocations asynchronously?',
+            default: false,
+          })
+        )
+      ).to.be.true;
+    });
+
+    it('prompts with the asynchronous timeout range when enabled', async () => {
+      confirmStub.resolves(true);
+      selectStub
+        .onCallResolves('Which runtime do you want to use?', 'node22')
+        .onCallResolves('Resource tier:', 'standard');
+      inputStub
+        .onCallResolves('What is the Reactor name?', 'Async Reactor')
+        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
+        .onCallResolves(
+          '(Optional) Enter the configuration file path (.env format):',
+          ''
+        )
+        .onCallResolves(
+          'Timeout in seconds (10-900, press Enter for default: 10):',
+          '900'
+        )
+        .onCallResolves(
+          'Warm concurrency (0-1, press Enter for default: 0):',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Runtime package.json file path (JSON format):',
+          ''
+        )
+        .onCallResolves(
+          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
+          ''
+        );
+
+      const result = await runCommand(['reactors:create']);
+
+      expect(result.error).to.not.exist;
+      const [createArg] = reactorsCreateStub.firstCall.args;
+
+      expect(createArg.runtime.async).to.equal(true);
+      expect(createArg.runtime.timeout).to.equal(900);
+      inputStub.verifyExpectations();
     });
 
     it('skips node22 options when node-bt selected', async () => {
@@ -461,7 +543,7 @@ describe('reactors create', () => {
       expect(createArg.runtime).to.be.undefined;
       // Should not have prompted for timeout, resources, etc.
       inputStub.expectNotCalledWith(
-        'Timeout in seconds (1-30, press Enter for default: 10):'
+        'Timeout in seconds (10-30, press Enter for default: 10):'
       );
       selectStub.expectNotCalledWith('Resource tier:');
     });
@@ -567,6 +649,81 @@ describe('reactors create', () => {
       );
     });
 
+    it('errors when --no-runtime-async is used with node-bt', async () => {
+      const result = await runCommand([
+        'reactors:create',
+        '--name',
+        'Test Reactor',
+        '--code',
+        './reactor.js',
+        '--image',
+        'node-bt',
+        '--no-runtime-async',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        'Configurable runtime flags (--runtime-async) require --image node22'
+      );
+    });
+
+    it('errors when synchronous timeout exceeds 30 seconds', async () => {
+      const result = await runCommand([
+        'reactors:create',
+        '--name',
+        'Test Reactor',
+        '--code',
+        './reactor.js',
+        '--image',
+        'node22',
+        '--no-runtime-async',
+        '--timeout',
+        '31',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        'Runtime timeout must be between 10 and 30 seconds when runtime async is disabled.'
+      );
+      expect(reactorsCreateStub.called).to.be.false;
+    });
+
+    it('errors when timeout is below 10 seconds', async () => {
+      const result = await runCommand([
+        'reactors:create',
+        '--name',
+        'Test Reactor',
+        '--code',
+        './reactor.js',
+        '--image',
+        'node22',
+        '--runtime-async',
+        '--timeout',
+        '9',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(reactorsCreateStub.called).to.be.false;
+    });
+
+    it('errors when asynchronous timeout exceeds 900 seconds', async () => {
+      const result = await runCommand([
+        'reactors:create',
+        '--name',
+        'Test Reactor',
+        '--code',
+        './reactor.js',
+        '--image',
+        'node22',
+        '--runtime-async',
+        '--timeout',
+        '901',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(reactorsCreateStub.called).to.be.false;
+    });
+
     it('errors when --application-id used with node22', async () => {
       inputStub
         .onCallResolves(
@@ -574,7 +731,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default):',
+          'Timeout in seconds (10-30, press Enter for default: 10):',
           ''
         )
         .onCallResolves('Warm concurrency (0-1, press Enter for default):', '')
@@ -632,7 +789,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
+          'Timeout in seconds (10-30, press Enter for default: 10):',
           ''
         )
         .onCallResolves(
@@ -672,7 +829,7 @@ describe('reactors create', () => {
           ''
         )
         .onCallResolves(
-          'Timeout in seconds (1-30, press Enter for default: 10):',
+          'Timeout in seconds (10-30, press Enter for default: 10):',
           ''
         )
         .onCallResolves(

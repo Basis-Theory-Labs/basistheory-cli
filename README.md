@@ -187,7 +187,7 @@ FLAGS
   --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 only)
   --request-transform-resources=<option>         request-transform resource tier (node22 only)
                                                  <options: standard|large|xlarge>
-  --request-transform-timeout=<value>            request-transform timeout in seconds, 1-30 (node22 only)
+  --request-transform-timeout=<value>            request-transform timeout in seconds, 10-30 (node22 only)
   --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 only)
   --response-transform-image=<option>            response-transform runtime image (node-bt|node22)
                                                  <options: node-bt|node22>
@@ -197,7 +197,7 @@ FLAGS
   --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 only)
   --response-transform-resources=<option>        response-transform resource tier (node22 only)
                                                  <options: standard|large|xlarge>
-  --response-transform-timeout=<value>           response-transform timeout in seconds, 1-30 (node22 only)
+  --response-transform-timeout=<value>           response-transform timeout in seconds, 10-30 (node22 only)
   --response-transform-warm-concurrency=<value>  response-transform warm concurrency, 0-1 (node22 only)
 
 DESCRIPTION
@@ -317,7 +317,7 @@ FLAGS
   --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 only)
   --request-transform-resources=<option>         request-transform resource tier (node22 only)
                                                  <options: standard|large|xlarge>
-  --request-transform-timeout=<value>            request-transform timeout in seconds, 1-30 (node22 only)
+  --request-transform-timeout=<value>            request-transform timeout in seconds, 10-30 (node22 only)
   --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 only)
   --response-transform-image=<option>            response-transform runtime image (node-bt|node22)
                                                  <options: node-bt|node22>
@@ -327,7 +327,7 @@ FLAGS
   --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 only)
   --response-transform-resources=<option>        response-transform resource tier (node22 only)
                                                  <options: standard|large|xlarge>
-  --response-transform-timeout=<value>           response-transform timeout in seconds, 1-30 (node22 only)
+  --response-transform-timeout=<value>           response-transform timeout in seconds, 10-30 (node22 only)
   --response-transform-warm-concurrency=<value>  response-transform warm concurrency, 0-1 (node22 only)
 
 DESCRIPTION
@@ -388,7 +388,7 @@ Creates a new Reactor. Requires `reactor:create` Management Application permissi
 USAGE
   $ bt reactors create -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22]
     [--package-json <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
-    [--permissions <value>] [--async]
+    [--permissions <value>] [--async] [--runtime-async]
 
 FLAGS
   -c, --configuration=<value>   path to configuration file (.env format) to use in the Reactor
@@ -396,7 +396,7 @@ FLAGS
   -n, --name=<value>            name of the Reactor
   -r, --code=<value>            path to JavaScript file containing the Reactor code
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
-  --async                       do not wait for resource to be ready (node22 only)
+  --async                       do not wait for resource provisioning to complete
   --image=<option>              runtime image (node-bt|node22)
                                 <options: node-bt|node22>
   --package-json=<value>        path to runtime package.json JSON file (top-level dependencies required; supports
@@ -404,7 +404,9 @@ FLAGS
   --permissions=<value>...      permission to grant, repeatable (node22 only)
   --resources=<option>          resource tier (node22 only, default: standard)
                                 <options: standard|large|xlarge>
-  --timeout=<value>             timeout in seconds, 1-30 (node22 only, default: 10)
+  --[no-]runtime-async          execute Reactor invocations asynchronously (node22 only)
+  --timeout=<value>             timeout in seconds, 10-900 (node22 only; maximum 30 when runtime async is disabled;
+                                default: 10)
   --warm-concurrency=<value>    number of warm instances, 0-1 (node22 only, default: 0)
 
 DESCRIPTION
@@ -422,8 +424,8 @@ EXAMPLES
   Create a reactor with node22 and all runtime options
 
     $ bt reactors create --name "My Reactor" --code ./reactor.js --configuration ./config.env --image node22 \
-      --timeout 10 --warm-concurrency 0 --resources standard --package-json ./package.json --permissions token:read \
-      --permissions token:create
+      --runtime-async --timeout 10 --warm-concurrency 0 --resources standard --package-json ./package.json \
+      --permissions token:read --permissions token:create
 ```
 
 ## `bt reactors delete ID`
@@ -482,7 +484,7 @@ Updates an existing Reactor. Requires `reactor:update` Management Application pe
 USAGE
   $ bt reactors update ID -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22]
     [--package-json <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
-    [--permissions <value>] [--async] [-w] [-l]
+    [--permissions <value>] [--async] [--runtime-async] [-w] [-l]
 
 ARGUMENTS
   ID  Reactor id to update
@@ -495,7 +497,7 @@ FLAGS
   -r, --code=<value>            path to JavaScript file containing the Reactor code
   -w, --watch                   Watch for changes in informed files
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
-  --async                       do not wait for resource to be ready (node22 only)
+  --async                       do not wait for resource provisioning to complete
   --image=<option>              runtime image (node-bt|node22)
                                 <options: node-bt|node22>
   --package-json=<value>        path to runtime package.json JSON file (top-level dependencies required; supports
@@ -503,7 +505,9 @@ FLAGS
   --permissions=<value>...      permission to grant, repeatable (node22 only)
   --resources=<option>          resource tier (node22 only, default: standard)
                                 <options: standard|large|xlarge>
-  --timeout=<value>             timeout in seconds, 1-30 (node22 only, default: 10)
+  --[no-]runtime-async          execute Reactor invocations asynchronously (node22 only)
+  --timeout=<value>             timeout in seconds, 10-900 (node22 only; maximum 30 when runtime async is disabled;
+                                default: 10)
   --warm-concurrency=<value>    number of warm instances, 0-1 (node22 only, default: 0)
 
 DESCRIPTION
@@ -521,7 +525,7 @@ EXAMPLES
   Update a reactor with node22 and all runtime options
 
     $ bt reactors update <reactor-id> --name "My Reactor" --code ./reactor.js --configuration ./config.env --image \
-      node22 --timeout 10 --warm-concurrency 0 --resources standard --package-json ./package.json --permissions \
-      token:read --permissions token:create
+      node22 --runtime-async --timeout 10 --warm-concurrency 0 --resources standard --package-json ./package.json \
+      --permissions token:read --permissions token:create
 ```
 <!-- commandsstop -->

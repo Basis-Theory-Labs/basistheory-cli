@@ -140,8 +140,9 @@ describe('reactors update', () => {
         'reactor-123',
         '--image',
         'node22',
+        '--runtime-async',
         '--timeout',
-        '30',
+        '900',
         '--warm-concurrency',
         '1',
         '--resources',
@@ -158,8 +159,9 @@ describe('reactors update', () => {
       const [, patchArg] = reactorsPatchStub.firstCall.args;
 
       expect(patchArg.runtime).to.deep.equal({
+        async: true,
         image: 'node22',
-        timeout: 30,
+        timeout: 900,
         warmConcurrency: 1,
         resources: 'large',
         dependencies: { lodash: '4.17.21' },
@@ -169,6 +171,57 @@ describe('reactors update', () => {
         },
         permissions: ['token:read', 'token:write'],
       });
+    });
+
+    it('updates runtime async to false explicitly', async () => {
+      reactorsGetStub.resolves(reactorFixtures.withRuntime);
+
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--no-runtime-async',
+      ]);
+
+      expect(result.error).to.not.exist;
+      const [, patchArg] = reactorsPatchStub.firstCall.args;
+
+      expect(patchArg.runtime).to.deep.equal({ async: false });
+    });
+
+    it('preserves zero warm concurrency in runtime async updates', async () => {
+      reactorsGetStub.resolves(reactorFixtures.withRuntime);
+
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--runtime-async',
+        '--warm-concurrency',
+        '0',
+      ]);
+
+      expect(result.error).to.not.exist;
+      const [, patchArg] = reactorsPatchStub.firstCall.args;
+
+      expect(patchArg.runtime).to.deep.equal({
+        async: true,
+        warmConcurrency: 0,
+      });
+    });
+
+    it('uses existing runtime async when validating timeout', async () => {
+      reactorsGetStub.resolves(reactorFixtures.withAsyncRuntime);
+
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--timeout',
+        '900',
+      ]);
+
+      expect(result.error).to.not.exist;
+      const [, patchArg] = reactorsPatchStub.firstCall.args;
+
+      expect(patchArg.runtime).to.deep.equal({ timeout: 900 });
     });
 
     it('uses overrides as resolutions when resolutions is not present', async () => {
@@ -218,11 +271,81 @@ describe('reactors update', () => {
         'reactor-123',
         '--image',
         'node22',
+        '--runtime-async',
         '--async',
       ]);
 
       expect(result.stdout).to.contain('Reactor updated successfully!');
-      expect(reactorsGetStub.calledOnce).to.be.true;
+      expect(reactorsGetStub.calledTwice).to.be.true;
+      expect(reactorsPatchStub.firstCall.args[1].runtime.async).to.equal(true);
+    });
+  });
+
+  describe('validation', () => {
+    it('rejects runtime async flags for legacy reactors', async () => {
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--image',
+        'node-bt',
+        '--no-runtime-async',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        'Configurable runtime flags (--runtime-async) require --image node22'
+      );
+      expect(reactorsPatchStub.called).to.be.false;
+    });
+
+    it('rejects synchronous timeout above 30 seconds', async () => {
+      reactorsGetStub.resolves(reactorFixtures.withRuntime);
+
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--timeout',
+        '31',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        'Runtime timeout must be between 10 and 30 seconds when runtime async is disabled.'
+      );
+      expect(reactorsPatchStub.called).to.be.false;
+    });
+
+    it('rejects disabling runtime async when existing timeout exceeds 30 seconds', async () => {
+      reactorsGetStub.resolves(reactorFixtures.withAsyncRuntime);
+
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--no-runtime-async',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        'Runtime timeout must be between 10 and 30 seconds when runtime async is disabled.'
+      );
+      expect(reactorsPatchStub.called).to.be.false;
+    });
+
+    it('rejects application-id for an existing configurable reactor', async () => {
+      reactorsGetStub.resolves(reactorFixtures.withRuntime);
+
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--application-id',
+        'app-123',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain(
+        '--application-id is not allowed with configurable runtimes (node22). Use --permissions to grant specific access instead.'
+      );
+      expect(reactorsPatchStub.called).to.be.false;
     });
   });
 
