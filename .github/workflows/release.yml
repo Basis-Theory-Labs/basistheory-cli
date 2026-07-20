@@ -7,18 +7,27 @@ on:
 jobs:
   build-release:
     name: Build and Release
+    environment: PROD
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+      contents: read
       id-token: write
     steps:
+      - name: Mint semantic-release app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ vars.SEMANTIC_RELEASE_APP_ID }}
+          private-key: ${{ secrets.SEMANTIC_RELEASE }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.SEMANTIC_RELEASE_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Use Node 22
         uses: actions/setup-node@v4
@@ -34,7 +43,7 @@ jobs:
       - name: Release
         run: yarn release
         env:
-          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_PAT }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
 #      - name: Slack Deploy / Release Alert
 #        uses: 8398a7/action-slack@v3
