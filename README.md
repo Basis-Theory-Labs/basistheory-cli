@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/3.0.0 linux-x64 node-v18.20.8
+@basis-theory-labs/cli/4.0.0 linux-x64 node-v22.23.1
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -62,7 +62,7 @@ EXAMPLES
   $ bt applications
 ```
 
-_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v3.0.0/dist/commands/applications/index.ts)_
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.0.0/dist/commands/applications/index.ts)_
 
 ## `bt applications create`
 
@@ -151,7 +151,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v3.0.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.0.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -378,7 +378,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v3.0.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.0.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 

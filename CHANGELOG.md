@@ -1,3 +1,22 @@
+# [4.0.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v3.0.0...v4.0.0) (2026-07-20)
+
+
+* feat!: clarify async Reactor flags and enable OIDC releases ([3333bb7](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/3333bb7cf23faa119fc4ad281e2994023d65f739))
+* feat!: Configure asynchronous Reactor execution ([df5a3d3](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/df5a3d33a40812827f939b0e97691e3f4934bc9c))
+
+
+### Bug Fixes
+
+* remove fastify, serve logs over Node's built-in http ([#38](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/38)) ([c217ebb](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/c217ebbab641f255a9cbeb51ef2bb3a92bb7b2af))
+* use GitHub App for semantic releases ([#44](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/44)) ([b04a812](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/b04a81276d3cb41b70d1d97d5b44ba26994898e3))
+* use release PAT for protected branch updates ([cf2886b](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/cf2886b535cbe96c51826cfeebde2e870bd30e27))
+
+
+### BREAKING CHANGES
+
+* --async now configures Reactor invocation execution. Use --no-wait to skip Reactor and Proxy provisioning waits; --runtime-async is removed.
+* Node.js 12 through 17 are no longer supported. Node.js 18 or newer is required. Reactor and Proxy runtime timeouts below 10 seconds are no longer accepted.
+
 # [3.0.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v2.1.0...v3.0.0) (2026-02-25)
 
 
