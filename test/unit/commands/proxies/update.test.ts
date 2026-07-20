@@ -284,7 +284,7 @@ describe('proxies update', () => {
       expect(proxiesGetStub.called).to.be.true;
     });
 
-    it('skips waiting when --async flag is set', async () => {
+    it('skips waiting when --no-wait flag is set', async () => {
       const result = await runCommand([
         'proxies:update',
         'proxy-123',
@@ -292,7 +292,7 @@ describe('proxies update', () => {
         './request.js',
         '--request-transform-image',
         'node22',
-        '--async',
+        '--no-wait',
       ]);
 
       expect(result.stdout).to.contain('Proxy updated successfully!');

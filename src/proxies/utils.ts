@@ -94,7 +94,7 @@ const PROXY_FLAGS = {
       'response-transform permission to grant, repeatable (node22 only)',
     multiple: true,
   }),
-  async: Flags.boolean({
+  'no-wait': Flags.boolean({
     description:
       'do not wait for proxy to be ready (requires at least one transform with node22)',
     default: false,

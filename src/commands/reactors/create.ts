@@ -39,7 +39,7 @@ export default class Create extends BaseCommand {
         '--code ./reactor.js ' +
         '--configuration ./config.env ' +
         '--image node22 ' +
-        '--runtime-async ' +
+        '--async ' +
         '--timeout 10 ' +
         '--warm-concurrency 0 ' +
         '--resources standard ' +
@@ -63,8 +63,8 @@ export default class Create extends BaseCommand {
       'package-json': packageJson,
       permissions,
       'application-id': applicationId,
-      async: asyncFlag,
-      'runtime-async': runtimeAsyncFlag,
+      'no-wait': noWait,
+      async: runtimeAsyncFlag,
     } = flags;
 
     const image = await promptRuntimeImage(flags.image);
@@ -135,7 +135,7 @@ export default class Create extends BaseCommand {
 
     const reactor = await createReactor(bt, model);
 
-    if (!asyncFlag && reactor.id) {
+    if (!noWait && reactor.id) {
       try {
         await waitForResourceState(bt, 'reactor', reactor.id, reactor.state);
         this.log('Reactor created successfully!');

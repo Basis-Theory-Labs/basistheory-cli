@@ -40,7 +40,7 @@ export default class Update extends BaseCommand {
         '--code ./reactor.js ' +
         '--configuration ./config.env ' +
         '--image node22 ' +
-        '--runtime-async ' +
+        '--async ' +
         '--timeout 10 ' +
         '--warm-concurrency 0 ' +
         '--resources standard ' +
@@ -91,8 +91,8 @@ export default class Update extends BaseCommand {
       'warm-concurrency': warmConcurrency,
       resources,
       permissions,
-      async: asyncFlag,
-      'runtime-async': runtimeAsync,
+      'no-wait': noWait,
+      async: runtimeAsync,
       watch,
       logs,
     } = flags;
@@ -141,7 +141,7 @@ export default class Update extends BaseCommand {
     const reactor = await getReactor(bt, id);
     const isConfigurableRuntime = needsPolling(reactor.state);
 
-    if (!asyncFlag) {
+    if (!noWait) {
       await waitForResourceState(bt, 'reactor', id, reactor.state);
     }
 

@@ -23,7 +23,7 @@ const REACTOR_FLAGS = {
     description: 'path to JavaScript file containing the Reactor code',
   }),
   ...RUNTIME_FLAGS,
-  'runtime-async': Flags.boolean({
+  async: Flags.boolean({
     description: 'execute Reactor invocations asynchronously (node22 only)',
     allowNo: true,
   }),
