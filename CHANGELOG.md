@@ -1,3 +1,10 @@
+# [4.1.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v4.0.0...v4.1.0) (2026-07-23)
+
+
+### Features
+
+* support configurable runtime watch updates ([#45](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/45)) ([a7eec23](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/a7eec2360a2a7683aa665ba02d96aefe95677a85))
+
 # [4.0.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v3.0.0...v4.0.0) (2026-07-20)
 
 
