@@ -495,7 +495,7 @@ FLAGS
   -l, --logs                    Start logs server after update
   -n, --name=<value>            name of the Reactor
   -r, --code=<value>            path to JavaScript file containing the Reactor code
-  -w, --watch                   Watch for changes in informed files
+  -w, --watch                   Watch for changes in supplied code, configuration, and runtime package files
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
   --[no-]async                  execute Reactor invocations asynchronously (node22 only)
   --image=<option>              runtime image (node-bt|node22)
@@ -521,6 +521,11 @@ EXAMPLES
   Update a reactor with node22 runtime
 
     $ bt reactors update <reactor-id> --code ./reactor.js --image node22
+
+  Watch a node22 reactor for code, configuration, and dependency changes
+
+    $ bt reactors update <reactor-id> --code ./reactor.js --configuration ./config.env --package-json ./package.json \
+      --image node22 --watch
 
   Update a reactor with node22 and all runtime options
 

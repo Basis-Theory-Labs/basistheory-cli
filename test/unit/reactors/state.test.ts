@@ -1,4 +1,5 @@
 import { BasisTheoryClient } from '@basis-theory/node-sdk';
+import { ux } from '@oclif/core';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import {
@@ -28,7 +29,33 @@ describe('reactor state utilities', () => {
   });
 
   describe('waitForResourceState (reactor)', () => {
+    it('shows the known initial state before the first poll resolves', async () => {
+      let resolvePoll!: (reactor: typeof reactorFixtures.active) => void;
+      const poll = new Promise<typeof reactorFixtures.active>((resolve) => {
+        resolvePoll = resolve;
+      });
+      const actionStartStub = sinon.stub(ux.action, 'start');
+
+      sinon.stub(ux.action, 'stop');
+      reactorsGetStub.returns(poll);
+
+      const promise = waitForResourceState(
+        btClient,
+        'reactor',
+        'reactor-123',
+        'updating'
+      );
+
+      expect(actionStartStub.calledOnceWith('Status', 'updating (0s)')).to.be
+        .true;
+
+      resolvePoll(reactorFixtures.active);
+      await promise;
+    });
+
     it('resolves when reactor reaches active state', async () => {
+      const actionStopStub = sinon.stub(ux.action, 'stop');
+
       reactorsGetStub.resolves(reactorFixtures.active);
 
       const promise = waitForResourceState(btClient, 'reactor', 'reactor-123');
@@ -39,6 +66,8 @@ describe('reactor state utilities', () => {
       await promise;
 
       expect(reactorsGetStub.calledWith('reactor-123')).to.be.true;
+      expect(actionStopStub.calledOnceWith(sinon.match(/^ready \(\d+s\) ✅$/u)))
+        .to.be.true;
     });
 
     it('resolves after polling when reactor transitions to active', async () => {
@@ -65,6 +94,8 @@ describe('reactor state utilities', () => {
     });
 
     it('throws when reactor reaches failed state', async () => {
+      const actionStopStub = sinon.stub(ux.action, 'stop');
+
       reactorsGetStub.resolves(reactorFixtures.failed);
 
       const promise = waitForResourceState(btClient, 'reactor', 'reactor-123');
@@ -78,6 +109,9 @@ describe('reactor state utilities', () => {
         expect((error as Error).message).to.equal(
           'Reactor reached failed state'
         );
+        expect(
+          actionStopStub.calledOnceWith(sinon.match(/^failed \(\d+s\) ❌$/u))
+        ).to.be.true;
       }
     });
 

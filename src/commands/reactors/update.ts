@@ -1,6 +1,6 @@
 import { Args, Flags, ux } from '@oclif/core';
 import { BaseCommand } from '../../base';
-import { watchForChanges } from '../../files';
+import { createCoalescingHandler, watchForChanges } from '../../files';
 import { showReactorLogs } from '../../logs';
 import { getReactor, patchReactor } from '../../reactors/management';
 import {
@@ -11,7 +11,7 @@ import {
 import { createModelFromFlags, REACTOR_FLAGS } from '../../reactors/utils';
 import {
   buildReactorRuntime,
-  CONFIGURABLE_RUNTIME_IMAGES,
+  isLegacyRuntimeImage,
   needsPolling,
   validateRuntimeTimeout,
   waitForResourceState,
@@ -31,6 +31,17 @@ export default class Update extends BaseCommand {
       description: 'Update a reactor with node22 runtime',
       command:
         '<%= config.bin %> <%= command.id %> <reactor-id> --code ./reactor.js --image node22',
+    },
+    {
+      description:
+        'Watch a node22 reactor for code, configuration, and dependency changes',
+      command:
+        '<%= config.bin %> <%= command.id %> <reactor-id> ' +
+        '--code ./reactor.js ' +
+        '--configuration ./config.env ' +
+        '--package-json ./package.json ' +
+        '--image node22 ' +
+        '--watch',
     },
     {
       description: 'Update a reactor with node22 and all runtime options',
@@ -54,7 +65,8 @@ export default class Update extends BaseCommand {
     ...REACTOR_FLAGS,
     watch: Flags.boolean({
       char: 'w',
-      description: 'Watch for changes in informed files',
+      description:
+        'Watch for changes in supplied code, configuration, and runtime package files',
       default: false,
       required: false,
     }),
@@ -98,6 +110,7 @@ export default class Update extends BaseCommand {
     } = flags;
 
     const existingReactor =
+      watch ||
       hasReactorRuntimeFlags(flags as Record<string, unknown>) ||
       (applicationId !== undefined && image === undefined)
         ? await getReactor(bt, id)
@@ -107,6 +120,7 @@ export default class Update extends BaseCommand {
     const effectiveRuntimeAsync =
       runtimeAsync ?? existingReactor?.runtime?.async ?? false;
     const effectiveTimeout = timeout ?? existingReactor?.runtime?.timeout;
+    const isConfigurableRuntime = !isLegacyRuntimeImage(effectiveImage);
 
     validateReactorRuntimeFlags(
       flags as Record<string, unknown>,
@@ -138,32 +152,14 @@ export default class Update extends BaseCommand {
 
     await patchReactor(bt, id, model);
 
-    const reactor = await getReactor(bt, id);
-    const isConfigurableRuntime = needsPolling(reactor.state);
+    const watchedEntries = Object.entries({
+      code,
+      configuration,
+      ...(isConfigurableRuntime ? { packageJson } : {}),
+    }).filter(([, value]) => Boolean(value)) as [string, string][];
 
-    if (!noWait) {
-      await waitForResourceState(bt, 'reactor', id, reactor.state);
-    }
-
-    this.log('Reactor updated successfully!');
-
-    if (logs) {
-      await showReactorLogs(bt, id);
-    }
-
-    if (watch && isConfigurableRuntime) {
-      this.warn(
-        `--watch is not supported for configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}). Skipping watch.`
-      );
-    } else if (watch) {
-      const entries = Object.entries({
-        code,
-        configuration,
-      }).filter(([, value]) => Boolean(value)) as [string, string][];
-
-      const files = entries.reduce(
+    const startWatching = (initialUpdateCompleted?: Promise<void>): void => {
+      const files = watchedEntries.reduce(
         (arr, [, file]) => [...arr, file],
         [] as string[]
       );
@@ -172,19 +168,136 @@ export default class Update extends BaseCommand {
         this.log(`Watching files for changes: ${files.join(', ')} `);
       }
 
-      entries.forEach(([prop, file]) => {
-        watchForChanges(file, async () => {
-          ux.action.start(`Detected change in ${file}. Pushing changes`);
-          await patchReactor(
-            bt,
-            id,
-            createModelFromFlags({
-              [prop]: file,
-            })
-          );
-          ux.action.stop('✅\t');
+      if (isConfigurableRuntime) {
+        const waitUntilReactorIsAvailable = async (): Promise<void> => {
+          await initialUpdateCompleted;
+
+          const currentReactor = await getReactor(bt, id);
+
+          if (!needsPolling(currentReactor.state)) {
+            return;
+          }
+
+          try {
+            await waitForResourceState(bt, 'reactor', id, currentReactor.state);
+          } catch (error) {
+            const latestReactor = await getReactor(bt, id);
+
+            if (
+              latestReactor.state !== 'failed' &&
+              latestReactor.state !== 'outdated'
+            ) {
+              throw error;
+            }
+          }
+        };
+
+        const pushLatestChanges = createCoalescingHandler(
+          async (markLatestStateCaptured) => {
+            await waitUntilReactorIsAvailable();
+
+            ux.action.start('Pushing latest watched changes');
+
+            try {
+              markLatestStateCaptured();
+
+              await patchReactor(
+                bt,
+                id,
+                createModelFromFlags({
+                  code,
+                  configuration,
+                  runtime: buildReactorRuntime({ packageJson }),
+                })
+              );
+              ux.action.stop('✅\t');
+            } catch (error) {
+              ux.action.stop('failed ❌');
+              throw error;
+            }
+
+            const updatedReactor = await getReactor(bt, id);
+
+            await waitForResourceState(bt, 'reactor', id, updatedReactor.state);
+          },
+          (error) => {
+            const message =
+              error instanceof Error ? error.message : String(error);
+
+            this.warn(`Failed to push watched Reactor changes: ${message}`);
+          }
+        );
+
+        watchedEntries.forEach(([, file]) => {
+          watchForChanges(file, () => {
+            this.log(`Detected change in ${file}. Queuing latest files`);
+
+            return pushLatestChanges();
+          });
         });
-      });
+      } else {
+        watchedEntries.forEach(([prop, file]) => {
+          watchForChanges(file, async () => {
+            ux.action.start(`Detected change in ${file}. Pushing changes`);
+            await patchReactor(
+              bt,
+              id,
+              createModelFromFlags({
+                [prop]: file,
+              })
+            );
+            ux.action.stop('✅\t');
+          });
+        });
+      }
+    };
+
+    let initialUpdateError: unknown;
+
+    const completeInitialUpdate = async (): Promise<void> => {
+      if (!noWait) {
+        try {
+          const initialState = isConfigurableRuntime
+            ? 'updating'
+            : (await getReactor(bt, id)).state;
+
+          await waitForResourceState(bt, 'reactor', id, initialState);
+        } catch (error) {
+          if (!watch || !isConfigurableRuntime) {
+            throw error;
+          }
+
+          initialUpdateError = error;
+          const message =
+            error instanceof Error ? error.message : String(error);
+
+          this.warn(`Initial Reactor update failed: ${message}`);
+        }
+      }
+
+      if (initialUpdateError) {
+        this.log(
+          'Watch remains active. Save a watched file to retry the latest snapshot.'
+        );
+      } else {
+        this.log('Reactor updated successfully!');
+      }
+    };
+
+    const initialUpdateCompleted = completeInitialUpdate();
+
+    if (watch && isConfigurableRuntime) {
+      startWatching(initialUpdateCompleted);
+    }
+
+    await initialUpdateCompleted;
+
+    if (logs && !initialUpdateError) {
+      await showReactorLogs(bt, id);
+    }
+
+    if (watch && !isConfigurableRuntime) {
+      startWatching();
     }
   }
 }
