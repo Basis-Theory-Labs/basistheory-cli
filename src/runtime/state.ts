@@ -87,11 +87,16 @@ const waitForResourceState = async (
 
   const deadline = Date.now() + POLL_TIMEOUT;
   const startTime = Date.now();
-  let currentState: string | undefined;
+  let currentState = initialState;
 
   const timer = createTimer(startTime, () => currentState);
 
-  ux.action.start('Status');
+  ux.action.start(
+    'Status',
+    currentState
+      ? `${currentState} (${formatElapsedTime(startTime)})`
+      : undefined
+  );
 
   /* eslint-disable no-await-in-loop */
   try {
@@ -113,13 +118,13 @@ const waitForResourceState = async (
       ux.action.status = `${currentState} (${formatElapsedTime(startTime)})`;
 
       if (currentState === 'active') {
-        ux.action.stop(`ready (${formatElapsedTime(startTime)})`);
+        ux.action.stop(`ready (${formatElapsedTime(startTime)}) ✅`);
 
         return;
       }
 
       if (currentState === 'failed' || currentState === 'outdated') {
-        ux.action.stop(`failed (${formatElapsedTime(startTime)})`);
+        ux.action.stop(`failed (${formatElapsedTime(startTime)}) ❌`);
         throw new Error(formatErrorMessage(resource, resourceType));
       }
 
