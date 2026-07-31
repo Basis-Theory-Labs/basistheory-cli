@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/4.1.0 linux-x64 node-v22.23.1
+@basis-theory-labs/cli/4.2.0 linux-x64 node-v22.23.1
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -62,7 +62,7 @@ EXAMPLES
   $ bt applications
 ```
 
-_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.1.0/dist/commands/applications/index.ts)_
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.2.0/dist/commands/applications/index.ts)_
 
 ## `bt applications create`
 
@@ -151,7 +151,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.1.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.2.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -160,9 +160,9 @@ Creates a new Pre-Configured Proxy. Requires `proxy:create` Management Applicati
 ```
 USAGE
   $ bt proxies create -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>] [-a]
-    [--request-transform-image node-bt|node22] [--request-transform-package-json <value>] [--request-transform-timeout
-    <value>] [--request-transform-warm-concurrency <value>] [--request-transform-resources standard|large|xlarge]
-    [--request-transform-permissions <value>] [--response-transform-image node-bt|node22]
+    [--request-transform-image node-bt|node22|node24] [--request-transform-package-json <value>]
+    [--request-transform-timeout <value>] [--request-transform-warm-concurrency <value>] [--request-transform-resources
+    standard|large|xlarge] [--request-transform-permissions <value>] [--response-transform-image node-bt|node22|node24]
     [--response-transform-package-json <value>] [--response-transform-timeout <value>]
     [--response-transform-warm-concurrency <value>] [--response-transform-resources standard|large|xlarge]
     [--response-transform-permissions <value>] [--no-wait]
@@ -178,27 +178,29 @@ FLAGS
   -u, --destination-url=<value>                  URL to which requests will be proxied
   -x, --management-key=<value>                   (required) management key used for connecting with the reactor / proxy
   --no-wait                                      do not wait for proxy to be ready (requires at least one transform with
-                                                 node22)
-  --request-transform-image=<option>             request-transform runtime image (node-bt|node22)
-                                                 <options: node-bt|node22>
+                                                 node22 | node24)
+  --request-transform-image=<option>             request-transform runtime image (node-bt|node22|node24)
+                                                 <options: node-bt|node22|node24>
   --request-transform-package-json=<value>       path to runtime package.json JSON file (top-level dependencies
                                                  required; supports resolutions or overrides fallback; pinned versions
-                                                 required) (node22 only)
-  --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 only)
-  --request-transform-resources=<option>         request-transform resource tier (node22 only)
+                                                 required) (node22 | node24 only)
+  --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 | node24
+                                                 only)
+  --request-transform-resources=<option>         request-transform resource tier (node22 | node24 only)
                                                  <options: standard|large|xlarge>
-  --request-transform-timeout=<value>            request-transform timeout in seconds, 10-30 (node22 only)
-  --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 only)
-  --response-transform-image=<option>            response-transform runtime image (node-bt|node22)
-                                                 <options: node-bt|node22>
+  --request-transform-timeout=<value>            request-transform timeout in seconds, 10-30 (node22 | node24 only)
+  --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 | node24 only)
+  --response-transform-image=<option>            response-transform runtime image (node-bt|node22|node24)
+                                                 <options: node-bt|node22|node24>
   --response-transform-package-json=<value>      path to runtime package.json JSON file (top-level dependencies
                                                  required; supports resolutions or overrides fallback; pinned versions
-                                                 required) (node22 only)
-  --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 only)
-  --response-transform-resources=<option>        response-transform resource tier (node22 only)
+                                                 required) (node22 | node24 only)
+  --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 | node24
+                                                 only)
+  --response-transform-resources=<option>        response-transform resource tier (node22 | node24 only)
                                                  <options: standard|large|xlarge>
-  --response-transform-timeout=<value>           response-transform timeout in seconds, 10-30 (node22 only)
-  --response-transform-warm-concurrency=<value>  response-transform warm concurrency, 0-1 (node22 only)
+  --response-transform-timeout=<value>           response-transform timeout in seconds, 10-30 (node22 | node24 only)
+  --response-transform-warm-concurrency=<value>  response-transform warm concurrency, 0-1 (node22 | node24 only)
 
 DESCRIPTION
   Creates a new Pre-Configured Proxy. Requires `proxy:create` Management Application permission
@@ -285,9 +287,9 @@ Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management App
 ```
 USAGE
   $ bt proxies update ID -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>]
-    [-a] [--request-transform-image node-bt|node22] [--request-transform-package-json <value>]
+    [-a] [--request-transform-image node-bt|node22|node24] [--request-transform-package-json <value>]
     [--request-transform-timeout <value>] [--request-transform-warm-concurrency <value>] [--request-transform-resources
-    standard|large|xlarge] [--request-transform-permissions <value>] [--response-transform-image node-bt|node22]
+    standard|large|xlarge] [--request-transform-permissions <value>] [--response-transform-image node-bt|node22|node24]
     [--response-transform-package-json <value>] [--response-transform-timeout <value>]
     [--response-transform-warm-concurrency <value>] [--response-transform-resources standard|large|xlarge]
     [--response-transform-permissions <value>] [--no-wait] [-w] [-l]
@@ -308,27 +310,29 @@ FLAGS
   -w, --watch                                    Watch for changes in informed files
   -x, --management-key=<value>                   (required) management key used for connecting with the reactor / proxy
   --no-wait                                      do not wait for proxy to be ready (requires at least one transform with
-                                                 node22)
-  --request-transform-image=<option>             request-transform runtime image (node-bt|node22)
-                                                 <options: node-bt|node22>
+                                                 node22 | node24)
+  --request-transform-image=<option>             request-transform runtime image (node-bt|node22|node24)
+                                                 <options: node-bt|node22|node24>
   --request-transform-package-json=<value>       path to runtime package.json JSON file (top-level dependencies
                                                  required; supports resolutions or overrides fallback; pinned versions
-                                                 required) (node22 only)
-  --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 only)
-  --request-transform-resources=<option>         request-transform resource tier (node22 only)
+                                                 required) (node22 | node24 only)
+  --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 | node24
+                                                 only)
+  --request-transform-resources=<option>         request-transform resource tier (node22 | node24 only)
                                                  <options: standard|large|xlarge>
-  --request-transform-timeout=<value>            request-transform timeout in seconds, 10-30 (node22 only)
-  --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 only)
-  --response-transform-image=<option>            response-transform runtime image (node-bt|node22)
-                                                 <options: node-bt|node22>
+  --request-transform-timeout=<value>            request-transform timeout in seconds, 10-30 (node22 | node24 only)
+  --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 | node24 only)
+  --response-transform-image=<option>            response-transform runtime image (node-bt|node22|node24)
+                                                 <options: node-bt|node22|node24>
   --response-transform-package-json=<value>      path to runtime package.json JSON file (top-level dependencies
                                                  required; supports resolutions or overrides fallback; pinned versions
-                                                 required) (node22 only)
-  --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 only)
-  --response-transform-resources=<option>        response-transform resource tier (node22 only)
+                                                 required) (node22 | node24 only)
+  --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 | node24
+                                                 only)
+  --response-transform-resources=<option>        response-transform resource tier (node22 | node24 only)
                                                  <options: standard|large|xlarge>
-  --response-transform-timeout=<value>           response-transform timeout in seconds, 10-30 (node22 only)
-  --response-transform-warm-concurrency=<value>  response-transform warm concurrency, 0-1 (node22 only)
+  --response-transform-timeout=<value>           response-transform timeout in seconds, 10-30 (node22 | node24 only)
+  --response-transform-warm-concurrency=<value>  response-transform warm concurrency, 0-1 (node22 | node24 only)
 
 DESCRIPTION
   Updates an existing Pre-Configured Proxy. Requires `proxy:update` Management Application permission
@@ -378,7 +382,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.1.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.2.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 
@@ -386,7 +390,7 @@ Creates a new Reactor. Requires `reactor:create` Management Application permissi
 
 ```
 USAGE
-  $ bt reactors create -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22]
+  $ bt reactors create -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22|node24]
     [--package-json <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
     [--permissions <value>] [--no-wait] [--async]
 
@@ -396,18 +400,18 @@ FLAGS
   -n, --name=<value>            name of the Reactor
   -r, --code=<value>            path to JavaScript file containing the Reactor code
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
-  --[no-]async                  execute Reactor invocations asynchronously (node22 only)
-  --image=<option>              runtime image (node-bt|node22)
-                                <options: node-bt|node22>
+  --[no-]async                  execute Reactor invocations asynchronously (node22 | node24 only)
+  --image=<option>              runtime image (node-bt|node22|node24)
+                                <options: node-bt|node22|node24>
   --no-wait                     do not wait for resource provisioning to complete
   --package-json=<value>        path to runtime package.json JSON file (top-level dependencies required; supports
-                                resolutions or overrides fallback; pinned versions required) (node22 only)
-  --permissions=<value>...      permission to grant, repeatable (node22 only)
-  --resources=<option>          resource tier (node22 only, default: standard)
+                                resolutions or overrides fallback; pinned versions required) (node22 | node24 only)
+  --permissions=<value>...      permission to grant, repeatable (node22 | node24 only)
+  --resources=<option>          resource tier (node22 | node24 only, default: standard)
                                 <options: standard|large|xlarge>
-  --timeout=<value>             timeout in seconds, 10-900 (node22 only; maximum 30 when runtime async is disabled;
-                                default: 10)
-  --warm-concurrency=<value>    number of warm instances, 0-1 (node22 only, default: 0)
+  --timeout=<value>             timeout in seconds, 10-900 (node22 | node24 only; maximum 30 when runtime async is
+                                disabled; default: 10)
+  --warm-concurrency=<value>    number of warm instances, 0-1 (node22 | node24 only, default: 0)
 
 DESCRIPTION
   Creates a new Reactor. Requires `reactor:create` Management Application permission
@@ -482,9 +486,9 @@ Updates an existing Reactor. Requires `reactor:update` Management Application pe
 
 ```
 USAGE
-  $ bt reactors update ID -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22]
-    [--package-json <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
-    [--permissions <value>] [--no-wait] [--async] [-w] [-l]
+  $ bt reactors update ID -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image
+    node-bt|node22|node24] [--package-json <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources
+    standard|large|xlarge] [--permissions <value>] [--no-wait] [--async] [-w] [-l]
 
 ARGUMENTS
   ID  Reactor id to update
@@ -497,18 +501,18 @@ FLAGS
   -r, --code=<value>            path to JavaScript file containing the Reactor code
   -w, --watch                   Watch for changes in supplied code, configuration, and runtime package files
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
-  --[no-]async                  execute Reactor invocations asynchronously (node22 only)
-  --image=<option>              runtime image (node-bt|node22)
-                                <options: node-bt|node22>
+  --[no-]async                  execute Reactor invocations asynchronously (node22 | node24 only)
+  --image=<option>              runtime image (node-bt|node22|node24)
+                                <options: node-bt|node22|node24>
   --no-wait                     do not wait for resource provisioning to complete
   --package-json=<value>        path to runtime package.json JSON file (top-level dependencies required; supports
-                                resolutions or overrides fallback; pinned versions required) (node22 only)
-  --permissions=<value>...      permission to grant, repeatable (node22 only)
-  --resources=<option>          resource tier (node22 only, default: standard)
+                                resolutions or overrides fallback; pinned versions required) (node22 | node24 only)
+  --permissions=<value>...      permission to grant, repeatable (node22 | node24 only)
+  --resources=<option>          resource tier (node22 | node24 only, default: standard)
                                 <options: standard|large|xlarge>
-  --timeout=<value>             timeout in seconds, 10-900 (node22 only; maximum 30 when runtime async is disabled;
-                                default: 10)
-  --warm-concurrency=<value>    number of warm instances, 0-1 (node22 only, default: 0)
+  --timeout=<value>             timeout in seconds, 10-900 (node22 | node24 only; maximum 30 when runtime async is
+                                disabled; default: 10)
+  --warm-concurrency=<value>    number of warm instances, 0-1 (node22 | node24 only, default: 0)
 
 DESCRIPTION
   Updates an existing Reactor. Requires `reactor:update` Management Application permission

@@ -1,3 +1,10 @@
+# [4.2.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v4.1.0...v4.2.0) (2026-07-31)
+
+
+### Features
+
+* add Node24 CLI runtime support ([#46](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/46)) ([0788d3c](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/0788d3ca742e68710c94cd9717c3c4f6c926c095))
+
 # [4.1.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v4.0.0...v4.1.0) (2026-07-23)
 
 
