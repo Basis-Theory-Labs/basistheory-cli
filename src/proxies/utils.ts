@@ -2,7 +2,11 @@ import type { BasisTheory } from '@basis-theory/node-sdk';
 import { Flags } from '@oclif/core';
 import { parse } from 'dotenv';
 import { readFileContents } from '../files';
-import { VALID_RUNTIME_IMAGES } from '../runtime';
+import {
+  CONFIGURABLE_RUNTIME_IMAGES_LABEL,
+  VALID_RUNTIME_IMAGES,
+  VALID_RUNTIME_IMAGES_LABEL,
+} from '../runtime';
 
 const PROXY_FLAGS = {
   name: Flags.string({
@@ -37,66 +41,57 @@ const PROXY_FLAGS = {
     default: true,
   }),
   'request-transform-image': Flags.string({
-    description: `request-transform runtime image (${VALID_RUNTIME_IMAGES.join(
-      '|'
-    )})`,
+    description: `request-transform runtime image (${VALID_RUNTIME_IMAGES_LABEL})`,
     options: [...VALID_RUNTIME_IMAGES],
   }),
   'request-transform-package-json': Flags.file({
-    description:
-      'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
+    description: `path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
   }),
   'request-transform-timeout': Flags.integer({
-    description: 'request-transform timeout in seconds, 10-30 (node22 only)',
+    description: `request-transform timeout in seconds, 10-30 (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     min: 10,
     max: 30,
   }),
   'request-transform-warm-concurrency': Flags.integer({
-    description: 'request-transform warm concurrency, 0-1 (node22 only)',
+    description: `request-transform warm concurrency, 0-1 (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     min: 0,
     max: 1,
   }),
   'request-transform-resources': Flags.string({
-    description: 'request-transform resource tier (node22 only)',
+    description: `request-transform resource tier (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     options: ['standard', 'large', 'xlarge'],
   }),
   'request-transform-permissions': Flags.string({
-    description:
-      'request-transform permission to grant, repeatable (node22 only)',
+    description: `request-transform permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     multiple: true,
   }),
   'response-transform-image': Flags.string({
-    description: `response-transform runtime image (${VALID_RUNTIME_IMAGES.join(
-      '|'
-    )})`,
+    description: `response-transform runtime image (${VALID_RUNTIME_IMAGES_LABEL})`,
     options: [...VALID_RUNTIME_IMAGES],
   }),
   'response-transform-package-json': Flags.file({
-    description:
-      'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
+    description: `path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
   }),
   'response-transform-timeout': Flags.integer({
-    description: 'response-transform timeout in seconds, 10-30 (node22 only)',
+    description: `response-transform timeout in seconds, 10-30 (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     min: 10,
     max: 30,
   }),
   'response-transform-warm-concurrency': Flags.integer({
-    description: 'response-transform warm concurrency, 0-1 (node22 only)',
+    description: `response-transform warm concurrency, 0-1 (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     min: 0,
     max: 1,
   }),
   'response-transform-resources': Flags.string({
-    description: 'response-transform resource tier (node22 only)',
+    description: `response-transform resource tier (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     options: ['standard', 'large', 'xlarge'],
   }),
   'response-transform-permissions': Flags.string({
-    description:
-      'response-transform permission to grant, repeatable (node22 only)',
+    description: `response-transform permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     multiple: true,
   }),
   'no-wait': Flags.boolean({
-    description:
-      'do not wait for proxy to be ready (requires at least one transform with node22)',
+    description: `do not wait for proxy to be ready (requires at least one transform with ${CONFIGURABLE_RUNTIME_IMAGES_LABEL})`,
     default: false,
   }),
 };

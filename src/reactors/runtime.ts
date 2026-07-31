@@ -1,5 +1,5 @@
 import {
-  CONFIGURABLE_RUNTIME_IMAGES,
+  CONFIGURABLE_RUNTIME_IMAGES_LABEL,
   isLegacyRuntimeImage,
   REACTOR_CONFIGURABLE_RUNTIME_FLAGS,
 } from '../runtime';
@@ -31,9 +31,7 @@ const validateReactorRuntimeFlags = (
     const flagNames = setFlags.map((f) => `--${f}`).join(', ');
 
     throw new Error(
-      `Configurable runtime flags (${flagNames}) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-        ' | '
-      )}`
+      `Configurable runtime flags (${flagNames}) require --image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
     );
   }
 };
@@ -44,9 +42,7 @@ const validateReactorApplicationId = (
 ): void => {
   if (applicationId && !isLegacyRuntimeImage(image)) {
     throw new Error(
-      `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-        ' | '
-      )}). Use --permissions to grant specific access instead.`
+      `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES_LABEL}). Use --permissions to grant specific access instead.`
     );
   }
 };

@@ -2,6 +2,7 @@ import { BasisTheoryClient } from '@basis-theory/node-sdk';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import * as files from '../../../../src/files';
+import { CONFIGURABLE_RUNTIME_IMAGES } from '../../../../src/runtime';
 import { proxyFixtures } from '../../fixtures/proxies';
 import { runCommand } from '../../helpers/run-command';
 
@@ -164,46 +165,48 @@ describe('proxies update', () => {
   });
 
   describe('with transform runtime flags', () => {
-    it('updates proxy with request transform runtime flags', async () => {
-      readFileStub
-        .withArgs('./package.json')
-        .returns(
-          '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
-        );
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`updates proxy with request transform runtime flags using ${image}`, async () => {
+        readFileStub
+          .withArgs('./package.json')
+          .returns(
+            '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+          );
 
-      const result = await runCommand([
-        'proxies:update',
-        'proxy-123',
-        '--request-transform-code',
-        './request.js',
-        '--request-transform-image',
-        'node22',
-        '--request-transform-timeout',
-        '30',
-        '--request-transform-warm-concurrency',
-        '1',
-        '--request-transform-resources',
-        'large',
-        '--request-transform-package-json',
-        './package.json',
-        '--request-transform-permissions',
-        'token:read',
-      ]);
+        const result = await runCommand([
+          'proxies:update',
+          'proxy-123',
+          '--request-transform-code',
+          './request.js',
+          '--request-transform-image',
+          image,
+          '--request-transform-timeout',
+          '30',
+          '--request-transform-warm-concurrency',
+          '1',
+          '--request-transform-resources',
+          'large',
+          '--request-transform-package-json',
+          './package.json',
+          '--request-transform-permissions',
+          'token:read',
+        ]);
 
-      expect(result.stdout).to.contain('Proxy updated successfully!');
-      const [, patchArg] = proxiesPatchStub.firstCall.args;
+        expect(result.stdout).to.contain('Proxy updated successfully!');
+        const [, patchArg] = proxiesPatchStub.firstCall.args;
 
-      expect(patchArg.requestTransforms[0].options.runtime).to.deep.equal({
-        image: 'node22',
-        timeout: 30,
-        warmConcurrency: 1,
-        resources: 'large',
-        dependencies: { lodash: '4.17.21' },
-        resolutions: {
-          uuid: '9.0.1',
-          nanoid: '5.0.7',
-        },
-        permissions: ['token:read'],
+        expect(patchArg.requestTransforms[0].options.runtime).to.deep.equal({
+          image,
+          timeout: 30,
+          warmConcurrency: 1,
+          resources: 'large',
+          dependencies: { lodash: '4.17.21' },
+          resolutions: {
+            uuid: '9.0.1',
+            nanoid: '5.0.7',
+          },
+          permissions: ['token:read'],
+        });
       });
     });
 
@@ -240,32 +243,34 @@ describe('proxies update', () => {
       });
     });
 
-    it('updates proxy with response transform runtime flags', async () => {
-      const result = await runCommand([
-        'proxies:update',
-        'proxy-123',
-        '--response-transform-code',
-        './response.js',
-        '--response-transform-image',
-        'node22',
-        '--response-transform-timeout',
-        '15',
-        '--response-transform-resources',
-        'xlarge',
-      ]);
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`updates proxy with response transform runtime flags using ${image}`, async () => {
+        const result = await runCommand([
+          'proxies:update',
+          'proxy-123',
+          '--response-transform-code',
+          './response.js',
+          '--response-transform-image',
+          image,
+          '--response-transform-timeout',
+          '15',
+          '--response-transform-resources',
+          'xlarge',
+        ]);
 
-      expect(result.stdout).to.contain('Proxy updated successfully!');
-      const [, patchArg] = proxiesPatchStub.firstCall.args;
+        expect(result.stdout).to.contain('Proxy updated successfully!');
+        const [, patchArg] = proxiesPatchStub.firstCall.args;
 
-      expect(patchArg.responseTransforms[0].options.runtime.image).to.equal(
-        'node22'
-      );
-      expect(patchArg.responseTransforms[0].options.runtime.timeout).to.equal(
-        15
-      );
-      expect(patchArg.responseTransforms[0].options.runtime.resources).to.equal(
-        'xlarge'
-      );
+        expect(patchArg.responseTransforms[0].options.runtime.image).to.equal(
+          image
+        );
+        expect(patchArg.responseTransforms[0].options.runtime.timeout).to.equal(
+          15
+        );
+        expect(
+          patchArg.responseTransforms[0].options.runtime.resources
+        ).to.equal('xlarge');
+      });
     });
 
     it('waits for proxy to be ready by default for node22 transform', async () => {
@@ -301,22 +306,24 @@ describe('proxies update', () => {
   });
 
   describe('validation', () => {
-    it('errors when --application-id used with only configurable transforms', async () => {
-      const result = await runCommand([
-        'proxies:update',
-        'proxy-123',
-        '--request-transform-code',
-        './test/unit/fixtures/code.js',
-        '--request-transform-image',
-        'node22',
-        '--application-id',
-        'app-123',
-      ]);
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`errors when --application-id is used with only ${image} transforms`, async () => {
+        const result = await runCommand([
+          'proxies:update',
+          'proxy-123',
+          '--request-transform-code',
+          './test/unit/fixtures/code.js',
+          '--request-transform-image',
+          image,
+          '--application-id',
+          'app-123',
+        ]);
 
-      expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        '--application-id is only valid when at least one transform uses a legacy runtime (node-bt). Use --{request,response}-transform-permissions instead.'
-      );
+        expect(result.error).to.exist;
+        expect(result.error!.message).to.contain(
+          '--application-id is only valid when at least one transform uses a legacy runtime (node-bt). Use --{request,response}-transform-permissions instead.'
+        );
+      });
     });
 
     it('allows --application-id when at least one transform is legacy', async () => {

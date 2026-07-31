@@ -3,6 +3,7 @@ import {
   buildRuntime,
   CONFIGURABLE_RUNTIME_FLAGS,
   CONFIGURABLE_RUNTIME_IMAGES,
+  CONFIGURABLE_RUNTIME_IMAGES_LABEL,
   isLegacyRuntimeImage,
   LEGACY_RUNTIME_IMAGE,
   promptRuntimeOptions,
@@ -31,9 +32,7 @@ const validateTransformRuntimeFlags = (
     const flagNames = setFlags.map((f) => `--${f}`).join(', ');
 
     throw new Error(
-      `Configurable runtime flags (${flagNames}) require --${prefix}-image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-        ' | '
-      )}`
+      `Configurable runtime flags (${flagNames}) require --${prefix}-image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
     );
   }
 };
