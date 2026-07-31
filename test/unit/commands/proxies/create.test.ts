@@ -5,6 +5,7 @@ import * as select from '@inquirer/select';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import * as files from '../../../../src/files';
+import { CONFIGURABLE_RUNTIME_IMAGES } from '../../../../src/runtime';
 import { proxyFixtures } from '../../fixtures/proxies';
 import { runCommand } from '../../helpers/run-command';
 import { PromptStub } from '../../helpers/types';
@@ -162,49 +163,51 @@ describe('proxies create', () => {
   });
 
   describe('with transform runtime flags', () => {
-    it('creates proxy with request transform runtime flags', async () => {
-      readFileStub
-        .withArgs('./package.json')
-        .returns(
-          '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
-        );
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`creates proxy with request transform runtime flags using ${image}`, async () => {
+        readFileStub
+          .withArgs('./package.json')
+          .returns(
+            '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+          );
 
-      const result = await runCommand([
-        'proxies:create',
-        '--name',
-        'Test Proxy',
-        '--destination-url',
-        'https://example.com/api',
-        '--request-transform-code',
-        './request.js',
-        '--request-transform-image',
-        'node22',
-        '--request-transform-timeout',
-        '30',
-        '--request-transform-warm-concurrency',
-        '1',
-        '--request-transform-resources',
-        'large',
-        '--request-transform-package-json',
-        './package.json',
-        '--request-transform-permissions',
-        'token:read',
-      ]);
+        const result = await runCommand([
+          'proxies:create',
+          '--name',
+          'Test Proxy',
+          '--destination-url',
+          'https://example.com/api',
+          '--request-transform-code',
+          './request.js',
+          '--request-transform-image',
+          image,
+          '--request-transform-timeout',
+          '30',
+          '--request-transform-warm-concurrency',
+          '1',
+          '--request-transform-resources',
+          'large',
+          '--request-transform-package-json',
+          './package.json',
+          '--request-transform-permissions',
+          'token:read',
+        ]);
 
-      expect(result.stdout).to.contain('Proxy created successfully!');
-      const [createArg] = proxiesCreateStub.firstCall.args;
+        expect(result.stdout).to.contain('Proxy created successfully!');
+        const [createArg] = proxiesCreateStub.firstCall.args;
 
-      expect(createArg.requestTransforms[0].options.runtime).to.deep.equal({
-        image: 'node22',
-        timeout: 30,
-        warmConcurrency: 1,
-        resources: 'large',
-        dependencies: { lodash: '4.17.21' },
-        resolutions: {
-          uuid: '9.0.1',
-          nanoid: '5.0.7',
-        },
-        permissions: ['token:read'],
+        expect(createArg.requestTransforms[0].options.runtime).to.deep.equal({
+          image,
+          timeout: 30,
+          warmConcurrency: 1,
+          resources: 'large',
+          dependencies: { lodash: '4.17.21' },
+          resolutions: {
+            uuid: '9.0.1',
+            nanoid: '5.0.7',
+          },
+          permissions: ['token:read'],
+        });
       });
     });
 
@@ -627,7 +630,9 @@ describe('proxies create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--request-transform-timeout) require --request-transform-image node22'
+        `Configurable runtime flags (--request-transform-timeout) require --request-transform-image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}`
       );
     });
 
@@ -686,7 +691,9 @@ describe('proxies create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--response-transform-resources) require --response-transform-image node22'
+        `Configurable runtime flags (--response-transform-resources) require --response-transform-image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}`
       );
     });
 

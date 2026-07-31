@@ -24,7 +24,8 @@ const REACTOR_FLAGS = {
   }),
   ...RUNTIME_FLAGS,
   async: Flags.boolean({
-    description: 'execute Reactor invocations asynchronously (node22 only)',
+    description:
+      'execute Reactor invocations asynchronously (configurable runtimes only)',
     allowNo: true,
   }),
 };

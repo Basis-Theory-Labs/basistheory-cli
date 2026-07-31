@@ -3,6 +3,7 @@ import { ux } from '@oclif/core';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import * as files from '../../../../src/files';
+import { CONFIGURABLE_RUNTIME_IMAGES } from '../../../../src/runtime';
 import { reactorFixtures } from '../../fixtures/reactors';
 import { runCommand } from '../../helpers/run-command';
 
@@ -510,48 +511,50 @@ describe('reactors update', () => {
       expect(patchArg.runtime.image).to.equal('node22');
     });
 
-    it('updates reactor with all runtime flags', async () => {
-      readFileStub
-        .withArgs('./package.json')
-        .returns(
-          '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
-        );
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`updates reactor with all runtime flags using ${image}`, async () => {
+        readFileStub
+          .withArgs('./package.json')
+          .returns(
+            '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+          );
 
-      const result = await runCommand([
-        'reactors:update',
-        'reactor-123',
-        '--image',
-        'node22',
-        '--async',
-        '--timeout',
-        '900',
-        '--warm-concurrency',
-        '1',
-        '--resources',
-        'large',
-        '--package-json',
-        './package.json',
-        '--permissions',
-        'token:read',
-        '--permissions',
-        'token:write',
-      ]);
+        const result = await runCommand([
+          'reactors:update',
+          'reactor-123',
+          '--image',
+          image,
+          '--async',
+          '--timeout',
+          '900',
+          '--warm-concurrency',
+          '1',
+          '--resources',
+          'large',
+          '--package-json',
+          './package.json',
+          '--permissions',
+          'token:read',
+          '--permissions',
+          'token:write',
+        ]);
 
-      expect(result.stdout).to.contain('Reactor updated successfully!');
-      const [, patchArg] = reactorsPatchStub.firstCall.args;
+        expect(result.stdout).to.contain('Reactor updated successfully!');
+        const [, patchArg] = reactorsPatchStub.firstCall.args;
 
-      expect(patchArg.runtime).to.deep.equal({
-        async: true,
-        image: 'node22',
-        timeout: 900,
-        warmConcurrency: 1,
-        resources: 'large',
-        dependencies: { lodash: '4.17.21' },
-        resolutions: {
-          uuid: '9.0.1',
-          nanoid: '5.0.7',
-        },
-        permissions: ['token:read', 'token:write'],
+        expect(patchArg.runtime).to.deep.equal({
+          async: true,
+          image,
+          timeout: 900,
+          warmConcurrency: 1,
+          resources: 'large',
+          dependencies: { lodash: '4.17.21' },
+          resolutions: {
+            uuid: '9.0.1',
+            nanoid: '5.0.7',
+          },
+          permissions: ['token:read', 'token:write'],
+        });
       });
     });
 
@@ -672,7 +675,9 @@ describe('reactors update', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--async) require --image node22'
+        `Configurable runtime flags (--async) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}`
       );
       expect(reactorsPatchStub.called).to.be.false;
     });
@@ -722,7 +727,9 @@ describe('reactors update', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        '--application-id is not allowed with configurable runtimes (node22). Use --permissions to grant specific access instead.'
+        `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}). Use --permissions to grant specific access instead.`
       );
       expect(reactorsPatchStub.called).to.be.false;
     });

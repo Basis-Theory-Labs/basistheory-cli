@@ -9,7 +9,7 @@ import {
 
 const LEGACY_RUNTIME_IMAGE = 'node-bt';
 
-const CONFIGURABLE_RUNTIME_IMAGES = ['node22'] as const;
+const CONFIGURABLE_RUNTIME_IMAGES = ['node22', 'node24'] as const;
 
 const VALID_RUNTIME_IMAGES = [
   LEGACY_RUNTIME_IMAGE,

@@ -5,6 +5,10 @@ import * as select from '@inquirer/select';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import * as files from '../../../../src/files';
+import {
+  CONFIGURABLE_RUNTIME_IMAGES,
+  LEGACY_RUNTIME_IMAGE,
+} from '../../../../src/runtime';
 import { reactorFixtures } from '../../fixtures/reactors';
 import { runCommand } from '../../helpers/run-command';
 import { PromptStub } from '../../helpers/types';
@@ -143,51 +147,53 @@ describe('reactors create', () => {
       expect(createArg.runtime.image).to.equal('node22');
     });
 
-    it('creates reactor with all runtime flags', async () => {
-      readFileStub
-        .withArgs('./package.json')
-        .returns(
-          '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
-        );
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`creates reactor with all runtime flags using ${image}`, async () => {
+        readFileStub
+          .withArgs('./package.json')
+          .returns(
+            '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+          );
 
-      const result = await runCommand([
-        'reactors:create',
-        '--name',
-        'Test Reactor',
-        '--code',
-        './reactor.js',
-        '--image',
-        'node22',
-        '--async',
-        '--timeout',
-        '900',
-        '--warm-concurrency',
-        '1',
-        '--resources',
-        'large',
-        '--package-json',
-        './package.json',
-        '--permissions',
-        'token:read',
-        '--permissions',
-        'token:write',
-      ]);
+        const result = await runCommand([
+          'reactors:create',
+          '--name',
+          'Test Reactor',
+          '--code',
+          './reactor.js',
+          '--image',
+          image,
+          '--async',
+          '--timeout',
+          '900',
+          '--warm-concurrency',
+          '1',
+          '--resources',
+          'large',
+          '--package-json',
+          './package.json',
+          '--permissions',
+          'token:read',
+          '--permissions',
+          'token:write',
+        ]);
 
-      expect(result.stdout).to.contain('Reactor created successfully!');
-      const [createArg] = reactorsCreateStub.firstCall.args;
+        expect(result.stdout).to.contain('Reactor created successfully!');
+        const [createArg] = reactorsCreateStub.firstCall.args;
 
-      expect(createArg.runtime).to.deep.equal({
-        async: true,
-        image: 'node22',
-        timeout: 900,
-        warmConcurrency: 1,
-        resources: 'large',
-        dependencies: { lodash: '4.17.21' },
-        resolutions: {
-          uuid: '9.0.1',
-          nanoid: '5.0.7',
-        },
-        permissions: ['token:read', 'token:write'],
+        expect(createArg.runtime).to.deep.equal({
+          async: true,
+          image,
+          timeout: 900,
+          warmConcurrency: 1,
+          resources: 'large',
+          dependencies: { lodash: '4.17.21' },
+          resolutions: {
+            uuid: '9.0.1',
+            nanoid: '5.0.7',
+          },
+          permissions: ['token:read', 'token:write'],
+        });
       });
     });
 
@@ -428,58 +434,64 @@ describe('reactors create', () => {
       inputStub.verifyExpectations();
     });
 
-    it('prompts for node22 options when node22 selected', async () => {
-      selectStub
-        .onCallResolves('Which runtime do you want to use?', 'node22')
-        .onCallResolves('Resource tier:', 'large');
-      inputStub
-        .onCallResolves('What is the Reactor name?', 'Node22 Reactor')
-        .onCallResolves('Enter the Reactor code file path:', './reactor.js')
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Timeout in seconds (10-30, press Enter for default: 10):',
-          '20'
-        )
-        .onCallResolves(
-          'Warm concurrency (0-1, press Enter for default: 0):',
-          '1'
-        )
-        .onCallResolves(
-          '(Optional) Runtime package.json file path (JSON format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`prompts for configurable runtime options when ${image} selected`, async () => {
+        selectStub
+          .onCallResolves('Which runtime do you want to use?', image)
+          .onCallResolves('Resource tier:', 'large');
+        inputStub
+          .onCallResolves('What is the Reactor name?', `${image} Reactor`)
+          .onCallResolves('Enter the Reactor code file path:', './reactor.js')
+          .onCallResolves(
+            '(Optional) Enter the configuration file path (.env format):',
+            ''
+          )
+          .onCallResolves(
+            'Timeout in seconds (10-30, press Enter for default: 10):',
+            '20'
+          )
+          .onCallResolves(
+            'Warm concurrency (0-1, press Enter for default: 0):',
+            '1'
+          )
+          .onCallResolves(
+            '(Optional) Runtime package.json file path (JSON format):',
+            ''
+          )
+          .onCallResolves(
+            '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
+            ''
+          );
+
+        const result = await runCommand(['reactors:create']);
+
+        expect(result.stdout).to.contain('Reactor created successfully!');
+        const [createArg] = reactorsCreateStub.firstCall.args;
+
+        expect(createArg.runtime.image).to.equal(image);
+        expect(createArg.runtime.async).to.equal(false);
+        expect(createArg.runtime.timeout).to.equal(20);
+        expect(createArg.runtime.warmConcurrency).to.equal(1);
+        expect(createArg.runtime.resources).to.equal('large');
+        inputStub.expectNotCalledWith(
+          '(Optional) Enter the Application ID to use in the Reactor:'
         );
-
-      const result = await runCommand(['reactors:create']);
-
-      expect(result.stdout).to.contain('Reactor created successfully!');
-      const [createArg] = reactorsCreateStub.firstCall.args;
-
-      expect(createArg.runtime.image).to.equal('node22');
-      expect(createArg.runtime.async).to.equal(false);
-      expect(createArg.runtime.timeout).to.equal(20);
-      expect(createArg.runtime.warmConcurrency).to.equal(1);
-      expect(createArg.runtime.resources).to.equal('large');
-      // Application ID should not be prompted for node22
-      inputStub.expectNotCalledWith(
-        '(Optional) Enter the Application ID to use in the Reactor:'
-      );
-      inputStub.verifyExpectations();
-      selectStub.verifyExpectations();
-      expect(
-        confirmStub.calledWith(
-          sinon.match({
-            message: 'Execute Reactor invocations asynchronously?',
-            default: false,
-          })
-        )
-      ).to.be.true;
+        inputStub.verifyExpectations();
+        selectStub.verifyExpectations();
+        expect(
+          confirmStub.calledWith(
+            sinon.match({
+              message: 'Execute Reactor invocations asynchronously?',
+              default: false,
+            })
+          )
+        ).to.be.true;
+        expect(
+          selectStub.stub.firstCall.args[0].choices.map(
+            (choice: { value: string }) => choice.value
+          )
+        ).to.deep.equal([LEGACY_RUNTIME_IMAGE, ...CONFIGURABLE_RUNTIME_IMAGES]);
+      });
     });
 
     it('prompts with the asynchronous timeout range when enabled', async () => {
@@ -565,7 +577,9 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--timeout) require --image node22'
+        `Configurable runtime flags (--timeout) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}`
       );
     });
 
@@ -584,7 +598,9 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--resources) require --image node22'
+        `Configurable runtime flags (--resources) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}`
       );
     });
 
@@ -603,7 +619,9 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--permissions) require --image node22'
+        `Configurable runtime flags (--permissions) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}`
       );
     });
 
@@ -626,7 +644,9 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--package-json) require --image node22'
+        `Configurable runtime flags (--package-json) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}`
       );
     });
 
@@ -645,7 +665,9 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--warm-concurrency) require --image node22'
+        `Configurable runtime flags (--warm-concurrency) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}`
       );
     });
 
@@ -663,7 +685,9 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        'Configurable runtime flags (--async) require --image node22'
+        `Configurable runtime flags (--async) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
+          ' | '
+        )}`
       );
     });
 
@@ -724,43 +748,50 @@ describe('reactors create', () => {
       expect(reactorsCreateStub.called).to.be.false;
     });
 
-    it('errors when --application-id used with node22', async () => {
-      inputStub
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Timeout in seconds (10-30, press Enter for default: 10):',
-          ''
-        )
-        .onCallResolves('Warm concurrency (0-1, press Enter for default):', '')
-        .onCallResolves(
-          '(Optional) Runtime package.json file path (JSON format):',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`errors when --application-id is used with ${image}`, async () => {
+        inputStub
+          .onCallResolves(
+            '(Optional) Enter the configuration file path (.env format):',
+            ''
+          )
+          .onCallResolves(
+            'Timeout in seconds (10-30, press Enter for default: 10):',
+            ''
+          )
+          .onCallResolves(
+            'Warm concurrency (0-1, press Enter for default):',
+            ''
+          )
+          .onCallResolves(
+            '(Optional) Runtime package.json file path (JSON format):',
+            ''
+          )
+          .onCallResolves(
+            '(Optional) Permissions (comma-separated, e.g. token:read, token:create):',
+            ''
+          );
+        selectStub.onCallResolves('Resource tier:', 'standard');
+
+        const result = await runCommand([
+          'reactors:create',
+          '--name',
+          'Test Reactor',
+          '--code',
+          './reactor.js',
+          '--image',
+          image,
+          '--application-id',
+          'app-123',
+        ]);
+
+        expect(result.error).to.exist;
+        expect(result.error!.message).to.contain(
+          `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
+            ' | '
+          )}). Use --permissions to grant specific access instead.`
         );
-      selectStub.onCallResolves('Resource tier:', 'standard');
-
-      const result = await runCommand([
-        'reactors:create',
-        '--name',
-        'Test Reactor',
-        '--code',
-        './reactor.js',
-        '--image',
-        'node22',
-        '--application-id',
-        'app-123',
-      ]);
-
-      expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        '--application-id is not allowed with configurable runtimes (node22). Use --permissions to grant specific access instead.'
-      );
+      });
     });
   });
 

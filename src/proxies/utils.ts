@@ -44,25 +44,27 @@ const PROXY_FLAGS = {
   }),
   'request-transform-package-json': Flags.file({
     description:
-      'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
+      'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (configurable runtimes only)',
   }),
   'request-transform-timeout': Flags.integer({
-    description: 'request-transform timeout in seconds, 10-30 (node22 only)',
+    description:
+      'request-transform timeout in seconds, 10-30 (configurable runtimes only)',
     min: 10,
     max: 30,
   }),
   'request-transform-warm-concurrency': Flags.integer({
-    description: 'request-transform warm concurrency, 0-1 (node22 only)',
+    description:
+      'request-transform warm concurrency, 0-1 (configurable runtimes only)',
     min: 0,
     max: 1,
   }),
   'request-transform-resources': Flags.string({
-    description: 'request-transform resource tier (node22 only)',
+    description: 'request-transform resource tier (configurable runtimes only)',
     options: ['standard', 'large', 'xlarge'],
   }),
   'request-transform-permissions': Flags.string({
     description:
-      'request-transform permission to grant, repeatable (node22 only)',
+      'request-transform permission to grant, repeatable (configurable runtimes only)',
     multiple: true,
   }),
   'response-transform-image': Flags.string({
@@ -73,30 +75,33 @@ const PROXY_FLAGS = {
   }),
   'response-transform-package-json': Flags.file({
     description:
-      'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (node22 only)',
+      'path to runtime package.json JSON file (top-level dependencies required; supports resolutions or overrides fallback; pinned versions required) (configurable runtimes only)',
   }),
   'response-transform-timeout': Flags.integer({
-    description: 'response-transform timeout in seconds, 10-30 (node22 only)',
+    description:
+      'response-transform timeout in seconds, 10-30 (configurable runtimes only)',
     min: 10,
     max: 30,
   }),
   'response-transform-warm-concurrency': Flags.integer({
-    description: 'response-transform warm concurrency, 0-1 (node22 only)',
+    description:
+      'response-transform warm concurrency, 0-1 (configurable runtimes only)',
     min: 0,
     max: 1,
   }),
   'response-transform-resources': Flags.string({
-    description: 'response-transform resource tier (node22 only)',
+    description:
+      'response-transform resource tier (configurable runtimes only)',
     options: ['standard', 'large', 'xlarge'],
   }),
   'response-transform-permissions': Flags.string({
     description:
-      'response-transform permission to grant, repeatable (node22 only)',
+      'response-transform permission to grant, repeatable (configurable runtimes only)',
     multiple: true,
   }),
   'no-wait': Flags.boolean({
     description:
-      'do not wait for proxy to be ready (requires at least one transform with node22)',
+      'do not wait for proxy to be ready (requires at least one transform with a configurable runtime)',
     default: false,
   }),
 };
