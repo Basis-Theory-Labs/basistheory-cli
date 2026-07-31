@@ -165,46 +165,48 @@ describe('proxies update', () => {
   });
 
   describe('with transform runtime flags', () => {
-    it('updates proxy with request transform runtime flags', async () => {
-      readFileStub
-        .withArgs('./package.json')
-        .returns(
-          '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
-        );
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`updates proxy with request transform runtime flags using ${image}`, async () => {
+        readFileStub
+          .withArgs('./package.json')
+          .returns(
+            '{"dependencies":{"lodash":"4.17.21"},"resolutions":{"uuid":"9.0.1","nanoid":"5.0.7"}}'
+          );
 
-      const result = await runCommand([
-        'proxies:update',
-        'proxy-123',
-        '--request-transform-code',
-        './request.js',
-        '--request-transform-image',
-        'node22',
-        '--request-transform-timeout',
-        '30',
-        '--request-transform-warm-concurrency',
-        '1',
-        '--request-transform-resources',
-        'large',
-        '--request-transform-package-json',
-        './package.json',
-        '--request-transform-permissions',
-        'token:read',
-      ]);
+        const result = await runCommand([
+          'proxies:update',
+          'proxy-123',
+          '--request-transform-code',
+          './request.js',
+          '--request-transform-image',
+          image,
+          '--request-transform-timeout',
+          '30',
+          '--request-transform-warm-concurrency',
+          '1',
+          '--request-transform-resources',
+          'large',
+          '--request-transform-package-json',
+          './package.json',
+          '--request-transform-permissions',
+          'token:read',
+        ]);
 
-      expect(result.stdout).to.contain('Proxy updated successfully!');
-      const [, patchArg] = proxiesPatchStub.firstCall.args;
+        expect(result.stdout).to.contain('Proxy updated successfully!');
+        const [, patchArg] = proxiesPatchStub.firstCall.args;
 
-      expect(patchArg.requestTransforms[0].options.runtime).to.deep.equal({
-        image: 'node22',
-        timeout: 30,
-        warmConcurrency: 1,
-        resources: 'large',
-        dependencies: { lodash: '4.17.21' },
-        resolutions: {
-          uuid: '9.0.1',
-          nanoid: '5.0.7',
-        },
-        permissions: ['token:read'],
+        expect(patchArg.requestTransforms[0].options.runtime).to.deep.equal({
+          image,
+          timeout: 30,
+          warmConcurrency: 1,
+          resources: 'large',
+          dependencies: { lodash: '4.17.21' },
+          resolutions: {
+            uuid: '9.0.1',
+            nanoid: '5.0.7',
+          },
+          permissions: ['token:read'],
+        });
       });
     });
 

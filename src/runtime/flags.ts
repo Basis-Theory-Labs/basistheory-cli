@@ -2,11 +2,12 @@ import { Flags } from '@oclif/core';
 import {
   CONFIGURABLE_RUNTIME_IMAGES_LABEL,
   VALID_RUNTIME_IMAGES,
+  VALID_RUNTIME_IMAGES_LABEL,
 } from './utils';
 
 const RUNTIME_FLAGS = {
   image: Flags.string({
-    description: `runtime image (${VALID_RUNTIME_IMAGES.join('|')})`,
+    description: `runtime image (${VALID_RUNTIME_IMAGES_LABEL})`,
     options: [...VALID_RUNTIME_IMAGES],
   }),
   'package-json': Flags.file({

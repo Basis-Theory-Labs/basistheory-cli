@@ -258,62 +258,64 @@ describe('proxies create', () => {
       });
     });
 
-    it('creates proxy with response transform runtime flags', async () => {
-      inputStub
-        .onCallResolves(
-          '(Optional) Enter the Request Transform code file path:',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Enter the Application ID to use in the Proxy:',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Response transform: Warm concurrency (0-1, press Enter for default: 0):',
-          ''
-        )
-        .onCallResolves(
-          'Response transform: (Optional) Runtime package.json file path (JSON format):',
-          ''
-        )
-        .onCallResolves(
-          'Response transform: (Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`creates proxy with response transform runtime flags using ${image}`, async () => {
+        inputStub
+          .onCallResolves(
+            '(Optional) Enter the Request Transform code file path:',
+            ''
+          )
+          .onCallResolves(
+            '(Optional) Enter the Application ID to use in the Proxy:',
+            ''
+          )
+          .onCallResolves(
+            '(Optional) Enter the configuration file path (.env format):',
+            ''
+          )
+          .onCallResolves(
+            'Response transform: Warm concurrency (0-1, press Enter for default: 0):',
+            ''
+          )
+          .onCallResolves(
+            'Response transform: (Optional) Runtime package.json file path (JSON format):',
+            ''
+          )
+          .onCallResolves(
+            'Response transform: (Optional) Permissions (comma-separated, e.g. token:read, token:create):',
+            ''
+          );
+        confirmStub.resolves(true);
+
+        const result = await runCommand([
+          'proxies:create',
+          '--name',
+          'Test Proxy',
+          '--destination-url',
+          'https://example.com/api',
+          '--response-transform-code',
+          './response.js',
+          '--response-transform-image',
+          image,
+          '--response-transform-timeout',
+          '15',
+          '--response-transform-resources',
+          'xlarge',
+        ]);
+
+        expect(result.stdout).to.contain('Proxy created successfully!');
+        const [createArg] = proxiesCreateStub.firstCall.args;
+
+        expect(createArg.responseTransforms[0].options.runtime.image).to.equal(
+          image
         );
-      confirmStub.resolves(true);
-
-      const result = await runCommand([
-        'proxies:create',
-        '--name',
-        'Test Proxy',
-        '--destination-url',
-        'https://example.com/api',
-        '--response-transform-code',
-        './response.js',
-        '--response-transform-image',
-        'node22',
-        '--response-transform-timeout',
-        '15',
-        '--response-transform-resources',
-        'xlarge',
-      ]);
-
-      expect(result.stdout).to.contain('Proxy created successfully!');
-      const [createArg] = proxiesCreateStub.firstCall.args;
-
-      expect(createArg.responseTransforms[0].options.runtime.image).to.equal(
-        'node22'
-      );
-      expect(createArg.responseTransforms[0].options.runtime.timeout).to.equal(
-        15
-      );
-      expect(
-        createArg.responseTransforms[0].options.runtime.resources
-      ).to.equal('xlarge');
+        expect(
+          createArg.responseTransforms[0].options.runtime.timeout
+        ).to.equal(15);
+        expect(
+          createArg.responseTransforms[0].options.runtime.resources
+        ).to.equal('xlarge');
+      });
     });
 
     it('waits for proxy to be ready by default for node22 transform', async () => {
@@ -503,67 +505,69 @@ describe('proxies create', () => {
       inputStub.verifyExpectations();
     });
 
-    it('prompts for request transform runtime options when code and node22 image provided', async () => {
-      inputStub
-        .onCallResolves('What is the Proxy name?', 'Prompted Proxy')
-        .onCallResolves(
-          'What is the Proxy destination URL?',
-          'https://example.com/api'
-        )
-        .onCallResolves(
-          '(Optional) Enter the Response Transform code file path:',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Enter the Application ID to use in the Proxy:',
-          ''
-        )
-        .onCallResolves(
-          '(Optional) Enter the configuration file path (.env format):',
-          ''
-        )
-        .onCallResolves(
-          'Request transform: Timeout in seconds (10-30, press Enter for default: 10):',
-          '20'
-        )
-        .onCallResolves(
-          'Request transform: Warm concurrency (0-1, press Enter for default: 0):',
-          '1'
-        )
-        .onCallResolves(
-          'Request transform: (Optional) Runtime package.json file path (JSON format):',
-          ''
-        )
-        .onCallResolves(
-          'Request transform: (Optional) Permissions (comma-separated, e.g. token:read, token:create):',
-          ''
+    CONFIGURABLE_RUNTIME_IMAGES.forEach((image) => {
+      it(`prompts for request transform runtime options when code and ${image} image are provided`, async () => {
+        inputStub
+          .onCallResolves('What is the Proxy name?', 'Prompted Proxy')
+          .onCallResolves(
+            'What is the Proxy destination URL?',
+            'https://example.com/api'
+          )
+          .onCallResolves(
+            '(Optional) Enter the Response Transform code file path:',
+            ''
+          )
+          .onCallResolves(
+            '(Optional) Enter the Application ID to use in the Proxy:',
+            ''
+          )
+          .onCallResolves(
+            '(Optional) Enter the configuration file path (.env format):',
+            ''
+          )
+          .onCallResolves(
+            'Request transform: Timeout in seconds (10-30, press Enter for default: 10):',
+            '20'
+          )
+          .onCallResolves(
+            'Request transform: Warm concurrency (0-1, press Enter for default: 0):',
+            '1'
+          )
+          .onCallResolves(
+            'Request transform: (Optional) Runtime package.json file path (JSON format):',
+            ''
+          )
+          .onCallResolves(
+            'Request transform: (Optional) Permissions (comma-separated, e.g. token:read, token:create):',
+            ''
+          );
+        confirmStub.resolves(true);
+        selectStub.onCallResolves('Request transform: Resource tier:', 'large');
+
+        const result = await runCommand([
+          'proxies:create',
+          '--request-transform-code',
+          './request.js',
+          '--request-transform-image',
+          image,
+        ]);
+
+        expect(result.stdout).to.contain('Proxy created successfully!');
+        const [createArg] = proxiesCreateStub.firstCall.args;
+
+        expect(createArg.requestTransforms[0].options.runtime.image).to.equal(
+          image
         );
-      confirmStub.resolves(true);
-      selectStub.onCallResolves('Request transform: Resource tier:', 'large');
-
-      const result = await runCommand([
-        'proxies:create',
-        '--request-transform-code',
-        './request.js',
-        '--request-transform-image',
-        'node22',
-      ]);
-
-      expect(result.stdout).to.contain('Proxy created successfully!');
-      const [createArg] = proxiesCreateStub.firstCall.args;
-
-      expect(createArg.requestTransforms[0].options.runtime.image).to.equal(
-        'node22'
-      );
-      expect(createArg.requestTransforms[0].options.runtime.timeout).to.equal(
-        20
-      );
-      expect(
-        createArg.requestTransforms[0].options.runtime.warmConcurrency
-      ).to.equal(1);
-      expect(createArg.requestTransforms[0].options.runtime.resources).to.equal(
-        'large'
-      );
+        expect(createArg.requestTransforms[0].options.runtime.timeout).to.equal(
+          20
+        );
+        expect(
+          createArg.requestTransforms[0].options.runtime.warmConcurrency
+        ).to.equal(1);
+        expect(
+          createArg.requestTransforms[0].options.runtime.resources
+        ).to.equal('large');
+      });
     });
   });
 

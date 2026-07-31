@@ -5,6 +5,7 @@ import { readFileContents } from '../files';
 import {
   CONFIGURABLE_RUNTIME_IMAGES_LABEL,
   VALID_RUNTIME_IMAGES,
+  VALID_RUNTIME_IMAGES_LABEL,
 } from '../runtime';
 
 const PROXY_FLAGS = {
@@ -40,9 +41,7 @@ const PROXY_FLAGS = {
     default: true,
   }),
   'request-transform-image': Flags.string({
-    description: `request-transform runtime image (${VALID_RUNTIME_IMAGES.join(
-      '|'
-    )})`,
+    description: `request-transform runtime image (${VALID_RUNTIME_IMAGES_LABEL})`,
     options: [...VALID_RUNTIME_IMAGES],
   }),
   'request-transform-package-json': Flags.file({
@@ -67,9 +66,7 @@ const PROXY_FLAGS = {
     multiple: true,
   }),
   'response-transform-image': Flags.string({
-    description: `response-transform runtime image (${VALID_RUNTIME_IMAGES.join(
-      '|'
-    )})`,
+    description: `response-transform runtime image (${VALID_RUNTIME_IMAGES_LABEL})`,
     options: [...VALID_RUNTIME_IMAGES],
   }),
   'response-transform-package-json': Flags.file({
