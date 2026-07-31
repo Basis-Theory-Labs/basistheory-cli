@@ -2,7 +2,7 @@ import type { BasisTheory } from '@basis-theory/node-sdk';
 import { Flags } from '@oclif/core';
 import { parse } from 'dotenv';
 import { readFileContents } from '../files';
-import { CONFIGURABLE_RUNTIME_IMAGES, RUNTIME_FLAGS } from '../runtime';
+import { CONFIGURABLE_RUNTIME_IMAGES_LABEL, RUNTIME_FLAGS } from '../runtime';
 
 const REACTOR_FLAGS = {
   name: Flags.string({
@@ -24,9 +24,7 @@ const REACTOR_FLAGS = {
   }),
   ...RUNTIME_FLAGS,
   async: Flags.boolean({
-    description: `execute Reactor invocations asynchronously (${CONFIGURABLE_RUNTIME_IMAGES.join(
-      ' | '
-    )} only)`,
+    description: `execute Reactor invocations asynchronously (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     allowNo: true,
   }),
 };

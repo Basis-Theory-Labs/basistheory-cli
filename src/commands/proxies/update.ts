@@ -7,7 +7,7 @@ import { validateProxyApplicationId } from '../../proxies/runtime';
 import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
 import {
   buildRuntime,
-  CONFIGURABLE_RUNTIME_IMAGES,
+  CONFIGURABLE_RUNTIME_IMAGES_LABEL,
   needsPolling,
   waitForResourceState,
 } from '../../runtime';
@@ -165,9 +165,7 @@ export default class Update extends BaseCommand {
 
     if (watch && isConfigurableRuntime) {
       this.warn(
-        `--watch is not supported for configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}). Skipping watch.`
+        `--watch is not supported for configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES_LABEL}). Skipping watch.`
       );
     } else if (watch) {
       const entries = Object.entries({

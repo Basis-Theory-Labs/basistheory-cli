@@ -5,7 +5,10 @@ import * as select from '@inquirer/select';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import * as files from '../../../../src/files';
-import { CONFIGURABLE_RUNTIME_IMAGES } from '../../../../src/runtime';
+import {
+  CONFIGURABLE_RUNTIME_IMAGES,
+  CONFIGURABLE_RUNTIME_IMAGES_LABEL,
+} from '../../../../src/runtime';
 import { proxyFixtures } from '../../fixtures/proxies';
 import { runCommand } from '../../helpers/run-command';
 import { PromptStub } from '../../helpers/types';
@@ -630,9 +633,7 @@ describe('proxies create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `Configurable runtime flags (--request-transform-timeout) require --request-transform-image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}`
+        `Configurable runtime flags (--request-transform-timeout) require --request-transform-image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
       );
     });
 
@@ -691,9 +692,7 @@ describe('proxies create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `Configurable runtime flags (--response-transform-resources) require --response-transform-image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}`
+        `Configurable runtime flags (--response-transform-resources) require --response-transform-image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
       );
     });
 

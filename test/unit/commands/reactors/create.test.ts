@@ -7,6 +7,7 @@ import sinon from 'sinon';
 import * as files from '../../../../src/files';
 import {
   CONFIGURABLE_RUNTIME_IMAGES,
+  CONFIGURABLE_RUNTIME_IMAGES_LABEL,
   LEGACY_RUNTIME_IMAGE,
 } from '../../../../src/runtime';
 import { reactorFixtures } from '../../fixtures/reactors';
@@ -577,9 +578,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `Configurable runtime flags (--timeout) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}`
+        `Configurable runtime flags (--timeout) require --image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
       );
     });
 
@@ -598,9 +597,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `Configurable runtime flags (--resources) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}`
+        `Configurable runtime flags (--resources) require --image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
       );
     });
 
@@ -619,9 +616,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `Configurable runtime flags (--permissions) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}`
+        `Configurable runtime flags (--permissions) require --image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
       );
     });
 
@@ -644,9 +639,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `Configurable runtime flags (--package-json) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}`
+        `Configurable runtime flags (--package-json) require --image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
       );
     });
 
@@ -665,9 +658,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `Configurable runtime flags (--warm-concurrency) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}`
+        `Configurable runtime flags (--warm-concurrency) require --image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
       );
     });
 
@@ -685,9 +676,7 @@ describe('reactors create', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `Configurable runtime flags (--async) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}`
+        `Configurable runtime flags (--async) require --image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
       );
     });
 
@@ -787,9 +776,7 @@ describe('reactors create', () => {
 
         expect(result.error).to.exist;
         expect(result.error!.message).to.contain(
-          `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-            ' | '
-          )}). Use --permissions to grant specific access instead.`
+          `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES_LABEL}). Use --permissions to grant specific access instead.`
         );
       });
     });

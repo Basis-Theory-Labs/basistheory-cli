@@ -3,7 +3,10 @@ import { ux } from '@oclif/core';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import * as files from '../../../../src/files';
-import { CONFIGURABLE_RUNTIME_IMAGES } from '../../../../src/runtime';
+import {
+  CONFIGURABLE_RUNTIME_IMAGES,
+  CONFIGURABLE_RUNTIME_IMAGES_LABEL,
+} from '../../../../src/runtime';
 import { reactorFixtures } from '../../fixtures/reactors';
 import { runCommand } from '../../helpers/run-command';
 
@@ -675,9 +678,7 @@ describe('reactors update', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `Configurable runtime flags (--async) require --image ${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}`
+        `Configurable runtime flags (--async) require --image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
       );
       expect(reactorsPatchStub.called).to.be.false;
     });
@@ -727,9 +728,7 @@ describe('reactors update', () => {
 
       expect(result.error).to.exist;
       expect(result.error!.message).to.contain(
-        `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES.join(
-          ' | '
-        )}). Use --permissions to grant specific access instead.`
+        `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES_LABEL}). Use --permissions to grant specific access instead.`
       );
       expect(reactorsPatchStub.called).to.be.false;
     });
