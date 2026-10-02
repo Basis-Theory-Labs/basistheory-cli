@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/4.2.0 linux-x64 node-v22.23.1
+@basis-theory-labs/cli/4.3.0 linux-x64 node-v22.23.3
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -36,11 +36,15 @@ USAGE
 * [`bt proxies create`](#bt-proxies-create)
 * [`bt proxies delete ID`](#bt-proxies-delete-id)
 * [`bt proxies logs [ID]`](#bt-proxies-logs-id)
+* [`bt proxies logs read ID`](#bt-proxies-logs-read-id)
+* [`bt proxies logs tail ID`](#bt-proxies-logs-tail-id)
 * [`bt proxies update ID`](#bt-proxies-update-id)
 * [`bt reactors`](#bt-reactors)
 * [`bt reactors create`](#bt-reactors-create)
 * [`bt reactors delete ID`](#bt-reactors-delete-id)
 * [`bt reactors logs [ID]`](#bt-reactors-logs-id)
+* [`bt reactors logs read ID`](#bt-reactors-logs-read-id)
+* [`bt reactors logs tail ID`](#bt-reactors-logs-tail-id)
 * [`bt reactors update ID`](#bt-reactors-update-id)
 
 ## `bt applications`
@@ -62,7 +66,7 @@ EXAMPLES
   $ bt applications
 ```
 
-_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.2.0/dist/commands/applications/index.ts)_
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.3.0/dist/commands/applications/index.ts)_
 
 ## `bt applications create`
 
@@ -151,7 +155,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.2.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.3.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -256,7 +260,7 @@ EXAMPLES
 
 ## `bt proxies logs [ID]`
 
-Display live Proxy Transform logs output. Requires `proxy:update` Management Application permissions
+Legacy tunnel-based Proxy Transform logs. Opens a local tunnel and updates logging configuration. For v2/runtime debugging, use `bt proxies logs tail <id>` or `bt proxies logs read <id>`. Requires `proxy:update` Management Application permissions
 
 ```
 USAGE
@@ -270,7 +274,9 @@ FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
-  Display live Proxy Transform logs output. Requires `proxy:update` Management Application permissions
+  Legacy tunnel-based Proxy Transform logs. Opens a local tunnel and updates logging configuration. For v2/runtime
+  debugging, use `bt proxies logs tail <id>` or `bt proxies logs read <id>`. Requires `proxy:update` Management
+  Application permissions
 
 EXAMPLES
   $ bt proxies logs
@@ -278,6 +284,86 @@ EXAMPLES
   $ bt proxies logs 03858bf5-32d3-4a2e-b74b-daeea0883bca
 
   $ bt proxies logs 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000
+```
+
+## `bt proxies logs read ID`
+
+Read a fixed window of Proxy runtime logs through Events and exit. Requires `event:read` and runtime logging already enabled.
+
+```
+USAGE
+  $ bt proxies logs read ID -x <value> [--since <value>] [--until <value>] [--format pretty|json|json-pretty]
+
+ARGUMENTS
+  ID  Proxy id
+
+FLAGS
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  --format=<option>             [default: pretty] pretty: readable logs; json: compact objects; json-pretty: indented
+                                objects. Entries are separated by blank lines; colors are enabled in terminals
+                                <options: pretty|json|json-pretty>
+  --since=<value>               window start: positive duration (30s, 5m, 2h, 1d, 1w) or ISO timestamp with timezone;
+                                defaults to five minutes before the end
+  --until=<value>               window end (exclusive): positive duration or ISO timestamp with timezone; defaults to
+                                command start
+
+DESCRIPTION
+  Read a fixed window of Proxy runtime logs through Events and exit. Requires `event:read` and runtime logging already
+  enabled.
+
+  Defaults to the five minutes preceding --until, or command start when --until is omitted. Explicit relative values use
+  command-start time. Both request and response transforms are included and distinguished. Windows include their start
+  and exclude their end, filtering event batch timestamps rather than individual record occurrence times. Each matching
+  batch is expanded in record sequence; flattened output has no global chronological ordering. History is tenant-limited
+  (24 hours by default, at most 30 days); the API clamps unavailable history. Indexing is asynchronous and pagination is
+  not a snapshot, so empty or exhausted results do not prove complete coverage. Large windows may hit bounded work
+  limits and fail with partial output. Application logs come from the injected `logger`, not arbitrary stdout or
+  `console.log`; collection requires resource opt-in and the platform runtime-log gate. Does not enable logging or open
+  a tunnel.
+
+EXAMPLES
+  $ bt proxies logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --since 1h --until 30m
+
+  $ bt proxies logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --since 2026-10-01T10:00:00Z --until 2026-10-01T10:15:00Z --format json
+```
+
+## `bt proxies logs tail ID`
+
+Tail Proxy runtime logs through Events. Requires `event:read` and runtime logging already enabled.
+
+```
+USAGE
+  $ bt proxies logs tail ID -x <value> [--since <value>] [--format pretty|json|json-pretty]
+
+ARGUMENTS
+  ID  Proxy id
+
+FLAGS
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  --format=<option>             [default: pretty] pretty: readable logs; json: compact objects; json-pretty: indented
+                                objects. Entries are separated by blank lines; colors are enabled in terminals
+                                <options: pretty|json|json-pretty>
+  --since=<value>               include initial history from a positive duration (30s, 5m, 2h, 1d, 1w) or ISO timestamp
+                                with timezone; omitted means watch from command start
+
+DESCRIPTION
+  Tail Proxy runtime logs through Events. Requires `event:read` and runtime logging already enabled.
+
+  Starts watching from command time. Supply --since to retrieve initial history before following new logs. Polls every
+  five seconds with a rolling five-minute overlap that never reaches before the requested start. Both request and
+  response transforms are included and distinguished. Time windows filter event batches, not individual record
+  occurrence times; a newly arriving batch can contain records that occurred before command start. History is
+  tenant-limited (24 hours by default, at most 30 days); the API clamps unavailable history. Large initial windows may
+  hit bounded work limits and fail with partial output. Visibility is delayed and best-effort; output has no durable
+  resume or global chronological ordering. Application logs come from the injected `logger`, not arbitrary stdout or
+  `console.log`; collection requires resource opt-in and the platform runtime-log gate. Silence does not distinguish an
+  idle resource, a wrong ID, disabled collection, or delayed indexing. Runs until interrupted, output closes, or an
+  error occurs.
+
+EXAMPLES
+  $ bt proxies logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca
+
+  $ bt proxies logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --since 30m --format json
 ```
 
 ## `bt proxies update ID`
@@ -382,7 +468,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.2.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.3.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 
@@ -456,7 +542,7 @@ EXAMPLES
 
 ## `bt reactors logs [ID]`
 
-Display live Reactor logs output. Requires `reactor:update` Management Application permissions
+Legacy tunnel-based Reactor logs. Opens a local tunnel and updates logging configuration. For v2/runtime debugging, use `bt reactors logs tail <id>` or `bt reactors logs read <id>`. Requires `reactor:update` Management Application permissions
 
 ```
 USAGE
@@ -470,7 +556,9 @@ FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
 
 DESCRIPTION
-  Display live Reactor logs output. Requires `reactor:update` Management Application permissions
+  Legacy tunnel-based Reactor logs. Opens a local tunnel and updates logging configuration. For v2/runtime debugging,
+  use `bt reactors logs tail <id>` or `bt reactors logs read <id>`. Requires `reactor:update` Management Application
+  permissions
 
 EXAMPLES
   $ bt reactors logs
@@ -478,6 +566,84 @@ EXAMPLES
   $ bt reactors logs 03858bf5-32d3-4a2e-b74b-daeea0883bca
 
   $ bt reactors logs 03858bf5-32d3-4a2e-b74b-daeea0883bca -p 3000
+```
+
+## `bt reactors logs read ID`
+
+Read a fixed window of Reactor runtime logs through Events and exit. Requires `event:read` and runtime logging already enabled.
+
+```
+USAGE
+  $ bt reactors logs read ID -x <value> [--since <value>] [--until <value>] [--format pretty|json|json-pretty]
+
+ARGUMENTS
+  ID  Reactor id
+
+FLAGS
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  --format=<option>             [default: pretty] pretty: readable logs; json: compact objects; json-pretty: indented
+                                objects. Entries are separated by blank lines; colors are enabled in terminals
+                                <options: pretty|json|json-pretty>
+  --since=<value>               window start: positive duration (30s, 5m, 2h, 1d, 1w) or ISO timestamp with timezone;
+                                defaults to five minutes before the end
+  --until=<value>               window end (exclusive): positive duration or ISO timestamp with timezone; defaults to
+                                command start
+
+DESCRIPTION
+  Read a fixed window of Reactor runtime logs through Events and exit. Requires `event:read` and runtime logging already
+  enabled.
+
+  Defaults to the five minutes preceding --until, or command start when --until is omitted. Explicit relative values use
+  command-start time. Windows include their start and exclude their end, filtering event batch timestamps rather than
+  individual record occurrence times. Each matching batch is expanded in record sequence; flattened output has no global
+  chronological ordering. History is tenant-limited (24 hours by default, at most 30 days); the API clamps unavailable
+  history. Indexing is asynchronous and pagination is not a snapshot, so empty or exhausted results do not prove
+  complete coverage. Large windows may hit bounded work limits and fail with partial output. Application logs come from
+  the injected `logger`, not arbitrary stdout or `console.log`; collection requires resource opt-in and the platform
+  runtime-log gate. Does not enable logging or open a tunnel.
+
+EXAMPLES
+  $ bt reactors logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --since 1h --until 30m
+
+  $ bt reactors logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --since 2026-10-01T10:00:00Z --until 2026-10-01T10:15:00Z --format json
+```
+
+## `bt reactors logs tail ID`
+
+Tail Reactor runtime logs through Events. Requires `event:read` and runtime logging already enabled.
+
+```
+USAGE
+  $ bt reactors logs tail ID -x <value> [--since <value>] [--format pretty|json|json-pretty]
+
+ARGUMENTS
+  ID  Reactor id
+
+FLAGS
+  -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
+  --format=<option>             [default: pretty] pretty: readable logs; json: compact objects; json-pretty: indented
+                                objects. Entries are separated by blank lines; colors are enabled in terminals
+                                <options: pretty|json|json-pretty>
+  --since=<value>               include initial history from a positive duration (30s, 5m, 2h, 1d, 1w) or ISO timestamp
+                                with timezone; omitted means watch from command start
+
+DESCRIPTION
+  Tail Reactor runtime logs through Events. Requires `event:read` and runtime logging already enabled.
+
+  Starts watching from command time. Supply --since to retrieve initial history before following new logs. Polls every
+  five seconds with a rolling five-minute overlap that never reaches before the requested start. Time windows filter
+  event batches, not individual record occurrence times; a newly arriving batch can contain records that occurred before
+  command start. History is tenant-limited (24 hours by default, at most 30 days); the API clamps unavailable history.
+  Large initial windows may hit bounded work limits and fail with partial output. Visibility is delayed and best-effort;
+  output has no durable resume or global chronological ordering. Application logs come from the injected `logger`, not
+  arbitrary stdout or `console.log`; collection requires resource opt-in and the platform runtime-log gate. Silence does
+  not distinguish an idle resource, a wrong ID, disabled collection, or delayed indexing. Runs until interrupted, output
+  closes, or an error occurs.
+
+EXAMPLES
+  $ bt reactors logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca
+
+  $ bt reactors logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --since 30m --format json
 ```
 
 ## `bt reactors update ID`

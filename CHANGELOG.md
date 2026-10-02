@@ -1,3 +1,10 @@
+# [4.3.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v4.2.0...v4.3.0) (2026-10-02)
+
+
+### Features
+
+* **ENG-11959:** add runtime log read and tail commands ([#47](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/47)) ([8e0185d](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/8e0185dcb2c5b2d849e5e3e9d49dc7a50566ad92))
+
 # [4.2.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v4.1.0...v4.2.0) (2026-07-31)
 
 
