@@ -5,7 +5,7 @@ import { selectProxy } from '../../proxies/management';
 
 export default class Logs extends BaseCommand {
   public static description =
-    'Display live Proxy Transform logs output. Requires `proxy:update` Management Application permissions';
+    'Legacy tunnel-based Proxy Transform logs. Opens a local tunnel and updates logging configuration. For v2/runtime debugging, use `bt proxies logs tail <id>` or `bt proxies logs read <id>`. Requires `proxy:update` Management Application permissions';
 
   public static examples = [
     '<%= config.bin %> <%= command.id %>',
