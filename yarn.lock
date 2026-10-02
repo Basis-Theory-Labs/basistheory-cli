@@ -442,10 +442,10 @@
     read-pkg-up "^7.0.1"
     semver-regex "^3.1.3"
 
-"@basis-theory/node-sdk@^6.1.1":
-  version "6.1.1"
-  resolved "https://socket-registry.flock-dev.com/npm/@basis-theory/node-sdk/-/node-sdk-6.1.1.tgz#7b3c47329db48e7ab30845164a05eaa79ece84d2"
-  integrity sha512-OXQloYJF4x5D82KqGDQ6LFu/G87isgdN7ak3fGv1Q7cpfly19oTKCe9avSAizK8BvSC8JY6fuAaAEqDvaC7OHA==
+"@basis-theory/node-sdk@^6.3.0":
+  version "6.3.0"
+  resolved "https://registry.npmjs.org/@basis-theory/node-sdk/-/node-sdk-6.3.0.tgz#5a083669f644ffbbaebf6efc8252996a17f4ef52"
+  integrity sha512-4OLtsjsa5GtX27rgcqk22wSTxtl9ju2cno/N1BLo7xBmuQnY1xGfQwMsU2zuTE1i3c6cfctOU5GxITmeF7tRTA==
 
 "@colors/colors@1.5.0":
   version "1.5.0"

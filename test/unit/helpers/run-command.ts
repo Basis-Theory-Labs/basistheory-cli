@@ -1,5 +1,6 @@
 /* eslint-disable no-console, eslint-comments/disable-enable-pair */
 import { Config } from '@oclif/core';
+import { normalizeArgv } from '@oclif/core/lib/help/util';
 import path from 'path';
 
 // eslint-disable-next-line no-control-regex
@@ -58,7 +59,9 @@ const runCommand = async (argv: string[]): Promise<RunResult> => {
   }) as typeof process.stderr.write;
 
   try {
-    await cfg.runCommand(argv[0], argv.slice(1));
+    const normalized = normalizeArgv(cfg, argv);
+
+    await cfg.runCommand(normalized[0], normalized.slice(1));
   } catch (error_) {
     error = error_ as Error;
   } finally {
