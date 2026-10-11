@@ -203,6 +203,114 @@ const NOW = Date.parse('2026-10-01T12:00:00.000Z');
     });
   });
 
+  describe(`${resource} logs search`, () => {
+    let readStub: sinon.SinonStub;
+    let tailStub: sinon.SinonStub;
+    let legacyStub: sinon.SinonStub;
+    const argv = [resource, 'logs', 'search'];
+
+    beforeEach(() => {
+      sinon.useFakeTimers({
+        now: NOW,
+        toFake: ['Date'],
+      });
+      readStub = sinon.stub(runtime, 'readEventLogs').resolves();
+      tailStub = sinon.stub(runtime, 'followEventLogs').resolves();
+      legacyStub = sinon
+        .stub(
+          logs,
+          resource === 'reactors' ? 'showReactorLogs' : 'showProxyLogs'
+        )
+        .resolves();
+    });
+
+    afterEach(() => sinon.restore());
+
+    it('requires a nonblank resource ID', async () => {
+      for (const args of [
+        ['--trace-id', 'trace-1'],
+        ['', '--trace-id', 'trace-1'],
+        ['   ', '--trace-id', 'trace-1'],
+      ]) {
+        // eslint-disable-next-line no-await-in-loop -- Each parser failure is independent.
+        const result = await runCommand([...argv, ...args]);
+
+        expect(result.error).to.exist;
+
+        if (args[0] === '   ') {
+          expect(result.error?.message).to.include('id must not be blank');
+        }
+      }
+
+      expect(readStub.called || tailStub.called || legacyStub.called).to.be
+        .false;
+    });
+
+    it('requires a search criterion', async () => {
+      const result = await runCommand([...argv, 'resource-fixture']);
+
+      expect(result.error?.message).to.include(
+        resource === 'reactors'
+          ? 'Provide --trace-id to search Reactor runtime logs.'
+          : 'Provide --trace-id or --transform-type to search Proxy runtime logs.'
+      );
+      expect(readStub.called || tailStub.called || legacyStub.called).to.be
+        .false;
+    });
+
+    ['', '   '].forEach((traceId) => {
+      it(`rejects blank trace ${JSON.stringify(
+        traceId
+      )} even with a Proxy direction`, async () => {
+        const result = await runCommand([
+          ...argv,
+          'resource-fixture',
+          '--trace-id',
+          traceId,
+          ...(resource === 'proxies'
+            ? ['--transform-type', 'request_transform']
+            : []),
+        ]);
+
+        expect(result.error?.message).to.include(
+          '--trace-id must not be blank'
+        );
+        expect(readStub.called || tailStub.called || legacyStub.called).to.be
+          .false;
+      });
+    });
+
+    [
+      ['--since', '30 mins'],
+      ['--until', '2026-10-01T12:00:00'],
+      ['--since', '30m', '--until', '30m'],
+      ['--since', '30m', '--until', '1h'],
+      ['--format', 'ndjson'],
+      ['--transform-type', 'invalid'],
+      ['--text', 'message'],
+      ['--invocation-id', 'invocation-1'],
+      ...(resource === 'reactors'
+        ? [['--transform-type', 'request_transform']]
+        : []),
+    ].forEach((flags) => {
+      it(`rejects invalid search flags ${flags.join(
+        ' '
+      )} before runtime logging`, async () => {
+        const result = await runCommand([
+          ...argv,
+          'resource-fixture',
+          '--trace-id',
+          'trace-1',
+          ...flags,
+        ]);
+
+        expect(result.error).to.exist;
+        expect(readStub.called || tailStub.called || legacyStub.called).to.be
+          .false;
+      });
+    });
+  });
+
   it(`${resource} legacy logs retains its space-separated ID and port routing`, async () => {
     const legacyStub = sinon
       .stub(logs, resource === 'reactors' ? 'showReactorLogs' : 'showProxyLogs')

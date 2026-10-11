@@ -6,11 +6,16 @@
 
 /* eslint-disable unicorn/no-null */
 import type { Writable } from 'node:stream';
-import type { EventLogPage, EventLogRecord, ResourceType } from './events';
+import type {
+  EventLogFilters,
+  EventLogPage,
+  EventLogRecord,
+  ResourceType,
+} from './events';
 import { EventsReadError, readEventPage, resolveEventsOrigin } from './events';
 import type { RuntimeLogFormat } from './format';
 import { formatRuntimeLogRecord } from './format';
-import type { LogWindow } from './time';
+import type { LogQueryWindow, LogWindow } from './time';
 import {
   DEFAULT_LOOKBACK_MS,
   resolveLogWindow,
@@ -159,13 +164,13 @@ const recordIdentity = (record: EventLogRecord): string =>
 const isBrokenPipe = (error: Error): boolean =>
   (error as NodeJS.ErrnoException).code === 'EPIPE';
 
-interface RuntimeLogOptions {
+interface RuntimeLogOptions extends EventLogFilters {
   apiKey: string;
   apiBaseUrl?: string;
   resourceType: ResourceType;
   resourceId: string;
   format: RuntimeLogFormat;
-  window?: LogWindow;
+  window?: LogQueryWindow;
 }
 
 /** Both actions share bounded window reads and the complete output/cancellation lifecycle. */
@@ -239,10 +244,14 @@ const streamEventLogs = async (
 
       const cycleStarted = performance.now();
       const deadline = cycleStarted + CYCLE_DEADLINE_MS;
+      // Only tails reach later cycles, and their initial windows have a start.
       const start =
         lastCompletedEnd === undefined
           ? initialWindow.start
-          : Math.max(initialWindow.start, end - LOOKBACK_MS);
+          : Math.max(
+              initialWindow.start ?? initialWindow.end,
+              end - LOOKBACK_MS
+            );
       const cycle = new AbortController();
       const cancelCycle = (): void => cycle.abort(reasonOf(session.signal));
       const cycleTimer = setTimeout(
@@ -305,6 +314,8 @@ const streamEventLogs = async (
                 apiKey: options.apiKey,
                 resourceType: options.resourceType,
                 resourceId: options.resourceId,
+                traceId: options.traceId,
+                transformType: options.transformType,
                 start,
                 end,
                 cursor,
@@ -493,14 +504,15 @@ const streamEventLogs = async (
   }
 };
 
-/** Retrieve one fixed window, including every continuation, then finish. */
+/** Retrieve one finite query window, including every continuation, then finish. */
 const readEventLogs = (
-  options: RuntimeLogOptions & { window: LogWindow }
+  options: RuntimeLogOptions & { window: LogQueryWindow }
 ): Promise<void> => streamEventLogs(options, 'read');
 
 /** Retrieve initial context, then keep reading overlapping live windows. */
-const followEventLogs = (options: RuntimeLogOptions): Promise<void> =>
-  streamEventLogs(options, 'tail');
+const followEventLogs = (
+  options: Omit<RuntimeLogOptions, 'window'> & { window?: LogWindow }
+): Promise<void> => streamEventLogs(options, 'tail');
 
 export { followEventLogs, readEventLogs };
 /* eslint-enable unicorn/no-null */

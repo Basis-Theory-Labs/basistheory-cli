@@ -103,6 +103,239 @@ describe('Events page reader', () => {
     sinon.restore();
   });
 
+  [undefined, 'opaque-page'].forEach((cursor) => {
+    describe(
+      cursor === undefined ? 'initial search page' : 'cursor search page',
+      () => {
+        it('expands records matching both exact filters', async () => {
+          fetchStub.resolves(
+            pageResponse([
+              eventBatch(
+                [logRecord({ message: 'matched' })],
+                {
+                  proxy: { id: 'proxy-1' },
+                  transform_type: 'request_transform',
+                },
+                {
+                  type: 'proxy.log',
+                  trace_id: ' Trace-1 ',
+                }
+              ),
+            ])
+          );
+          const page = await readEventPage(
+            readerOptions({
+              cursor,
+              resourceType: 'proxy',
+              resourceId: 'proxy-1',
+              traceId: ' Trace-1 ',
+              transformType: 'request_transform',
+            })
+          );
+
+          expect(page.batches[0].map((record) => record.message)).to.deep.equal(
+            ['matched']
+          );
+        });
+
+        it('accepts server-selected history without imposing a client lower bound', async () => {
+          const timestamp = new Date(
+            requestStart - 90 * 86_400_000
+          ).toISOString();
+
+          fetchStub.resolves(
+            pageResponse([
+              eventBatch(
+                [logRecord({ message: 'server-selected history' })],
+                {},
+                { timestamp }
+              ),
+            ])
+          );
+          const page = await readEventPage(
+            readerOptions({
+              cursor,
+              start: undefined,
+              traceId: 'trace-1',
+            })
+          );
+
+          expect(page.batches[0][0].message).to.equal(
+            'server-selected history'
+          );
+          expect(page.batches[0][0].event_timestamp).to.equal(timestamp);
+        });
+
+        it('still rejects batches at the exclusive end when the start is omitted', async () => {
+          fetchStub.resolves(
+            pageResponse([
+              eventBatch(
+                [logRecord()],
+                {},
+                { timestamp: new Date(requestEnd).toISOString() }
+              ),
+            ])
+          );
+          const error = await rejected(
+            readEventPage(
+              readerOptions({
+                cursor,
+                start: undefined,
+              })
+            )
+          );
+
+          expect(error).to.be.instanceOf(EventsReadError);
+          expect((error as Error).message).to.equal(
+            'Events returned an invalid response page.'
+          );
+        });
+
+        [undefined, 'other-trace', 'TRACE-1', ' trace-1 '].forEach(
+          (traceId) => {
+            it(`rejects missing or nonexact trace ${JSON.stringify(
+              traceId
+            )}`, async () => {
+              fetchStub.resolves(
+                pageResponse([
+                  eventBatch([logRecord()], {}, { trace_id: traceId }),
+                ])
+              );
+              const error = await rejected(
+                readEventPage(
+                  readerOptions({
+                    cursor,
+                    traceId: 'trace-1',
+                  })
+                )
+              );
+
+              expect(error).to.be.instanceOf(EventsReadError);
+              expect((error as Error).message).to.equal(
+                'Events returned an invalid response page.'
+              );
+            });
+          }
+        );
+
+        it('rejects the opposite Proxy direction', async () => {
+          fetchStub.resolves(
+            pageResponse([
+              eventBatch(
+                [logRecord()],
+                {
+                  proxy: { id: 'proxy-1' },
+                  transform_type: 'response_transform',
+                },
+                { type: 'proxy.log' }
+              ),
+            ])
+          );
+          expect(
+            await rejected(
+              readEventPage(
+                readerOptions({
+                  cursor,
+                  resourceType: 'proxy',
+                  resourceId: 'proxy-1',
+                  transformType: 'request_transform',
+                })
+              )
+            )
+          ).to.be.instanceOf(EventsReadError);
+        });
+      }
+    );
+  });
+
+  [
+    { traceId: '' },
+    { traceId: '   ' },
+    { transformType: 'request_transform' as const },
+    {
+      resourceType: 'proxy' as const,
+      transformType: 'invalid' as ReadEventPageOptions['transformType'],
+    },
+    { start: Number.NaN },
+    { start: requestStart + 0.5 },
+    { start: requestEnd + 1 },
+    {
+      start: undefined,
+      end: Number.NaN,
+    },
+  ].forEach((filters) => {
+    it(`rejects invalid search options ${JSON.stringify(
+      filters
+    )} before fetching`, async () => {
+      const error = await rejected(readEventPage(readerOptions(filters)));
+
+      expect((error as Error).message).to.equal(
+        'Events query options are invalid.'
+      );
+      expect(fetchStub.called).to.be.false;
+    });
+  });
+
+  it('still enforces an explicit inclusive start', async () => {
+    fetchStub.resolves(
+      pageResponse([
+        eventBatch(
+          [logRecord()],
+          {},
+          { timestamp: new Date(requestStart - 1).toISOString() }
+        ),
+      ])
+    );
+    const error = await rejected(readEventPage(readerOptions()));
+
+    expect(error).to.be.instanceOf(EventsReadError);
+    fetchStub.resolves(
+      pageResponse([
+        eventBatch(
+          [logRecord({ message: 'at start' })],
+          {},
+          { timestamp: new Date(requestStart).toISOString() }
+        ),
+      ])
+    );
+    const page = await readEventPage(readerOptions());
+
+    expect(page.batches[0][0].message).to.equal('at start');
+    expect(page.batches[0][0].event_timestamp).to.equal(
+      new Date(requestStart).toISOString()
+    );
+  });
+
+  it('allows an absent trace and either direction without search filters', async () => {
+    for (const transformType of ['request_transform', 'response_transform']) {
+      fetchStub.resolves(
+        pageResponse([
+          eventBatch(
+            [logRecord({ message: transformType })],
+            {
+              proxy: { id: 'proxy-1' },
+              transform_type: transformType,
+            },
+            {
+              type: 'proxy.log',
+              trace_id: undefined,
+            }
+          ),
+        ])
+      );
+      // eslint-disable-next-line no-await-in-loop -- Both unfiltered directions are independent response contracts.
+      const page = await readEventPage(
+        readerOptions({
+          resourceType: 'proxy',
+          resourceId: 'proxy-1',
+        })
+      );
+
+      expect(page.batches[0][0].message).to.equal(transformType);
+      expect(page.batches[0][0].trace_id).to.equal(undefined);
+    }
+  });
+
   it('resolves only secure configured origins and the three loopback HTTP hosts', () => {
     expect(resolveEventsOrigin()).to.equal(BasisTheoryEnvironment.Default);
     expect(resolveEventsOrigin('https://api.example.com:8443/')).to.equal(

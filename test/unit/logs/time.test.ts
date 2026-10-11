@@ -1,5 +1,9 @@
 import { expect } from 'chai';
-import { resolveLogWindow, resolveTailWindow } from '../../../src/logs/time';
+import {
+  resolveLogWindow,
+  resolveSearchWindow,
+  resolveTailWindow,
+} from '../../../src/logs/time';
 
 const NOW = Date.parse('2026-10-01T12:00:00.000Z');
 
@@ -22,6 +26,84 @@ describe('log time windows', () => {
     expect(resolveLogWindow({}, NOW)).to.deep.equal({
       start: NOW - 300_000,
       end: NOW,
+    });
+  });
+
+  [
+    {
+      flags: {},
+      start: undefined,
+      end: NOW,
+    },
+    {
+      flags: { since: '30m' },
+      start: NOW - 1_800_000,
+      end: NOW,
+    },
+    {
+      flags: { since: '90d' },
+      start: NOW - 90 * 86_400_000,
+      end: NOW,
+    },
+    {
+      flags: { until: '30m' },
+      start: undefined,
+      end: NOW - 1_800_000,
+    },
+    {
+      flags: { until: '2026-10-01T04:00:00.123-06:00' },
+      start: undefined,
+      end: Date.parse('2026-10-01T10:00:00.123Z'),
+    },
+    {
+      flags: {
+        since: '1h',
+        until: '30m',
+      },
+      start: NOW - 3_600_000,
+      end: NOW - 1_800_000,
+    },
+    {
+      flags: { since: '2026-10-01T04:00:00.123-06:00' },
+      start: Date.parse('2026-10-01T10:00:00.123Z'),
+      end: NOW,
+    },
+    {
+      flags: {
+        since: '2026-10-01T04:00:00-06:00',
+        until: '30m',
+      },
+      start: NOW - 7_200_000,
+      end: NOW - 1_800_000,
+    },
+    {
+      flags: {
+        since: '2h',
+        until: '2026-10-01T05:30:00-06:00',
+      },
+      start: NOW - 7_200_000,
+      end: NOW - 1_800_000,
+    },
+  ].forEach(({ flags, start, end }) => {
+    it(`resolves the search window for ${JSON.stringify(flags)}`, () => {
+      const window = resolveSearchWindow(flags, NOW);
+
+      expect(window.start).to.equal(start);
+      expect(window.end).to.equal(end);
+    });
+  });
+
+  ['30m', '1h'].forEach((until) => {
+    it(`rejects an equal or reversed search window ending ${until} ago`, () => {
+      expect(() =>
+        resolveSearchWindow(
+          {
+            since: '30m',
+            until,
+          },
+          NOW
+        )
+      ).to.throw('start before it ends');
     });
   });
 
