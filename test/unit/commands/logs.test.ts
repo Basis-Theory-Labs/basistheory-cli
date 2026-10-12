@@ -76,7 +76,7 @@ const NOW = Date.parse('2026-10-01T12:00:00.000Z');
             'resource-fixture',
             '--trace-id',
             traceId,
-            ...(resource === 'proxies' && action === 'read'
+            ...(resource === 'proxies'
               ? ['--transform-type', 'request_transform']
               : []),
           ]);
@@ -97,7 +97,7 @@ const NOW = Date.parse('2026-10-01T12:00:00.000Z');
         ['--text', 'message'],
         ['--invocation-id', 'invocation-1'],
         ['--transform-type', 'invalid'],
-        ...(resource === 'reactors' || action === 'tail'
+        ...(resource === 'reactors'
           ? [['--transform-type', 'request_transform']]
           : []),
         ...(action === 'tail' ? [['--until', '30m']] : []),
