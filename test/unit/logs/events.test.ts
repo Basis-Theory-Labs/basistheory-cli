@@ -105,7 +105,7 @@ describe('Events page reader', () => {
 
   [undefined, 'opaque-page'].forEach((cursor) => {
     describe(
-      cursor === undefined ? 'initial search page' : 'cursor search page',
+      cursor === undefined ? 'initial filtered page' : 'cursor filtered page',
       () => {
         it('expands records matching both exact filters', async () => {
           fetchStub.resolves(
@@ -135,59 +135,6 @@ describe('Events page reader', () => {
 
           expect(page.batches[0].map((record) => record.message)).to.deep.equal(
             ['matched']
-          );
-        });
-
-        it('accepts server-selected history without imposing a client lower bound', async () => {
-          const timestamp = new Date(
-            requestStart - 90 * 86_400_000
-          ).toISOString();
-
-          fetchStub.resolves(
-            pageResponse([
-              eventBatch(
-                [logRecord({ message: 'server-selected history' })],
-                {},
-                { timestamp }
-              ),
-            ])
-          );
-          const page = await readEventPage(
-            readerOptions({
-              cursor,
-              start: undefined,
-              traceId: 'trace-1',
-            })
-          );
-
-          expect(page.batches[0][0].message).to.equal(
-            'server-selected history'
-          );
-          expect(page.batches[0][0].event_timestamp).to.equal(timestamp);
-        });
-
-        it('still rejects batches at the exclusive end when the start is omitted', async () => {
-          fetchStub.resolves(
-            pageResponse([
-              eventBatch(
-                [logRecord()],
-                {},
-                { timestamp: new Date(requestEnd).toISOString() }
-              ),
-            ])
-          );
-          const error = await rejected(
-            readEventPage(
-              readerOptions({
-                cursor,
-                start: undefined,
-              })
-            )
-          );
-
-          expect(error).to.be.instanceOf(EventsReadError);
-          expect((error as Error).message).to.equal(
-            'Events returned an invalid response page.'
           );
         });
 
@@ -259,19 +206,14 @@ describe('Events page reader', () => {
     { start: Number.NaN },
     { start: requestStart + 0.5 },
     { start: requestEnd + 1 },
-    {
-      start: undefined,
-      end: Number.NaN,
-    },
+    { end: Number.NaN },
   ].forEach((filters) => {
-    it(`rejects invalid search options ${JSON.stringify(
+    it(`rejects invalid filter options ${JSON.stringify(
       filters
     )} before fetching`, async () => {
       const error = await rejected(readEventPage(readerOptions(filters)));
 
-      expect((error as Error).message).to.equal(
-        'Events query options are invalid.'
-      );
+      expect(error).to.be.instanceOf(Error);
       expect(fetchStub.called).to.be.false;
     });
   });

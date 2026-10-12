@@ -1,12 +1,8 @@
 const DEFAULT_LOOKBACK_MS = 300_000;
 
-interface LogQueryWindow {
-  start?: number;
-  end: number;
-}
-
-interface LogWindow extends LogQueryWindow {
+interface LogWindow {
   start: number;
+  end: number;
 }
 
 const invalidTime = (flag: 'since' | 'until'): never => {
@@ -101,20 +97,6 @@ const resolveLogWindow = (
   };
 };
 
-/** Leave an omitted search start to the server, but pin the end to one clock. */
-const resolveSearchWindow = (
-  flags: { since?: string; until?: string },
-  now = Date.now()
-): LogQueryWindow => {
-  if (flags.since !== undefined) {
-    return resolveLogWindow(flags, now);
-  }
-
-  return {
-    end: flags.until === undefined ? now : parseTime(flags.until, now, 'until'),
-  };
-};
-
 /** Resolve tail history only when an explicit --since value is supplied. */
 const resolveTailWindow = (
   flags: { since?: string },
@@ -127,10 +109,5 @@ const resolveTailWindow = (
       }
     : resolveLogWindow(flags, now);
 
-export type { LogQueryWindow, LogWindow };
-export {
-  DEFAULT_LOOKBACK_MS,
-  resolveLogWindow,
-  resolveSearchWindow,
-  resolveTailWindow,
-};
+export type { LogWindow };
+export { DEFAULT_LOOKBACK_MS, resolveLogWindow, resolveTailWindow };

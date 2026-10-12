@@ -129,7 +129,7 @@ interface ReadEventPageOptions extends EventLogFilters {
   apiKey: string;
   resourceType: ResourceType;
   resourceId: string;
-  start?: number;
+  start: number;
   end: number;
   cursor?: string;
   signal: AbortSignal;
@@ -365,8 +365,7 @@ const projectBatch = (
     !isNonEmptyString(eventId) ||
     input.type !== eventType ||
     !validTimestamp(eventTimestamp) ||
-    (options.start !== undefined &&
-      Date.parse(eventTimestamp) < options.start) ||
+    Date.parse(eventTimestamp) < options.start ||
     Date.parse(eventTimestamp) >= options.end ||
     !isNonEmptyString(tenantId) ||
     !isObject(data) ||
@@ -676,10 +675,9 @@ const readEventPage = async (
       (options.resourceType !== 'proxy' ||
         (options.transformType !== 'request_transform' &&
           options.transformType !== 'response_transform'))) ||
-    (options.start !== undefined &&
-      (!Number.isSafeInteger(options.start) ||
-        options.start > options.end ||
-        !Number.isFinite(new Date(options.start).getTime()))) ||
+    !Number.isSafeInteger(options.start) ||
+    options.start > options.end ||
+    !Number.isFinite(new Date(options.start).getTime()) ||
     !Number.isSafeInteger(options.end) ||
     !Number.isFinite(new Date(options.end).getTime()) ||
     (options.cursor !== undefined &&
@@ -790,8 +788,7 @@ const readEventPage = async (
             type:
               options.resourceType === 'reactor' ? 'reactor.log' : 'proxy.log',
             traceId: options.traceId,
-            startDate:
-              options.start === undefined ? undefined : new Date(options.start),
+            startDate: new Date(options.start),
             endDate: new Date(options.end),
             size: PAGE_SIZE,
           }
