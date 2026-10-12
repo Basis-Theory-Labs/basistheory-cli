@@ -34,6 +34,7 @@ type FollowOptions = {
   apiBaseUrl: string;
   resourceType: 'reactor' | 'proxy';
   resourceId: string;
+  traceId?: string;
   format: RuntimeLogFormat;
   window?: LogWindow;
 };
@@ -659,6 +660,103 @@ describe('logs runtime reads and tailing', () => {
     expect(fetchStub.calledOnce).to.be.true;
     expect(process.exitCode).to.equal(0);
     expect(clock.countTimers()).to.equal(0);
+  });
+
+  it('preserves distinct invocations sharing a custom trace while deduplicating page and poll overlap', async () => {
+    const traceId = 'customer_Order-42';
+    const first = fixtureEvent({
+      traceId,
+      invocationId: 'first-invocation',
+      records: [{ message: 'first' }],
+    });
+
+    fetchStub.onFirstCall().resolves(eventsResponse([first], 'next-page'));
+    fetchStub.onSecondCall().resolves(
+      eventsResponse([
+        first,
+        fixtureEvent({
+          traceId,
+          invocationId: 'second-invocation',
+          records: [{ message: 'second' }],
+        }),
+      ])
+    );
+    fetchStub.onThirdCall().resolves(
+      eventsResponse([
+        {
+          ...first,
+          id: 'redelivered-first',
+          timestamp: new Date(FOLLOWER_TEST_NOW + 4_000).toISOString(),
+        },
+        fixtureEvent({
+          traceId,
+          invocationId: 'live-invocation',
+          timestamp: new Date(FOLLOWER_TEST_NOW + 4_000).toISOString(),
+          records: [{ message: 'live' }],
+        }),
+      ])
+    );
+    const following = startTail({ traceId });
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(5_000);
+    await flushAsyncWork(clock);
+    expect(
+      jsonRecords(output.stdout).map((record) => record.message)
+    ).to.deep.equal(['first', 'second', 'live']);
+    process.emit('SIGINT');
+    await following;
+    expect(process.exitCode).to.equal(130);
+    expect(clock.countTimers()).to.equal(0);
+  });
+
+  ['cursor', 'poll'].forEach((transition) => {
+    it(`rejects a different trace after a ${transition} transition without printing its records`, async () => {
+      const traceId = 'customer_Order-42';
+
+      fetchStub.onFirstCall().resolves(
+        eventsResponse(
+          [
+            fixtureEvent({
+              traceId,
+              records: [{ message: 'matching history' }],
+            }),
+          ],
+          transition === 'cursor' ? 'next-page' : null
+        )
+      );
+      fetchStub.onSecondCall().resolves(
+        eventsResponse([
+          fixtureEvent({
+            traceId: 'customer_order-42',
+            invocationId: 'wrong-trace',
+            timestamp: new Date(
+              FOLLOWER_TEST_NOW + (transition === 'poll' ? 4_000 : -1_000)
+            ).toISOString(),
+            records: [{ message: 'wrong trace must not be printed' }],
+          }),
+        ])
+      );
+      const following = startTail({ traceId });
+
+      await flushAsyncWork(clock);
+
+      if (transition === 'poll') {
+        await clock.tickAsync(5_000);
+        await flushAsyncWork(clock);
+      }
+
+      let failure: Error | undefined;
+
+      await following.catch((error: Error) => {
+        failure = error;
+      });
+      expect(failure).to.be.instanceOf(Error);
+      expect(
+        jsonRecords(output.stdout).map((record) => record.message)
+      ).to.deep.equal(['matching history']);
+      expect(clock.countTimers()).to.equal(0);
+    });
   });
 
   it('uses custom startup history once and deduplicates across the transition to rolling polls', async () => {

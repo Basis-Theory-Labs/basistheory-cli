@@ -39,6 +39,11 @@ interface EventLogRecord {
   duration_ms?: number;
 }
 
+interface EventLogFilters {
+  traceId?: string;
+  transformType?: EventLogRecord['transform_type'];
+}
+
 interface EventLogPage {
   batches: EventLogRecord[][];
   next: string | null;
@@ -119,7 +124,7 @@ const resolveEventsOrigin = (apiBaseUrl?: string): string => {
   return url.origin;
 };
 
-interface ReadEventPageOptions {
+interface ReadEventPageOptions extends EventLogFilters {
   origin: string;
   apiKey: string;
   resourceType: ResourceType;
@@ -337,7 +342,12 @@ const projectBatch = (
   input: unknown,
   options: Pick<
     ReadEventPageOptions,
-    'resourceType' | 'resourceId' | 'start' | 'end'
+    | 'resourceType'
+    | 'resourceId'
+    | 'start'
+    | 'end'
+    | 'traceId'
+    | 'transformType'
   >
 ): EventLogRecord[] => {
   if (!isObject(input)) {
@@ -396,6 +406,14 @@ const projectBatch = (
       transformType = data.transform_type;
     }
   } else if (options.resourceType === 'proxy') {
+    return invalidPage();
+  }
+
+  if (
+    (options.traceId !== undefined && input.traceId !== options.traceId) ||
+    (options.transformType !== undefined &&
+      transformType !== options.transformType)
+  ) {
     return invalidPage();
   }
 
@@ -652,10 +670,15 @@ const readEventPage = async (
     /[\u0000-\u001F\u007F]/u.test(options.apiKey) ||
     !isNonEmptyString(options.resourceId) ||
     (options.resourceType !== 'reactor' && options.resourceType !== 'proxy') ||
+    (options.traceId !== undefined && !isNonEmptyString(options.traceId)) ||
+    (options.transformType !== undefined &&
+      (options.resourceType !== 'proxy' ||
+        (options.transformType !== 'request_transform' &&
+          options.transformType !== 'response_transform'))) ||
     !Number.isSafeInteger(options.start) ||
-    !Number.isSafeInteger(options.end) ||
     options.start > options.end ||
     !Number.isFinite(new Date(options.start).getTime()) ||
+    !Number.isSafeInteger(options.end) ||
     !Number.isFinite(new Date(options.end).getTime()) ||
     (options.cursor !== undefined &&
       (typeof options.cursor !== 'string' ||
@@ -764,6 +787,7 @@ const readEventPage = async (
         ? {
             type:
               options.resourceType === 'reactor' ? 'reactor.log' : 'proxy.log',
+            traceId: options.traceId,
             startDate: new Date(options.start),
             endDate: new Date(options.end),
             size: PAGE_SIZE,
@@ -774,7 +798,12 @@ const readEventPage = async (
         maxRetries: 0,
         queryParams:
           options.cursor === undefined
-            ? { [`data.${options.resourceType}.id`]: options.resourceId }
+            ? {
+                [`data.${options.resourceType}.id`]: options.resourceId,
+                ...(options.transformType !== undefined
+                  ? { 'data.transform_type': options.transformType }
+                  : {}),
+              }
             : undefined,
       }
     );
@@ -820,6 +849,8 @@ const readEventPage = async (
       resourceId: options.resourceId,
       start: options.start,
       end: options.end,
+      traceId: options.traceId,
+      transformType: options.transformType,
     })
   );
 
@@ -836,6 +867,7 @@ const readEventPage = async (
 };
 
 export type {
+  EventLogFilters,
   EventLogPage,
   EventLogRecord,
   ReadEventPageOptions,
