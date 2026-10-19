@@ -109,24 +109,22 @@ const NOW = Date.parse('2026-10-01T12:00:00.000Z');
         });
       });
 
-      if (action === 'read') {
-        ['', ' \t '].forEach((text) => {
-          it(`rejects blank message search ${JSON.stringify(
-            text
-          )} before HTTP`, async () => {
-            const result = await runCommand([
-              ...argv,
-              id,
-              '--message-search',
-              text,
-            ]);
+      ['', ' \t '].forEach((text) => {
+        it(`rejects blank message search ${JSON.stringify(
+          text
+        )} before HTTP`, async () => {
+          const result = await runCommand([
+            ...argv,
+            id,
+            '--message-search',
+            text,
+          ]);
 
-            expect(result.error).to.exist;
-            expect(readStub.called || tailStub.called || legacyStub.called).to
-              .be.false;
-          });
+          expect(result.error).to.exist;
+          expect(readStub.called || tailStub.called || legacyStub.called).to.be
+            .false;
         });
-      }
+      });
 
       [
         ['--format', 'ndjson'],
@@ -136,7 +134,6 @@ const NOW = Date.parse('2026-10-01T12:00:00.000Z');
         ['--from', '2026-10-01T10:00:00Z'],
         ['--to', '2026-10-01T11:00:00Z'],
         ['--text', 'message'],
-        ...(action === 'tail' ? [['--message-search', 'message']] : []),
         ['--invocation-id', 'invocation-1'],
         ['--transform-type', 'invalid'],
         ...(resource === 'reactors'
@@ -159,13 +156,14 @@ const NOW = Date.parse('2026-10-01T12:00:00.000Z');
     ['read', 'message-search'],
     ['read', 'level'],
     ['read', 'combined'],
+    ['tail', 'message-search'],
     ['tail', 'level'],
     ['tail', 'combined'],
   ] as const) {
     const combined = filter === 'combined';
     const level = filter === 'message-search' ? undefined : 'error';
     const inputLevel = combined ? 'ErRoR' : 'ERROR';
-    const hasText = action === 'read' && filter !== 'level';
+    const hasText = filter !== 'level';
 
     it(`${resource} ${action} preserves ${filter} filters and time bounds through HTTP`, async () => {
       const text = '  Payment =+%Ω failed  ';
