@@ -127,7 +127,7 @@ describe('runtime log formatting', () => {
     expect(visible).not.to.include('\u202E');
   });
 
-  it('colors severity levels distinctly and colors lifecycle outcomes by result', () => {
+  it('colors severity levels and distinguishes normal lifecycle progress from failure', () => {
     const cases = [
       {
         level: 'debug',
@@ -188,7 +188,7 @@ describe('runtime log formatting', () => {
         color: true,
       }
     );
-    const neutral = formatRuntimeLogRecord(
+    const started = formatRuntimeLogRecord(
       fixtureRecord({
         record_type: 'lifecycle',
         event: 'execution.started',
@@ -204,7 +204,7 @@ describe('runtime log formatting', () => {
 
     expect(success).to.include('\u001B[32mexecution.completed\u001B[0m');
     expect(failure).to.include('\u001B[31mexecution.completed\u001B[0m');
-    expect(neutral).to.include('\u001B[36mexecution.started\u001B[0m');
+    expect(started).to.include('\u001B[32mexecution.started\u001B[0m');
   });
 
   it('escapes unsafe JSON characters while preserving their parsed values', () => {

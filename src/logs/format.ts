@@ -30,7 +30,8 @@ const recordColor = (record: RuntimeLogRecord): string | undefined => {
       return '31';
     }
 
-    if (record.outcome === 'success') {
+    // Execution start and successful completion share the normal-progress color.
+    if (record.outcome === 'success' || record.event === 'execution.started') {
       return '32';
     }
 
