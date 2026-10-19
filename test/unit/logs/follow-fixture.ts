@@ -1,108 +1,82 @@
-/* Snake_case names mirror the Events wire contract used by these fixtures. */
+/* Snake_case names mirror the runtime-log wire contract used by these fixtures. */
 
 /* eslint-disable camelcase, unicorn/no-null */
 import { Writable } from 'stream';
 
+let nextFixtureId = 1;
+
 export const FOLLOWER_TEST_NOW = Date.parse('2026-09-29T12:00:00.000Z');
 
-export interface FixtureRecordOptions {
-  sequence?: number;
+export interface FixtureLogOptions {
+  id?: string;
   occurredAt?: string;
+  traceId?: string;
+  transformType?: string;
   source?: 'application' | 'platform';
   recordType?: 'log' | 'lifecycle';
   level?: string;
   message?: string | null;
   attributes?: Record<string, unknown>;
-  error?: { type: string; message: string; stack_trace?: string };
+  error?: Record<string, unknown>;
   event?: string;
   outcome?: string;
   durationMs?: number;
 }
 
-export interface FixtureEventOptions {
-  resourceType?: 'reactor' | 'proxy';
-  resourceId?: string;
-  tenantId?: string;
-  invocationId?: string;
-  eventId?: string;
-  timestamp?: string;
-  traceId?: string;
-  transformType?: 'request_transform' | 'response_transform';
-  records?: FixtureRecordOptions[];
-}
-
-export interface FixtureEvent {
+export interface FixtureLog {
   id: string;
-  type: 'reactor.log' | 'proxy.log';
-  timestamp: string;
-  tenant_id: string;
+  occurred_at: string;
+  source: 'application' | 'platform';
+  record_type: 'log' | 'lifecycle';
   trace_id?: string;
-  data: Record<string, unknown>;
+  transform_type?: string;
+  level?: string;
+  message?: string | null;
+  attributes?: Record<string, unknown>;
+  error?: Record<string, unknown>;
+  event?: string;
+  outcome?: string;
+  duration_ms?: number;
 }
 
-export const fixtureEvent = (
-  options: FixtureEventOptions = {}
-): FixtureEvent => {
-  const resourceType = options.resourceType ?? 'reactor';
-  const resourceId = options.resourceId ?? 'reactor-fixture';
-  const invocationId = options.invocationId ?? 'invocation-fixture';
-  const records = options.records ?? [{}];
-  const firstSequence = records[0]?.sequence ?? 0;
-  const lastSequence =
-    records[records.length - 1]?.sequence ?? firstSequence + records.length - 1;
-  const timestamp =
-    options.timestamp ?? new Date(FOLLOWER_TEST_NOW - 1_000).toISOString();
-  const eventId = options.eventId ?? `event-${invocationId}-${firstSequence}`;
-  const transformedRecords = records.map((record, index) => ({
-    occurred_at:
-      record.occurredAt ??
-      new Date(Date.parse(timestamp) - 60_000 + index).toISOString(),
-    sequence: record.sequence ?? firstSequence + index,
-    source: record.source ?? 'application',
-    record_type: record.recordType ?? 'log',
-    ...(record.level === undefined ? {} : { level: record.level }),
-    ...(record.message === undefined ? {} : { message: record.message }),
-    ...(record.attributes === undefined
-      ? {}
-      : { attributes: record.attributes }),
-    ...(record.error === undefined ? {} : { error: record.error }),
-    ...(record.event === undefined ? {} : { event: record.event }),
-    ...(record.outcome === undefined ? {} : { outcome: record.outcome }),
-    ...(record.durationMs === undefined
-      ? {}
-      : { duration_ms: record.durationMs }),
-  }));
+export const fixtureLog = (options: FixtureLogOptions = {}): FixtureLog => {
+  const id = (nextFixtureId++).toString(16).padStart(64, '0');
 
   return {
-    id: eventId,
-    type: `${resourceType}.log`,
-    timestamp,
-    tenant_id: options.tenantId ?? 'tenant-fixture',
+    id: options.id ?? id,
+    occurred_at:
+      options.occurredAt ?? new Date(FOLLOWER_TEST_NOW - 1_000).toISOString(),
+    source: options.source ?? 'application',
+    record_type: options.recordType ?? 'log',
     ...(options.traceId === undefined ? {} : { trace_id: options.traceId }),
-    data: {
-      invocation_id: invocationId,
-      [resourceType]: { id: resourceId },
-      ...(resourceType === 'proxy'
-        ? { transform_type: options.transformType ?? 'request_transform' }
-        : {}),
-      sequence_start: firstSequence,
-      sequence_end: lastSequence,
-      records: transformedRecords,
-    },
+    ...(options.transformType === undefined
+      ? {}
+      : { transform_type: options.transformType }),
+    ...(options.level === undefined ? {} : { level: options.level }),
+    ...(options.message === undefined ? {} : { message: options.message }),
+    ...(options.attributes === undefined
+      ? {}
+      : { attributes: options.attributes }),
+    ...(options.error === undefined ? {} : { error: options.error }),
+    ...(options.event === undefined ? {} : { event: options.event }),
+    ...(options.outcome === undefined ? {} : { outcome: options.outcome }),
+    ...(options.durationMs === undefined
+      ? {}
+      : { duration_ms: options.durationMs }),
   };
 };
 
-export const eventsResponse = (
-  events: FixtureEvent[] = [],
+export const logsResponse = (
+  records: FixtureLog[] = [],
   next: string | null = null,
   status = 200,
   headers: HeadersInit = {}
 ): Response =>
   new Response(
     JSON.stringify({
-      data: events,
+      data: records,
       pagination: {
-        page_size: events.length,
+        page_size: records.length,
         next,
       },
     }),

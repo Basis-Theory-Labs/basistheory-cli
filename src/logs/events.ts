@@ -12,40 +12,31 @@ const MAX_TIMER_DELAY = 2_147_483_647;
 
 type ResourceType = 'reactor' | 'proxy';
 
-interface EventLogRecord {
-  event_id: string;
-  event_type: string;
-  event_timestamp: string;
-  tenant_id: string;
-  trace_id?: string;
-  resource_type: ResourceType;
-  resource_id: string;
-  invocation_id: string;
-  transform_type?: 'request_transform' | 'response_transform';
+interface RuntimeLogRecord {
+  id: string;
   occurred_at: string;
-  sequence: number;
   source: 'application' | 'platform';
   record_type: 'log' | 'lifecycle';
+  trace_id?: string;
+  transform_type?: string;
   level?: string;
-  message?: string | null;
-  attributes?: Record<string, unknown>;
-  error?: {
-    type: string;
-    message: string;
-    stack_trace?: string;
-  };
   event?: string;
   outcome?: string;
+  message?: string | null;
   duration_ms?: number;
+  error?: Record<string, unknown>;
+  attributes?: Record<string, unknown>;
 }
 
-interface EventLogFilters {
+interface RuntimeLogFilters {
   traceId?: string;
-  transformType?: EventLogRecord['transform_type'];
+  transformType?: 'request_transform' | 'response_transform';
+  level?: string;
+  text?: string;
 }
 
-interface EventLogPage {
-  batches: EventLogRecord[][];
+interface RuntimeLogPage {
+  records: RuntimeLogRecord[];
   next: string | null;
 }
 
@@ -124,7 +115,7 @@ const resolveEventsOrigin = (apiBaseUrl?: string): string => {
   return url.origin;
 };
 
-interface ReadEventPageOptions extends EventLogFilters {
+interface ReadRuntimeLogPageOptions extends RuntimeLogFilters {
   origin: string;
   apiKey: string;
   resourceType: ResourceType;
@@ -212,9 +203,6 @@ const validTimestamp = (value: unknown): value is string => {
   );
 };
 
-const nonnegativeSafeInteger = (value: unknown): value is number =>
-  Number.isSafeInteger(value) && (value as number) >= 0;
-
 const validateOptionalString = (object: JsonObject, key: string): void => {
   if (hasOwn(object, key) && typeof object[key] !== 'string') {
     invalidPage();
@@ -223,31 +211,21 @@ const validateOptionalString = (object: JsonObject, key: string): void => {
 
 const validateRecord = (
   input: unknown,
-  context: {
-    eventId: string;
-    eventType: string;
-    eventTimestamp: string;
-    tenantId: string;
-    traceId?: string;
-    resourceType: ResourceType;
-    resourceId: string;
-    invocationId: string;
-    transformType?: 'request_transform' | 'response_transform';
-  },
-  sequenceStart: number,
-  sequenceEnd: number
-): EventLogRecord => {
+  options: Pick<
+    ReadRuntimeLogPageOptions,
+    'resourceType' | 'start' | 'end' | 'traceId' | 'transformType' | 'level'
+  >
+): RuntimeLogRecord => {
   if (!isObject(input)) {
     return invalidPage();
   }
 
-  const sequence = input.sequence;
-
   if (
+    typeof input.id !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(input.id) ||
     !validTimestamp(input.occurred_at) ||
-    !nonnegativeSafeInteger(sequence) ||
-    sequence < sequenceStart ||
-    sequence > sequenceEnd ||
+    Date.parse(input.occurred_at) < options.start ||
+    Date.parse(input.occurred_at) >= options.end ||
     (input.source !== 'application' && input.source !== 'platform') ||
     (input.record_type !== 'log' && input.record_type !== 'lifecycle') ||
     (input.source === 'application' && input.record_type !== 'log') ||
@@ -256,217 +234,103 @@ const validateRecord = (
     return invalidPage();
   }
 
+  validateOptionalString(input, 'trace_id');
+  validateOptionalString(input, 'transform_type');
   validateOptionalString(input, 'event');
   validateOptionalString(input, 'level');
   validateOptionalString(input, 'outcome');
 
   if (
-    hasOwn(input, 'message') &&
-    // eslint-disable-next-line unicorn/no-null -- A supplied JSON null message is a supported public value.
-    input.message !== null &&
-    typeof input.message !== 'string'
-  ) {
-    return invalidPage();
-  }
-
-  if (hasOwn(input, 'attributes') && !isObject(input.attributes)) {
-    return invalidPage();
-  }
-
-  let projectedError: EventLogRecord['error'];
-
-  if (hasOwn(input, 'error')) {
-    if (!isObject(input.error)) {
-      return invalidPage();
-    }
-
-    if (
-      typeof input.error.type !== 'string' ||
-      typeof input.error.message !== 'string' ||
-      (hasOwn(input.error, 'stack_trace') &&
-        typeof input.error.stack_trace !== 'string')
-    ) {
-      return invalidPage();
-    }
-
-    projectedError = {
-      type: input.error.type,
-      message: input.error.message,
-      ...(hasOwn(input.error, 'stack_trace')
-        ? { stack_trace: input.error.stack_trace as string }
-        : {}),
-    };
-  }
-
-  if (
-    hasOwn(input, 'duration_ms') &&
-    (typeof input.duration_ms !== 'number' ||
-      !Number.isFinite(input.duration_ms))
+    (hasOwn(input, 'message') &&
+      // eslint-disable-next-line unicorn/no-null -- A supplied JSON null message is a supported public value.
+      input.message !== null &&
+      typeof input.message !== 'string') ||
+    (hasOwn(input, 'attributes') && !isObject(input.attributes)) ||
+    (hasOwn(input, 'error') && !isObject(input.error)) ||
+    (hasOwn(input, 'duration_ms') &&
+      (typeof input.duration_ms !== 'number' ||
+        !Number.isFinite(input.duration_ms))) ||
+    (options.resourceType === 'reactor' && hasOwn(input, 'transform_type')) ||
+    (options.traceId !== undefined && input.trace_id !== options.traceId) ||
+    (options.level !== undefined && input.level !== options.level) ||
+    (options.transformType !== undefined &&
+      input.transform_type !== options.transformType)
   ) {
     return invalidPage();
   }
 
   return {
-    event_id: context.eventId,
-    event_type: context.eventType,
-    event_timestamp: context.eventTimestamp,
-    tenant_id: context.tenantId,
-    ...(context.traceId !== undefined ? { trace_id: context.traceId } : {}),
-    resource_type: context.resourceType,
-    resource_id: context.resourceId,
-    invocation_id: context.invocationId,
-    ...(context.transformType !== undefined
-      ? { transform_type: context.transformType }
-      : {}),
+    id: input.id,
     occurred_at: input.occurred_at,
-    sequence,
     source: input.source,
     record_type: input.record_type,
+    ...(hasOwn(input, 'trace_id')
+      ? { trace_id: input.trace_id as string }
+      : {}),
+    ...(hasOwn(input, 'transform_type')
+      ? { transform_type: input.transform_type as string }
+      : {}),
     ...(hasOwn(input, 'level') ? { level: input.level as string } : {}),
+    ...(hasOwn(input, 'event') ? { event: input.event as string } : {}),
+    ...(hasOwn(input, 'outcome') ? { outcome: input.outcome as string } : {}),
     ...(hasOwn(input, 'message')
       ? { message: input.message as string | null }
+      : {}),
+    ...(hasOwn(input, 'duration_ms')
+      ? { duration_ms: input.duration_ms as number }
+      : {}),
+    ...(hasOwn(input, 'error')
+      ? { error: input.error as Record<string, unknown> }
       : {}),
     ...(hasOwn(input, 'attributes')
       ? { attributes: input.attributes as Record<string, unknown> }
       : {}),
-    ...(projectedError !== undefined ? { error: projectedError } : {}),
-    ...(hasOwn(input, 'event') ? { event: input.event as string } : {}),
-    ...(hasOwn(input, 'outcome') ? { outcome: input.outcome as string } : {}),
-    ...(hasOwn(input, 'duration_ms')
-      ? { duration_ms: input.duration_ms as number }
-      : {}),
   };
 };
 
-const projectBatch = (
+const projectPage = (
   input: unknown,
   options: Pick<
-    ReadEventPageOptions,
+    ReadRuntimeLogPageOptions,
     | 'resourceType'
-    | 'resourceId'
     | 'start'
     | 'end'
+    | 'cursor'
     | 'traceId'
     | 'transformType'
+    | 'level'
   >
-): EventLogRecord[] => {
-  if (!isObject(input)) {
-    return invalidPage();
-  }
-
-  const eventId = input.id;
-  const eventType =
-    options.resourceType === 'reactor' ? 'reactor.log' : 'proxy.log';
-  const eventTimestamp = input.timestamp;
-  const tenantId = input.tenantId;
-  const data = input.data;
-
+): RuntimeLogPage => {
   if (
-    !isNonEmptyString(eventId) ||
-    input.type !== eventType ||
-    !validTimestamp(eventTimestamp) ||
-    Date.parse(eventTimestamp) < options.start ||
-    Date.parse(eventTimestamp) >= options.end ||
-    !isNonEmptyString(tenantId) ||
-    !isObject(data) ||
-    !isNonEmptyString(data.invocation_id)
+    !isObject(input) ||
+    !Array.isArray(input.data) ||
+    !isObject(input.pagination) ||
+    !hasOwn(input.pagination, 'next')
   ) {
     return invalidPage();
   }
 
-  const resource = data[options.resourceType];
+  const pageSize = input.pagination.page_size;
+  const next = input.pagination.next;
 
   if (
-    !isObject(resource) ||
-    !isNonEmptyString(resource.id) ||
-    resource.id !== options.resourceId
+    !Number.isSafeInteger(pageSize) ||
+    pageSize !== input.data.length ||
+    pageSize > PAGE_SIZE ||
+    // eslint-disable-next-line unicorn/no-null -- The public pagination contract uses null for no continuation.
+    (next !== null &&
+      (typeof next !== 'string' ||
+        next.length === 0 ||
+        next.length > MAX_CURSOR_LENGTH)) ||
+    (options.cursor !== undefined && next === options.cursor)
   ) {
     return invalidPage();
   }
 
-  if (input.traceId !== undefined && typeof input.traceId !== 'string') {
-    return invalidPage();
-  }
-
-  let transformType: 'request_transform' | 'response_transform' | undefined;
-
-  if (hasOwn(data, 'transform_type')) {
-    if (typeof data.transform_type !== 'string') {
-      return invalidPage();
-    }
-
-    if (options.resourceType === 'proxy') {
-      if (
-        data.transform_type !== 'request_transform' &&
-        data.transform_type !== 'response_transform'
-      ) {
-        return invalidPage();
-      }
-
-      transformType = data.transform_type;
-    }
-  } else if (options.resourceType === 'proxy') {
-    return invalidPage();
-  }
-
-  if (
-    (options.traceId !== undefined && input.traceId !== options.traceId) ||
-    (options.transformType !== undefined &&
-      transformType !== options.transformType)
-  ) {
-    return invalidPage();
-  }
-
-  if (
-    !nonnegativeSafeInteger(data.sequence_start) ||
-    !nonnegativeSafeInteger(data.sequence_end) ||
-    data.sequence_start > data.sequence_end ||
-    !Array.isArray(data.records) ||
-    data.records.length === 0
-  ) {
-    return invalidPage();
-  }
-
-  const records: EventLogRecord[] = [];
-  let previousSequence = -1;
-  const context = {
-    eventId,
-    eventType,
-    eventTimestamp,
-    tenantId,
-    ...(input.traceId !== undefined
-      ? { traceId: input.traceId as string }
-      : {}),
-    resourceType: options.resourceType,
-    resourceId: options.resourceId,
-    invocationId: data.invocation_id,
-    ...(transformType !== undefined ? { transformType } : {}),
+  return {
+    records: input.data.map((record) => validateRecord(record, options)),
+    next: next as string | null,
   };
-
-  for (const record of data.records) {
-    const projected = validateRecord(
-      record,
-      context,
-      data.sequence_start,
-      data.sequence_end
-    );
-
-    if (projected.sequence <= previousSequence) {
-      return invalidPage();
-    }
-
-    records.push(projected);
-    previousSequence = projected.sequence;
-  }
-
-  if (
-    records[0].sequence !== data.sequence_start ||
-    records[records.length - 1].sequence !== data.sequence_end
-  ) {
-    return invalidPage();
-  }
-
-  return records;
 };
 
 const readResponseBody = async (
@@ -637,7 +501,7 @@ const httpError = (response: Response): EventsReadError => {
 
   if (response.status === 400) {
     return new EventsReadError(
-      'Events rejected the request (HTTP 400): malformed query or invalid/mismatched cursor.'
+      'Events rejected the request (HTTP 400): invalid log query, resource UUID, or invalid/mismatched cursor.'
     );
   }
 
@@ -649,7 +513,7 @@ const httpError = (response: Response): EventsReadError => {
 
   if (response.status === 403) {
     return new EventsReadError(
-      'Events denied the request (HTTP 403): the API key needs event:read.'
+      'Events denied the request (HTTP 403): the API key needs log:read.'
     );
   }
 
@@ -658,10 +522,10 @@ const httpError = (response: Response): EventsReadError => {
   );
 };
 
-/** Read and validate one Events page. Continuations contain only the opaque cursor. */
-const readEventPage = async (
-  options: ReadEventPageOptions
-): Promise<EventLogPage> => {
+/** Read and validate one runtime-log page. Continuations contain only the opaque cursor. */
+const readRuntimeLogPage = async (
+  options: ReadRuntimeLogPageOptions
+): Promise<RuntimeLogPage> => {
   const origin = resolveEventsOrigin(options.origin);
 
   if (
@@ -671,10 +535,13 @@ const readEventPage = async (
     !isNonEmptyString(options.resourceId) ||
     (options.resourceType !== 'reactor' && options.resourceType !== 'proxy') ||
     (options.traceId !== undefined && !isNonEmptyString(options.traceId)) ||
+    (options.level !== undefined && !isNonEmptyString(options.level)) ||
     (options.transformType !== undefined &&
       (options.resourceType !== 'proxy' ||
         (options.transformType !== 'request_transform' &&
           options.transformType !== 'response_transform'))) ||
+    (options.text !== undefined &&
+      (typeof options.text !== 'string' || options.text.trim().length === 0)) ||
     !Number.isSafeInteger(options.start) ||
     options.start > options.end ||
     !Number.isFinite(new Date(options.start).getTime()) ||
@@ -689,9 +556,7 @@ const readEventPage = async (
   }
 
   let transportError: unknown;
-  // The SDK owns authentication, query serialization, and the Events envelope.
-  // Its transport hook preserves CLI byte bounds, cancellation, and redirect
-  // policy without adding SDK retry or timeout loops to the tail's own bounds.
+  let projectedPage: RuntimeLogPage | undefined;
   const bt = new BasisTheoryClient({
     apiKey: options.apiKey,
     environment: origin,
@@ -704,7 +569,6 @@ const readEventPage = async (
         let response: Response;
         const requestHeaders = new Headers({ Accept: 'application/json' });
 
-        // This client supplies only static string headers and an API key.
         for (const [name, value] of Object.entries(headers ?? {})) {
           if (typeof value === 'string') {
             requestHeaders.set(name, value);
@@ -730,8 +594,6 @@ const readEventPage = async (
           options.signal,
           options.onBytes
         ).catch((error: unknown) => {
-          // Preserve known HTTP policy when an error body fails to arrive.
-          // Non-retryable byte/cycle bounds still take precedence.
           if (
             !response.ok &&
             error instanceof EventsReadError &&
@@ -747,68 +609,79 @@ const readEventPage = async (
           throw httpError(response);
         }
 
-        let text: string;
-        let envelope: unknown;
+        let rawEnvelope: unknown;
 
         try {
-          text = new TextDecoder('utf-8', { fatal: true }).decode(body);
-          envelope = JSON.parse(text) as unknown;
+          rawEnvelope = JSON.parse(
+            new TextDecoder('utf-8', { fatal: true }).decode(body)
+          ) as unknown;
         } catch {
           throw new EventsReadError('Events returned malformed JSON.');
         }
 
-        // The SDK represents both null and missing next as undefined. Preserve
-        // the wire contract's required continuation field before normalization.
-        if (
-          !isObject(envelope) ||
-          !isObject(envelope.pagination) ||
-          !hasOwn(envelope.pagination, 'next')
-        ) {
-          return invalidPage();
-        }
+        // Validate before SDK schema decoding so malformed payloads cannot leak through its warnings.
+        projectedPage = projectPage(rawEnvelope, options);
 
         return {
           ok: true,
-          body: envelope as R,
+          body: rawEnvelope as R,
           rawResponse: response,
         };
       } catch (error) {
-        // Distinguish safe transport/limit errors from SDK decoding failures.
         transportError = error;
         throw error;
       }
     },
   });
-  let payload: BasisTheory.EventPage;
 
   try {
-    const page = await bt.events.list(
-      options.cursor === undefined
-        ? {
-            type:
-              options.resourceType === 'reactor' ? 'reactor.log' : 'proxy.log',
-            traceId: options.traceId,
-            startDate: new Date(options.start),
-            endDate: new Date(options.end),
-            size: PAGE_SIZE,
-          }
-        : { start: options.cursor },
-      {
-        abortSignal: options.signal,
-        maxRetries: 0,
-        queryParams:
-          options.cursor === undefined
-            ? {
-                [`data.${options.resourceType}.id`]: options.resourceId,
-                ...(options.transformType !== undefined
-                  ? { 'data.transform_type': options.transformType }
-                  : {}),
-              }
-            : undefined,
-      }
-    );
+    const requestOptions = {
+      abortSignal: options.signal,
+      maxRetries: 0,
+    };
 
-    payload = page.response;
+    if (options.cursor !== undefined) {
+      await (options.resourceType === 'reactor'
+        ? bt.reactorLogs.list(
+            options.resourceId,
+            { start: options.cursor },
+            requestOptions
+          )
+        : bt.proxyLogs.list(
+            options.resourceId,
+            { start: options.cursor },
+            requestOptions
+          ));
+    } else if (options.resourceType === 'reactor') {
+      const request: BasisTheory.ReactorLogsListRequest = {
+        startDate: new Date(options.start),
+        endDate: new Date(options.end),
+        size: PAGE_SIZE,
+        ...(options.traceId !== undefined ? { traceId: options.traceId } : {}),
+        ...(options.level !== undefined ? { level: options.level } : {}),
+        ...(options.text !== undefined
+          ? { messageSearchWords: options.text }
+          : {}),
+      };
+
+      await bt.reactorLogs.list(options.resourceId, request, requestOptions);
+    } else {
+      const request: BasisTheory.ProxyLogsListRequest = {
+        startDate: new Date(options.start),
+        endDate: new Date(options.end),
+        size: PAGE_SIZE,
+        ...(options.traceId !== undefined ? { traceId: options.traceId } : {}),
+        ...(options.level !== undefined ? { level: options.level } : {}),
+        ...(options.text !== undefined
+          ? { messageSearchWords: options.text }
+          : {}),
+        ...(options.transformType !== undefined
+          ? { transformType: options.transformType }
+          : {}),
+      };
+
+      await bt.proxyLogs.list(options.resourceId, request, requestOptions);
+    }
   } catch {
     if (transportError !== undefined) {
       throw transportError;
@@ -817,42 +690,9 @@ const readEventPage = async (
     return invalidPage();
   }
 
-  if (
-    !isObject(payload) ||
-    !Array.isArray(payload.data) ||
-    !isObject(payload.pagination)
-  ) {
+  if (projectedPage === undefined) {
     return invalidPage();
   }
-
-  const pageSize = payload.pagination.pageSize;
-  // eslint-disable-next-line unicorn/no-null -- The CLI uses null for an exhausted cursor.
-  const next = payload.pagination.next ?? null;
-
-  if (
-    !Number.isSafeInteger(pageSize) ||
-    pageSize !== payload.data.length ||
-    pageSize > PAGE_SIZE ||
-    // eslint-disable-next-line unicorn/no-null -- The public pagination contract uses null for no continuation.
-    (next !== null &&
-      (typeof next !== 'string' ||
-        next.length === 0 ||
-        next.length > MAX_CURSOR_LENGTH)) ||
-    (options.cursor !== undefined && next === options.cursor)
-  ) {
-    return invalidPage();
-  }
-
-  const batches = payload.data.map((batch) =>
-    projectBatch(batch, {
-      resourceType: options.resourceType,
-      resourceId: options.resourceId,
-      start: options.start,
-      end: options.end,
-      traceId: options.traceId,
-      transformType: options.transformType,
-    })
-  );
 
   if (options.signal.aborted) {
     throw new EventsReadError('Events request was interrupted.', {
@@ -860,18 +700,15 @@ const readEventPage = async (
     });
   }
 
-  return {
-    batches,
-    next: next as string | null,
-  };
+  return projectedPage;
 };
 
 export type {
-  EventLogFilters,
-  EventLogPage,
-  EventLogRecord,
-  ReadEventPageOptions,
+  ReadRuntimeLogPageOptions,
   ResourceType,
+  RuntimeLogFilters,
+  RuntimeLogPage,
+  RuntimeLogRecord,
 };
-export { EventsReadError, readEventPage, resolveEventsOrigin };
+export { EventsReadError, readRuntimeLogPage, resolveEventsOrigin };
 /* eslint-enable camelcase */

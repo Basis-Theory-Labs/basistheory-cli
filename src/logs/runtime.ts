@@ -2,32 +2,35 @@
 
 /* eslint-disable no-await-in-loop, no-continue */
 
-/* Null is part of the Events cursor and optional-field contract. */
+/* Null is part of the runtime-log cursor and optional-field contract. */
 
 /* eslint-disable unicorn/no-null */
+import confirm from '@inquirer/confirm';
 import type { Writable } from 'node:stream';
 import type {
-  EventLogFilters,
-  EventLogPage,
-  EventLogRecord,
+  RuntimeLogFilters,
+  RuntimeLogPage,
+  RuntimeLogRecord,
   ResourceType,
 } from './events';
-import { EventsReadError, readEventPage, resolveEventsOrigin } from './events';
+import {
+  EventsReadError,
+  readRuntimeLogPage,
+  resolveEventsOrigin,
+} from './events';
 import type { RuntimeLogFormat } from './format';
 import { formatRuntimeLogRecord } from './format';
 import type { LogWindow } from './time';
-import {
-  DEFAULT_LOOKBACK_MS,
-  resolveLogWindow,
-  resolveTailWindow,
-} from './time';
+import { resolveLogWindow, resolveTailWindow } from './time';
 
-const LOOKBACK_MS = DEFAULT_LOOKBACK_MS;
+const TAIL_OVERLAP_MS = 60_000;
 const POLL_INTERVAL_MS = 5_000;
 const REQUEST_DEADLINE_MS = 20_000;
 const CYCLE_DEADLINE_MS = 60_000;
+const TAIL_SESSION_MS = 3_600_000;
+const TAIL_STOP_NOTICE_TIMEOUT_MS = 60_000;
 const MAX_PAGES = 125;
-const MAX_BATCHES = 2_500;
+const MAX_RECORDS = 2_500;
 const MAX_CYCLE_BYTES = 64 * 1024 * 1024;
 const MAX_IDENTITIES = 100_000;
 const MAX_IDENTITY_BYTES = 16 * 1024 * 1024;
@@ -66,7 +69,9 @@ const waitFor = (milliseconds: number, signal: AbortSignal): Promise<void> =>
       resolve();
     }, milliseconds);
 
-    signal.addEventListener('abort', onAbort, { once: true });
+    signal.addEventListener('abort', onAbort, {
+      once: true,
+    });
   });
 
 // Each request needs its own cancellation closure over that request's controller.
@@ -131,7 +136,9 @@ const writeLine = (
 
     stream.on('drain', onDrain);
     stream.on('error', onError);
-    signal.addEventListener('abort', onAbort, { once: true });
+    signal.addEventListener('abort', onAbort, {
+      once: true,
+    });
 
     try {
       const accepted = stream.write(`${line}\n`, 'utf8', (error) => {
@@ -151,20 +158,192 @@ const writeLine = (
     }
   });
 
-const recordIdentity = (record: EventLogRecord): string =>
-  JSON.stringify([
-    record.tenant_id,
-    record.resource_type,
-    record.resource_id,
-    record.transform_type ?? null,
-    record.invocation_id,
-    record.sequence,
-  ]);
+/** A single renewal prompt owns input only while polling is paused. */
+const confirmTailContinuation = async (
+  signal: AbortSignal,
+  onInterrupt: () => void
+): Promise<boolean> => {
+  const controller = new AbortController();
+  const input = process.stdin;
+  const output = process.stderr;
+  const wasRaw = input.isRaw === true;
+  const wasFlowing = input.readableFlowing === true;
+  let noticeExpired = false;
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  let declined = false;
+  let inputFailure: Error | undefined;
+  let prompt: (Promise<boolean> & { cancel: () => void }) | undefined;
+  let promptPending = false;
+  let promptStarted = false;
+  let onPromptAbort: (() => void) | undefined;
+  const onSessionAbort = (): void => controller.abort(reasonOf(signal));
+  const onInputEnd = (): void => {
+    declined = true;
+    controller.abort(new Error('Tail confirmation input closed'));
+  };
+  const onInputError = (error: Error): void => {
+    inputFailure = error;
+    controller.abort(error);
+  };
+  const onKeypress = (
+    _value: string | undefined,
+    key: { ctrl?: boolean; name?: string } | undefined
+  ): void => {
+    if (key?.ctrl && key.name === 'c') {
+      onInterrupt();
+    } else if (key?.ctrl && key.name === 'd') {
+      onInputEnd();
+    }
+  };
+
+  signal.addEventListener('abort', onSessionAbort, {
+    once: true,
+  });
+
+  try {
+    if (signal.aborted) {
+      throw reasonOf(signal);
+    }
+
+    const writable =
+      output.writable && !output.destroyed && !output.writableEnded;
+    const interactive =
+      input.isTTY === true &&
+      output.isTTY === true &&
+      input.readable &&
+      !input.destroyed &&
+      !input.readableEnded &&
+      writable;
+
+    if (!interactive) {
+      if (writable) {
+        noticeTimer = setTimeout(() => {
+          noticeExpired = true;
+          controller.abort(new Error('Tail stop notice timed out'));
+        }, TAIL_STOP_NOTICE_TIMEOUT_MS);
+        await writeLine(
+          output,
+          'Tail stopped after 60 minutes: renewal requires interactive stdin and stderr.',
+          controller.signal
+        );
+      }
+
+      return false;
+    }
+
+    input.on('end', onInputEnd);
+    input.on('close', onInputEnd);
+    input.on('error', onInputError);
+
+    if (controller.signal.aborted) {
+      throw reasonOf(controller.signal);
+    }
+
+    input.on('keypress', onKeypress);
+    const answer = await new Promise<boolean>((resolve, reject) => {
+      promptStarted = true;
+      prompt = confirm(
+        {
+          message: 'Keep tailing?',
+          default: false,
+        },
+        {
+          input,
+          output,
+        }
+      );
+      promptPending = true;
+      prompt.then(
+        (value) => {
+          promptPending = false;
+          resolve(value);
+        },
+        (error: unknown) => {
+          promptPending = false;
+          reject(error);
+        }
+      );
+
+      onPromptAbort = (): void => {
+        if (promptPending) {
+          promptPending = false;
+
+          try {
+            prompt?.cancel();
+          } catch (error) {
+            reject(error);
+
+            return;
+          }
+        }
+
+        reject(reasonOf(controller.signal));
+      };
+
+      controller.signal.addEventListener('abort', onPromptAbort, {
+        once: true,
+      });
+
+      if (controller.signal.aborted) {
+        onPromptAbort();
+      }
+    });
+
+    if (controller.signal.aborted) {
+      throw reasonOf(controller.signal);
+    }
+
+    return answer;
+  } catch (error) {
+    if (signal.aborted) {
+      throw reasonOf(signal);
+    }
+
+    if (inputFailure) {
+      throw inputFailure;
+    }
+
+    if (noticeExpired || declined) {
+      return false;
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(noticeTimer);
+    signal.removeEventListener('abort', onSessionAbort);
+    input.removeListener('end', onInputEnd);
+    input.removeListener('close', onInputEnd);
+    input.removeListener('error', onInputError);
+    input.removeListener('keypress', onKeypress);
+
+    if (onPromptAbort) {
+      controller.signal.removeEventListener('abort', onPromptAbort);
+    }
+
+    if (promptPending) {
+      prompt?.cancel();
+    }
+
+    if (promptStarted) {
+      if (!input.destroyed && (input.isRaw === true) !== wasRaw) {
+        input.setRawMode(wasRaw);
+      }
+
+      // Dormant stdin has readableFlowing=null, not isPaused()=true.
+      // Resuming that untouched terminal would keep a completed CLI alive.
+      if (wasFlowing && input.readable) {
+        input.resume();
+      } else {
+        input.pause();
+      }
+    }
+  }
+};
 
 const isBrokenPipe = (error: Error): boolean =>
   (error as NodeJS.ErrnoException).code === 'EPIPE';
 
-interface RuntimeLogOptions extends EventLogFilters {
+interface RuntimeLogOptions extends RuntimeLogFilters {
   apiKey: string;
   apiBaseUrl?: string;
   resourceType: ResourceType;
@@ -174,10 +353,11 @@ interface RuntimeLogOptions extends EventLogFilters {
 }
 
 /** Both actions share bounded window reads and the complete output/cancellation lifecycle. */
-const streamEventLogs = async (
+const streamRuntimeLogs = async (
   options: RuntimeLogOptions,
   mode: 'read' | 'tail'
 ): Promise<void> => {
+  let nextConfirmationAt = performance.now() + TAIL_SESSION_MS;
   const initialWindow =
     options.window ??
     (mode === 'tail' ? resolveTailWindow({}) : resolveLogWindow({}));
@@ -208,10 +388,10 @@ const streamEventLogs = async (
     process.env.TERM !== 'dumb';
   const identities = new Map<string, { timestamp: number; bytes: number }>();
   let identityBytes = 0;
-  let resourceHeaderWritten = false;
   let lastCompletedEnd: number | undefined = isLiveTailStart
     ? initialWindow.end
     : undefined;
+  let resumingAfterPause = false;
   // Oclif's eager stdout error handler throws before command-level cleanup.
   // Own stdout failures during log reads, preserving the prior handlers on exit.
   const stdoutErrorListeners = process.stdout.rawListeners('error') as ((
@@ -230,14 +410,47 @@ const streamEventLogs = async (
   try {
     if (isLiveTailStart) {
       await writeLine(process.stderr, 'Waiting for logs...', session.signal);
+      await waitFor(
+        Math.min(
+          POLL_INTERVAL_MS,
+          Math.max(0, nextConfirmationAt - performance.now())
+        ),
+        session.signal
+      );
     }
 
     while (!session.signal.aborted) {
+      if (mode === 'tail' && performance.now() >= nextConfirmationAt) {
+        const continued = await confirmTailContinuation(
+          session.signal,
+          onInterrupt
+        );
+
+        if (session.signal.aborted) {
+          throw reasonOf(session.signal);
+        }
+
+        if (!continued) {
+          stopStatus = 0;
+
+          break;
+        }
+
+        nextConfirmationAt = performance.now() + TAIL_SESSION_MS;
+        resumingAfterPause = true;
+      }
+
       const end =
         lastCompletedEnd === undefined ? initialWindow.end : Date.now();
 
       if (lastCompletedEnd !== undefined && end <= lastCompletedEnd) {
-        await waitFor(POLL_INTERVAL_MS, session.signal);
+        await waitFor(
+          Math.min(
+            POLL_INTERVAL_MS,
+            Math.max(0, nextConfirmationAt - performance.now())
+          ),
+          session.signal
+        );
 
         continue;
       }
@@ -247,7 +460,10 @@ const streamEventLogs = async (
       const start =
         lastCompletedEnd === undefined
           ? initialWindow.start
-          : Math.max(initialWindow.start, end - LOOKBACK_MS);
+          : Math.max(
+              initialWindow.start,
+              (resumingAfterPause ? end : lastCompletedEnd) - TAIL_OVERLAP_MS
+            );
       const cycle = new AbortController();
       const cancelCycle = (): void => cycle.abort(reasonOf(session.signal));
       const cycleTimer = setTimeout(
@@ -258,12 +474,17 @@ const streamEventLogs = async (
         CYCLE_DEADLINE_MS
       );
 
-      session.signal.addEventListener('abort', cancelCycle, { once: true });
+      session.signal.addEventListener('abort', cancelCycle, {
+        once: true,
+      });
       let receivedBytes = 0;
-      let returnedBatches = 0;
+      let returnedRecords = 0;
       let pages = 0;
       let cursor: string | undefined;
       const cursors = new Set<string>();
+      const pendingRecords: RuntimeLogRecord[] = [];
+      const pendingIds = new Set<string>();
+      let pendingIdentityBytes = 0;
       const countCycleBytes = (bytes: number): void => {
         receivedBytes += bytes;
         checkDeadline(cycle.signal, deadline);
@@ -283,7 +504,7 @@ const streamEventLogs = async (
             throw new Error('Events log window exceeded its 125-page limit');
           }
 
-          let page: EventLogPage | undefined;
+          let page: RuntimeLogPage | undefined;
           let retrying = false;
 
           for (let attempt = 1; attempt <= 3; attempt++) {
@@ -305,13 +526,15 @@ const streamEventLogs = async (
             });
 
             try {
-              page = await readEventPage({
+              page = await readRuntimeLogPage({
                 origin,
                 apiKey: options.apiKey,
                 resourceType: options.resourceType,
                 resourceId: options.resourceId,
                 traceId: options.traceId,
                 transformType: options.transformType,
+                level: options.level,
+                text: options.text,
                 start,
                 end,
                 cursor,
@@ -373,58 +596,38 @@ const streamEventLogs = async (
           }
 
           pages++;
-          returnedBatches += page.batches.length;
+          returnedRecords += page.records.length;
 
-          if (returnedBatches > MAX_BATCHES) {
-            throw new Error('Events log window exceeded its batch limit');
+          if (returnedRecords > MAX_RECORDS) {
+            throw new Error('Events log window exceeded its record limit');
           }
 
           if (page.next !== null && cursors.has(page.next)) {
             throw new Error('Events returned a repeated pagination cursor');
           }
 
-          for (const batch of page.batches) {
-            for (const record of batch) {
-              checkDeadline(cycle.signal, deadline);
-              const identity = recordIdentity(record);
-              const timestamp = Date.parse(record.event_timestamp);
-              const retained = identities.get(identity);
+          for (const record of page.records) {
+            checkDeadline(cycle.signal, deadline);
+            const identity = record.id;
 
-              if (retained) {
-                retained.timestamp = Math.max(retained.timestamp, timestamp);
-
-                continue;
-              }
-
-              const bytes = Buffer.byteLength(identity, 'utf8');
-
-              if (
-                identities.size >= MAX_IDENTITIES ||
-                identityBytes + bytes > MAX_IDENTITY_BYTES
-              ) {
-                throw new Error(
-                  `Events ${mode} exceeded its retained-identity limit`
-                );
-              }
-
-              await writeLine(
-                process.stdout,
-                formatRuntimeLogRecord(record, {
-                  format: options.format,
-                  color,
-                  includeResourceHeader:
-                    options.format === 'pretty' && !resourceHeaderWritten,
-                }),
-                cycle.signal
-              );
-              resourceHeaderWritten ||= options.format === 'pretty';
-              checkDeadline(cycle.signal, deadline);
-              identities.set(identity, {
-                timestamp,
-                bytes,
-              });
-              identityBytes += bytes;
+            if (identities.has(identity) || pendingIds.has(identity)) {
+              continue;
             }
+
+            const bytes = Buffer.byteLength(identity, 'utf8');
+
+            if (
+              identities.size + pendingIds.size >= MAX_IDENTITIES ||
+              identityBytes + pendingIdentityBytes + bytes > MAX_IDENTITY_BYTES
+            ) {
+              throw new Error(
+                `Events ${mode} exceeded its retained-identity limit`
+              );
+            }
+
+            pendingRecords.push(record);
+            pendingIds.add(identity);
+            pendingIdentityBytes += bytes;
           }
 
           cursor = page.next ?? undefined;
@@ -434,7 +637,31 @@ const streamEventLogs = async (
           }
         } while (cursor !== undefined);
 
-        if (lastCompletedEnd === undefined && returnedBatches === 0) {
+        // Reverse the entire server traversal, preserving private sequence ties.
+        // An incomplete cursor chain never produces misleading partial chronology.
+        for (let index = pendingRecords.length - 1; index >= 0; index--) {
+          checkDeadline(cycle.signal, deadline);
+          const record = pendingRecords[index];
+
+          await writeLine(
+            process.stdout,
+            formatRuntimeLogRecord(record, {
+              format: options.format,
+              color,
+            }),
+            cycle.signal
+          );
+          const bytes = Buffer.byteLength(record.id, 'utf8');
+
+          identities.set(record.id, {
+            timestamp: Date.parse(record.occurred_at),
+            bytes,
+          });
+          identityBytes += bytes;
+          checkDeadline(cycle.signal, deadline);
+        }
+
+        if (lastCompletedEnd === undefined && returnedRecords === 0) {
           await writeLine(
             process.stderr,
             mode === 'read'
@@ -446,9 +673,10 @@ const streamEventLogs = async (
 
         checkDeadline(cycle.signal, deadline);
         lastCompletedEnd = end;
+        resumingAfterPause = false;
 
         for (const [identity, retained] of identities) {
-          if (retained.timestamp < lastCompletedEnd - LOOKBACK_MS) {
+          if (retained.timestamp < lastCompletedEnd - TAIL_OVERLAP_MS) {
             identities.delete(identity);
             identityBytes -= retained.bytes;
           }
@@ -465,7 +693,10 @@ const streamEventLogs = async (
       const delay = POLL_INTERVAL_MS - (performance.now() - cycleStarted);
 
       if (delay > 0) {
-        await waitFor(delay, session.signal);
+        await waitFor(
+          Math.min(delay, Math.max(0, nextConfirmationAt - performance.now())),
+          session.signal
+        );
       }
     }
   } catch (error) {
@@ -478,7 +709,9 @@ const streamEventLogs = async (
           error instanceof Error ? error.message : 'Unknown Events log failure';
 
         throw new Error(
-          `Partial ${mode}: ${message}. Already displayed records are retained, but completeness is not guaranteed; retry with a smaller window if a work limit was reached.`
+          `Partial ${mode}: ${message}${
+            message.endsWith('.') ? '' : '.'
+          } Already displayed records are retained, but completeness is not guaranteed; retry with a smaller window if a work limit was reached.`
         );
       }
     }
@@ -501,14 +734,14 @@ const streamEventLogs = async (
 };
 
 /** Retrieve one finite query window, including every continuation, then finish. */
-const readEventLogs = (
+const readRuntimeLogs = (
   options: RuntimeLogOptions & { window: LogWindow }
-): Promise<void> => streamEventLogs(options, 'read');
+): Promise<void> => streamRuntimeLogs(options, 'read');
 
 /** Retrieve initial context, then keep reading overlapping live windows. */
-const followEventLogs = (options: RuntimeLogOptions): Promise<void> =>
-  streamEventLogs(options, 'tail');
+const followRuntimeLogs = (options: RuntimeLogOptions): Promise<void> =>
+  streamRuntimeLogs(options, 'tail');
 
-export { followEventLogs, readEventLogs };
+export { followRuntimeLogs, readRuntimeLogs };
 /* eslint-enable unicorn/no-null */
 /* eslint-enable no-await-in-loop, no-continue */

@@ -4,47 +4,28 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import {
   EventsReadError,
-  readEventPage,
+  readRuntimeLogPage,
   resolveEventsOrigin,
 } from '../../../src/logs/events';
-import type { ReadEventPageOptions } from '../../../src/logs/events';
+import type { ReadRuntimeLogPageOptions } from '../../../src/logs/events';
 
 type FixtureObject = Record<string, unknown>;
 
 const requestStart = Date.parse('2026-09-29T12:00:00.000Z');
 const requestEnd = Date.parse('2026-09-29T12:05:00.000Z');
-const eventTime = '2026-09-29T12:01:00.000Z';
-const recordTime = '2026-09-29T11:59:59.000Z';
+const recordTime = '2026-09-29T12:01:00.000Z';
+const reactorId = 'c806e731-925a-4157-9f7a-3710a590cd6a';
+const proxyId = '92feba61-1fb6-42be-a0b5-73bfc9217911';
+const recordId = 'a'.repeat(64);
 
 const logRecord = (overrides: FixtureObject = {}): FixtureObject => ({
+  id: recordId,
   occurred_at: recordTime,
-  sequence: 1,
   source: 'application',
   record_type: 'log',
   level: 'info',
   message: 'started',
   ...overrides,
-});
-
-const eventBatch = (
-  records: FixtureObject[] = [logRecord()],
-  dataOverrides: FixtureObject = {},
-  envelopeOverrides: FixtureObject = {}
-): FixtureObject => ({
-  id: 'event-1',
-  tenant_id: 'tenant-1',
-  type: 'reactor.log',
-  timestamp: eventTime,
-  trace_id: 'trace-1',
-  ...envelopeOverrides,
-  data: {
-    invocation_id: 'invocation-1',
-    reactor: { id: 'reactor-1' },
-    sequence_start: records[0]?.sequence,
-    sequence_end: records[records.length - 1]?.sequence,
-    records,
-    ...dataOverrides,
-  },
 });
 
 const pageResponse = (
@@ -69,12 +50,12 @@ const pageResponse = (
   );
 
 const readerOptions = (
-  overrides: Partial<ReadEventPageOptions> = {}
-): ReadEventPageOptions => ({
+  overrides: Partial<ReadRuntimeLogPageOptions> = {}
+): ReadRuntimeLogPageOptions => ({
   origin: 'https://api.example.com',
   apiKey: 'fixture-api-key',
   resourceType: 'reactor',
-  resourceId: 'reactor-1',
+  resourceId: reactorId,
   start: requestStart,
   end: requestEnd,
   signal: new AbortController().signal,
@@ -89,10 +70,10 @@ const rejected = async (promise: Promise<unknown>): Promise<unknown> => {
     return error;
   }
 
-  throw new Error('Expected the Events read to reject.');
+  throw new Error('Expected the runtime-log read to reject.');
 };
 
-describe('Events page reader', () => {
+describe('Events runtime-log page reader', () => {
   let fetchStub: sinon.SinonStub;
 
   beforeEach(() => {
@@ -103,178 +84,217 @@ describe('Events page reader', () => {
     sinon.restore();
   });
 
-  [undefined, 'opaque-page'].forEach((cursor) => {
-    describe(
-      cursor === undefined ? 'initial filtered page' : 'cursor filtered page',
-      () => {
-        it('expands records matching both exact filters', async () => {
-          fetchStub.resolves(
-            pageResponse([
-              eventBatch(
-                [logRecord({ message: 'matched' })],
-                {
-                  proxy: { id: 'proxy-1' },
-                  transform_type: 'request_transform',
-                },
-                {
-                  type: 'proxy.log',
-                  trace_id: ' Trace-1 ',
-                }
-              ),
-            ])
-          );
-          const page = await readEventPage(
-            readerOptions({
-              cursor,
-              resourceType: 'proxy',
-              resourceId: 'proxy-1',
-              traceId: ' Trace-1 ',
-              transformType: 'request_transform',
-            })
-          );
+  it('uses the dedicated Reactor endpoint, SDK auth, and exact initial query filters', async () => {
+    fetchStub.resolves(
+      pageResponse([
+        logRecord({
+          trace_id: ' Trace=+%&Ω ',
+          level: 'error',
+        }),
+      ])
+    );
+    const traceId = ' Trace=+%&Ω ';
+    const text = ' Payment   failed +%Ω ';
+    const options = readerOptions({
+      traceId,
+      level: 'error',
+      text,
+    });
 
-          expect(page.batches[0].map((record) => record.message)).to.deep.equal(
-            ['matched']
-          );
-        });
+    const page = await readRuntimeLogPage(options);
 
-        [undefined, 'other-trace', 'TRACE-1', ' trace-1 '].forEach(
-          (traceId) => {
-            it(`rejects missing or nonexact trace ${JSON.stringify(
-              traceId
-            )}`, async () => {
-              fetchStub.resolves(
-                pageResponse([
-                  eventBatch([logRecord()], {}, { trace_id: traceId }),
-                ])
-              );
-              const error = await rejected(
-                readEventPage(
-                  readerOptions({
-                    cursor,
-                    traceId: 'trace-1',
-                  })
-                )
-              );
+    const [requestUrl, requestInit] = fetchStub.firstCall.args;
+    const url = new URL(String(requestUrl));
 
-              expect(error).to.be.instanceOf(EventsReadError);
-              expect((error as Error).message).to.equal(
-                'Events returned an invalid response page.'
-              );
-            });
-          }
-        );
+    expect(url.pathname).to.equal(`/reactors/${reactorId}/logs`);
+    expect(url.searchParams.get('start_date')).to.equal(
+      new Date(requestStart).toISOString()
+    );
+    expect(url.searchParams.get('end_date')).to.equal(
+      new Date(requestEnd).toISOString()
+    );
+    expect(url.searchParams.get('size')).to.equal('20');
+    expect(url.searchParams.get('trace_id')).to.equal(traceId);
+    expect(url.searchParams.get('level')).to.equal('error');
+    expect(url.searchParams.get('message[search_words]')).to.equal(text);
+    expect([...url.searchParams.keys()]).to.have.members([
+      'start_date',
+      'end_date',
+      'size',
+      'trace_id',
+      'level',
+      'message[search_words]',
+    ]);
+    expect(requestInit?.method).to.equal('GET');
+    expect(requestInit?.redirect).to.equal('manual');
+    expect(new Headers(requestInit?.headers).get('accept')).to.equal(
+      'application/json'
+    );
+    expect(new Headers(requestInit?.headers).get('bt-api-key')).to.equal(
+      'fixture-api-key'
+    );
+    expect(requestInit?.signal).to.equal(options.signal);
+    expect(page.records[0].level).to.equal('error');
+  });
 
-        it('rejects the opposite Proxy direction', async () => {
-          fetchStub.resolves(
-            pageResponse([
-              eventBatch(
-                [logRecord()],
-                {
-                  proxy: { id: 'proxy-1' },
-                  transform_type: 'response_transform',
-                },
-                { type: 'proxy.log' }
-              ),
-            ])
-          );
-          expect(
-            await rejected(
-              readEventPage(
-                readerOptions({
-                  cursor,
-                  resourceType: 'proxy',
-                  resourceId: 'proxy-1',
-                  transformType: 'request_transform',
-                })
-              )
-            )
-          ).to.be.instanceOf(EventsReadError);
-        });
-      }
+  it('uses the Proxy endpoint and sends supported transform and message filters', async () => {
+    fetchStub.resolves(
+      pageResponse([
+        logRecord({
+          trace_id: 'customer_Order-42',
+          transform_type: 'response_transform',
+          level: 'warn',
+        }),
+      ])
+    );
+    await readRuntimeLogPage(
+      readerOptions({
+        resourceType: 'proxy',
+        resourceId: proxyId,
+        traceId: 'customer_Order-42',
+        transformType: 'response_transform',
+        level: 'warn',
+        text: 'Payment failed',
+      })
+    );
+
+    const url = new URL(String(fetchStub.firstCall.args[0]));
+
+    expect(url.pathname).to.equal(`/proxies/${proxyId}/logs`);
+    expect(url.searchParams.get('trace_id')).to.equal('customer_Order-42');
+    expect(url.searchParams.get('transform_type')).to.equal(
+      'response_transform'
+    );
+    expect(url.searchParams.get('message[search_words]')).to.equal(
+      'Payment failed'
     );
   });
 
-  [
-    { traceId: '' },
-    { traceId: '   ' },
-    { transformType: 'request_transform' as const },
-    {
-      resourceType: 'proxy' as const,
-      transformType: 'invalid' as ReadEventPageOptions['transformType'],
-    },
-    { start: Number.NaN },
-    { start: requestStart + 0.5 },
-    { start: requestEnd + 1 },
-    { end: Number.NaN },
-  ].forEach((filters) => {
-    it(`rejects invalid filter options ${JSON.stringify(
-      filters
-    )} before fetching`, async () => {
-      const error = await rejected(readEventPage(readerOptions(filters)));
+  it('preserves level case instead of silently changing the query', async () => {
+    fetchStub.resolves(pageResponse([]));
+    const page = await readRuntimeLogPage(readerOptions({ level: 'ERROR' }));
+    const query = new URL(String(fetchStub.firstCall.args[0])).searchParams;
+
+    expect(query.get('level')).to.equal('ERROR');
+    expect(page.records).to.deep.equal([]);
+  });
+
+  it('continues through the same SDK method with only the opaque cursor', async () => {
+    const cursor = 'opaque /cursor?value=1';
+
+    fetchStub
+      .onFirstCall()
+      .resolves(
+        pageResponse(
+          [
+            logRecord({
+              trace_id: 'exact-trace',
+              transform_type: 'request_transform',
+              level: 'error',
+            }),
+          ],
+          cursor
+        )
+      )
+      .onSecondCall()
+      .resolves(pageResponse([], null));
+    const options = readerOptions({
+      resourceType: 'proxy',
+      resourceId: proxyId,
+      traceId: 'exact-trace',
+      transformType: 'request_transform',
+      level: 'error',
+      text: 'word query',
+    });
+
+    const first = await readRuntimeLogPage(options);
+    const second = await readRuntimeLogPage({
+      ...options,
+      cursor: first.next!,
+    });
+    const continuation = new URL(String(fetchStub.secondCall.args[0]));
+
+    expect(first.records).to.have.length(1);
+    expect(second).to.deep.equal({
+      records: [],
+      next: null,
+    });
+    expect(continuation.pathname).to.equal(`/proxies/${proxyId}/logs`);
+    expect([...continuation.searchParams.entries()]).to.deep.equal([
+      ['start', cursor],
+    ]);
+  });
+
+  it('passes nonblank text unchanged and does not locally match messages', async () => {
+    fetchStub.resolves(
+      pageResponse([
+        logRecord({
+          message: 'not a match',
+        }),
+      ])
+    );
+    const text = '  Payment\tfailed  ';
+    const page = await readRuntimeLogPage(
+      readerOptions({
+        text,
+      })
+    );
+
+    expect(page.records[0].message).to.equal('not a match');
+    expect(
+      new URL(String(fetchStub.firstCall.args[0])).searchParams.get(
+        'message[search_words]'
+      )
+    ).to.equal(text);
+  });
+
+  it('rejects blank text and invalid request options before fetching', async () => {
+    const invalidOptions: Partial<ReadRuntimeLogPageOptions>[] = [
+      {
+        text: '',
+      },
+      {
+        text: ' \t\n ',
+      },
+      {
+        level: '',
+      },
+      {
+        level: ' \t ',
+      },
+      {
+        traceId: '',
+      },
+      {
+        traceId: '   ',
+      },
+      {
+        transformType: 'request_transform',
+      },
+      {
+        resourceType: 'proxy',
+        transformType: 'invalid' as ReadRuntimeLogPageOptions['transformType'],
+      },
+      {
+        start: Number.NaN,
+      },
+      {
+        start: requestStart + 0.5,
+      },
+      {
+        start: requestEnd + 1,
+      },
+      {
+        end: Number.NaN,
+      },
+    ];
+
+    for (const invalid of invalidOptions) {
+      // eslint-disable-next-line no-await-in-loop -- Each invalid option is checked before any HTTP request.
+      const error = await rejected(readRuntimeLogPage(readerOptions(invalid)));
 
       expect(error).to.be.instanceOf(Error);
       expect(fetchStub.called).to.be.false;
-    });
-  });
-
-  it('still enforces an explicit inclusive start', async () => {
-    fetchStub.resolves(
-      pageResponse([
-        eventBatch(
-          [logRecord()],
-          {},
-          { timestamp: new Date(requestStart - 1).toISOString() }
-        ),
-      ])
-    );
-    const error = await rejected(readEventPage(readerOptions()));
-
-    expect(error).to.be.instanceOf(EventsReadError);
-    fetchStub.resolves(
-      pageResponse([
-        eventBatch(
-          [logRecord({ message: 'at start' })],
-          {},
-          { timestamp: new Date(requestStart).toISOString() }
-        ),
-      ])
-    );
-    const page = await readEventPage(readerOptions());
-
-    expect(page.batches[0][0].message).to.equal('at start');
-    expect(page.batches[0][0].event_timestamp).to.equal(
-      new Date(requestStart).toISOString()
-    );
-  });
-
-  it('allows an absent trace and either direction without search filters', async () => {
-    for (const transformType of ['request_transform', 'response_transform']) {
-      fetchStub.resolves(
-        pageResponse([
-          eventBatch(
-            [logRecord({ message: transformType })],
-            {
-              proxy: { id: 'proxy-1' },
-              transform_type: transformType,
-            },
-            {
-              type: 'proxy.log',
-              trace_id: undefined,
-            }
-          ),
-        ])
-      );
-      // eslint-disable-next-line no-await-in-loop -- Both unfiltered directions are independent response contracts.
-      const page = await readEventPage(
-        readerOptions({
-          resourceType: 'proxy',
-          resourceId: 'proxy-1',
-        })
-      );
-
-      expect(page.batches[0][0].message).to.equal(transformType);
-      expect(page.batches[0][0].trace_id).to.equal(undefined);
     }
   });
 
@@ -311,310 +331,241 @@ describe('Events page reader', () => {
     }
   });
 
-  it('sends exact initial filters and only the opaque cursor on continuations', async () => {
-    const firstBatch = eventBatch([logRecord()], {
-      reactor: { id: 'reactor A&+' },
-    });
-
-    fetchStub
-      .onFirstCall()
-      .resolves(pageResponse([firstBatch], 'opaque /cursor?value=1'));
-    fetchStub.onSecondCall().resolves(pageResponse([], null));
-
-    const initial = readerOptions({
-      resourceId: 'reactor A&+',
-      origin: 'http://localhost:3210',
-    });
-    const first = await readEventPage(initial);
-    const second = await readEventPage({
-      ...initial,
-      cursor: first.next ?? undefined,
-    });
-
-    expect(first.batches).to.have.length(1);
-    expect(second).to.deep.equal({
-      batches: [],
-      next: null,
-    });
-    expect(String(fetchStub.firstCall.args[0])).to.equal(
-      'http://localhost:3210/events?start_date=2026-09-29T12%3A00%3A00.000Z&end_date=2026-09-29T12%3A05%3A00.000Z&size=20&type=reactor.log&data.reactor.id=reactor%20A%26%2B'
-    );
-    expect(String(fetchStub.secondCall.args[0])).to.equal(
-      'http://localhost:3210/events?start=opaque%20%2Fcursor%3Fvalue%3D1'
-    );
-
-    const [requestUrl, requestInit] = fetchStub.firstCall.args;
-
-    expect(new URL(String(requestUrl)).origin).to.equal(
-      'http://localhost:3210'
-    );
-    expect(requestInit?.method).to.equal('GET');
-    expect(requestInit?.redirect).to.equal('manual');
-    expect(new Headers(requestInit?.headers).get('accept')).to.equal(
-      'application/json'
-    );
-    expect(new Headers(requestInit?.headers).get('bt-api-key')).to.equal(
-      'fixture-api-key'
-    );
-    expect(requestInit?.signal).to.equal(initial.signal);
-  });
-
-  it('projects supported context and lifecycle/application fields without envelope extras', async () => {
+  it('projects flat application and lifecycle records without unknown response fields', async () => {
     const application = logRecord({
       message: null,
       attributes: {
-        resource_id: 'nested-value',
-        request: {
-          id: 'request-1',
+        nested: {
+          value: 'complete',
         },
+        resource_id: 'response-controlled-context',
       },
       error: {
-        type: 'TypeError',
-        message: 'invalid input',
-        stack_trace: 'public frame',
-        internal_stack: 'omit me',
+        name: 'CustomError',
+        cause: {
+          code: 4,
+        },
+        stack: ['complete'],
       },
+      tenant_id: 'not projected',
       internal_record_field: 'omit me',
     });
-    const lifecycle = {
-      occurred_at: eventTime,
-      sequence: 3,
+    const lifecycle = logRecord({
+      id: 'b'.repeat(64),
+      occurred_at: new Date(requestStart).toISOString(),
       source: 'platform',
       record_type: 'lifecycle',
+      level: undefined,
+      message: undefined,
       event: 'execution.completed',
       outcome: 'success',
-      duration_ms: 12.5,
+      duration_ms: 0,
       internal_record_field: 'omit me',
-    };
+    });
 
-    fetchStub.resolves(
-      pageResponse(
-        [
-          eventBatch(
-            [application, lifecycle],
-            { internal_data_field: 'omit me' },
-            {
-              trace_id: '',
-              internal_envelope_field: 'omit me',
-            }
-          ),
-        ],
-        null
-      )
-    );
+    fetchStub.resolves(pageResponse([application, lifecycle], null, 2));
 
-    const page = await readEventPage(readerOptions());
+    const page = await readRuntimeLogPage(readerOptions());
 
-    expect(page.batches[0]).to.deep.equal([
+    expect(page.records).to.deep.equal([
       {
-        event_id: 'event-1',
-        event_type: 'reactor.log',
-        event_timestamp: eventTime,
-        tenant_id: 'tenant-1',
-        trace_id: '',
-        resource_type: 'reactor',
-        resource_id: 'reactor-1',
-        invocation_id: 'invocation-1',
+        id: recordId,
         occurred_at: recordTime,
-        sequence: 1,
         source: 'application',
         record_type: 'log',
         level: 'info',
         message: null,
         attributes: {
-          resource_id: 'nested-value',
-          request: { id: 'request-1' },
+          nested: {
+            value: 'complete',
+          },
+          resource_id: 'response-controlled-context',
         },
         error: {
-          type: 'TypeError',
-          message: 'invalid input',
-          stack_trace: 'public frame',
+          name: 'CustomError',
+          cause: {
+            code: 4,
+          },
+          stack: ['complete'],
         },
       },
       {
-        event_id: 'event-1',
-        event_type: 'reactor.log',
-        event_timestamp: eventTime,
-        tenant_id: 'tenant-1',
-        trace_id: '',
-        resource_type: 'reactor',
-        resource_id: 'reactor-1',
-        invocation_id: 'invocation-1',
-        occurred_at: eventTime,
-        sequence: 3,
+        id: 'b'.repeat(64),
+        occurred_at: new Date(requestStart).toISOString(),
         source: 'platform',
         record_type: 'lifecycle',
         event: 'execution.completed',
         outcome: 'success',
-        duration_ms: 12.5,
+        duration_ms: 0,
       },
     ]);
   });
 
-  it('includes both Proxy transform directions without adding a direction filter', async () => {
-    for (const transformType of [
-      'request_transform',
-      'response_transform',
-    ] as const) {
-      fetchStub.reset();
-      fetchStub.resolves(
-        pageResponse([
-          eventBatch(
-            [logRecord()],
-            {
-              proxy: { id: 'proxy-1' },
-              transform_type: transformType,
-            },
-            { type: 'proxy.log' }
-          ),
-        ])
-      );
-
-      // eslint-disable-next-line no-await-in-loop -- Each Proxy direction is independently read and validated.
-      const page = await readEventPage(
-        readerOptions({
-          resourceType: 'proxy',
-          resourceId: 'proxy-1',
-        })
-      );
-
-      expect(page.batches[0][0].resource_type).to.equal('proxy');
-      expect(page.batches[0][0].transform_type).to.equal(transformType);
-      const url = new URL(String(fetchStub.firstCall.args[0]));
-
-      expect([...url.searchParams.keys()]).to.deep.equal([
-        'start_date',
-        'end_date',
-        'size',
-        'type',
-        'data.proxy.id',
-      ]);
-    }
-  });
-
-  it('accepts an empty page produced by a clamped or expired window', async () => {
-    fetchStub.resolves(pageResponse([], null, 0));
-
-    expect(await readEventPage(readerOptions())).to.deep.equal({
-      batches: [],
-      next: null,
-    });
-  });
-
-  it('keeps a continuation on an empty page', async () => {
-    fetchStub.resolves(pageResponse([], 'next-page', 0));
-
-    const page = await readEventPage(readerOptions({ cursor: 'current-page' }));
-
-    expect(page).to.deep.equal({
-      batches: [],
-      next: 'next-page',
-    });
-    expect(String(fetchStub.firstCall.args[0])).to.equal(
-      'https://api.example.com/events?start=current-page'
-    );
-  });
-
-  it('validates the complete page and rejects malformed sequences, scope, and optional fields', async () => {
-    const invalidBatches = [
-      eventBatch([logRecord()], {}, { type: 'other.log' }),
-      eventBatch([logRecord()], { reactor: { id: 'another-reactor' } }),
-      eventBatch([logRecord()], {}, { timestamp: '2026-09-29T12:05:00.000Z' }),
-      eventBatch([logRecord({ sequence: Number.MAX_SAFE_INTEGER + 1 })]),
-      eventBatch([logRecord({ source: 'console' })]),
-      eventBatch([logRecord({ message: 4 })]),
-      eventBatch([logRecord({ attributes: [] })]),
-      eventBatch([
-        logRecord({
-          error: {
-            type: 'Error',
-            message: 'bad',
-            stack_trace: 7,
-          },
-        }),
-      ]),
-      eventBatch([logRecord({ sequence: 2 }), logRecord()]),
+  it('preserves absent, null, and empty messages and allows unfiltered Proxy directions', async () => {
+    const records = [
+      logRecord({
+        id: '1'.repeat(64),
+        message: undefined,
+      }),
+      logRecord({
+        id: '2'.repeat(64),
+        message: null,
+      }),
+      logRecord({
+        id: '3'.repeat(64),
+        message: '',
+      }),
+      logRecord({
+        id: '4'.repeat(64),
+        transform_type: 'request_transform',
+      }),
+      logRecord({
+        id: '5'.repeat(64),
+        transform_type: 'response_transform',
+      }),
+      logRecord({
+        id: '6'.repeat(64),
+        transform_type: 'future_proxy_direction',
+      }),
+      logRecord({
+        id: '7'.repeat(64),
+        transform_type: undefined,
+      }),
     ];
 
-    for (const batch of invalidBatches) {
-      fetchStub.reset();
-      fetchStub.resolves(pageResponse([eventBatch(), batch]));
-      // eslint-disable-next-line no-await-in-loop -- Each malformed batch is checked independently.
-      const error = await rejected(readEventPage(readerOptions()));
+    fetchStub.resolves(pageResponse(records, null, records.length));
 
-      expect(error).to.be.instanceOf(EventsReadError);
-      expect((error as EventsReadError).retryable).to.equal(false);
-    }
-
-    fetchStub.reset();
-    fetchStub.resolves(
-      pageResponse([
-        eventBatch(
-          [logRecord()],
-          {
-            proxy: {
-              id: 'proxy-1',
-            },
-            transform_type: 'unknown_transform',
-          },
-          { type: 'proxy.log' }
-        ),
-      ])
-    );
-    const proxyError = await rejected(
-      readEventPage(
-        readerOptions({
-          resourceType: 'proxy',
-          resourceId: 'proxy-1',
-        })
-      )
+    const page = await readRuntimeLogPage(
+      readerOptions({
+        resourceType: 'proxy',
+        resourceId: proxyId,
+      })
     );
 
-    expect(proxyError).to.be.instanceOf(EventsReadError);
-    expect((proxyError as EventsReadError).retryable).to.equal(false);
-
-    const gapped = eventBatch([
-      logRecord({ sequence: 4 }),
-      logRecord({
-        sequence: 8,
-        occurred_at: eventTime,
-      }),
-    ]);
-
-    fetchStub.reset();
-    fetchStub.resolves(pageResponse([gapped]));
-    const page = await readEventPage(readerOptions());
-
-    expect(page.batches[0].map((record) => record.sequence)).to.deep.equal([
-      4, 8,
-    ]);
+    expect(page.records[0]).not.to.have.property('message');
+    expect(page.records[1]).to.have.property('message', null);
+    expect(page.records[2]).to.have.property('message', '');
+    expect(page.records[3].transform_type).to.equal('request_transform');
+    expect(page.records[4].transform_type).to.equal('response_transform');
+    expect(page.records[5].transform_type).to.equal('future_proxy_direction');
+    expect(page.records[6]).not.to.have.property('transform_type');
   });
 
-  it('rejects invalid page sizes, cursors, and a cursor repeated by its continuation', async () => {
-    for (const [next, pageSize] of [
-      [null, 1],
-      ['', 0],
-      ['x'.repeat(12_001), 0],
-      [4, 0],
-      ['same-cursor', 0],
+  it('enforces exact requested trace, direction, and level response filters', async () => {
+    for (const [filters, response] of [
+      [
+        {
+          traceId: 'wanted',
+        },
+        logRecord({
+          trace_id: 'WANTED',
+        }),
+      ],
+      [
+        {
+          resourceType: 'proxy' as const,
+          resourceId: proxyId,
+          transformType: 'response_transform' as const,
+        },
+        logRecord({
+          transform_type: 'request_transform',
+        }),
+      ],
+      [
+        {
+          level: 'error',
+        },
+        logRecord({
+          level: 'warn',
+        }),
+      ],
+      [
+        {
+          level: 'error',
+        },
+        logRecord({
+          level: undefined,
+        }),
+      ],
     ] as const) {
       fetchStub.reset();
-      fetchStub.resolves(pageResponse([], next, pageSize));
-      const options =
-        next === 'same-cursor'
-          ? readerOptions({ cursor: 'same-cursor' })
-          : readerOptions();
-      // eslint-disable-next-line no-await-in-loop -- Each invalid cursor/page-size combination is checked independently.
-      const error = await rejected(readEventPage(options));
+      fetchStub.resolves(pageResponse([response]));
+      // eslint-disable-next-line no-await-in-loop -- Each response-filter mismatch is independently rejected.
+      const error = await rejected(readRuntimeLogPage(readerOptions(filters)));
+
+      expect(error).to.be.instanceOf(EventsReadError);
+    }
+  });
+
+  it('accepts an occurrence exactly at the inclusive start bound', async () => {
+    fetchStub.resolves(
+      pageResponse([
+        logRecord({
+          occurred_at: new Date(requestStart).toISOString(),
+        }),
+      ])
+    );
+
+    const page = await readRuntimeLogPage(readerOptions());
+
+    expect(page.records[0].occurred_at).to.equal(
+      new Date(requestStart).toISOString()
+    );
+  });
+
+  it('rejects invalid record pairings, IDs, timestamps, optional values, and Reactor directions', async () => {
+    const invalidRecords = [
+      logRecord({
+        id: 'A'.repeat(64),
+      }),
+      logRecord({
+        id: 'f'.repeat(63),
+      }),
+      logRecord({
+        occurred_at: '2026-09-29T12:05:00.000Z',
+      }),
+      logRecord({
+        occurred_at: 'not a timestamp',
+      }),
+      logRecord({
+        source: 'platform',
+      }),
+      logRecord({
+        record_type: 'lifecycle',
+      }),
+      logRecord({
+        message: 4,
+      }),
+      logRecord({
+        level: null,
+      }),
+      logRecord({
+        duration_ms: Number.NaN,
+      }),
+      logRecord({
+        error: [],
+      }),
+      logRecord({
+        attributes: [],
+      }),
+      logRecord({
+        transform_type: 'request_transform',
+      }),
+    ];
+
+    for (const invalid of invalidRecords) {
+      fetchStub.reset();
+      fetchStub.resolves(pageResponse([invalid]));
+      // eslint-disable-next-line no-await-in-loop -- Each malformed raw record is validated as a whole page.
+      const error = await rejected(readRuntimeLogPage(readerOptions()));
 
       expect(error).to.be.instanceOf(EventsReadError);
       expect((error as EventsReadError).retryable).to.equal(false);
     }
   });
 
-  it('rejects missing cursors and pages larger than the requested size', async () => {
-    fetchStub.reset();
-    fetchStub.resolves(
+  it('validates the complete raw page and cursor contract', async () => {
+    const malformedResponses: Response[] = [
       new Response(
         JSON.stringify({
           data: [],
@@ -622,52 +573,143 @@ describe('Events page reader', () => {
             page_size: 0,
           },
         })
+      ),
+      pageResponse([], '', 0),
+      pageResponse([], 'x'.repeat(12_001), 0),
+      pageResponse([], 4, 0),
+      pageResponse([], null, 1),
+      pageResponse([], null, 1.5),
+      pageResponse(
+        Array.from(
+          {
+            length: 21,
+          },
+          () => logRecord()
+        ),
+        null,
+        21
+      ),
+      new Response(
+        JSON.stringify({
+          data: null,
+          pagination: {
+            next: null,
+            page_size: 0,
+          },
+        })
+      ),
+    ];
+
+    for (const response of malformedResponses) {
+      fetchStub.reset();
+      fetchStub.resolves(response);
+      // eslint-disable-next-line no-await-in-loop -- Each malformed envelope is rejected independently.
+      const error = await rejected(readRuntimeLogPage(readerOptions()));
+
+      expect(error).to.be.instanceOf(EventsReadError);
+    }
+
+    fetchStub.reset();
+    fetchStub.resolves(pageResponse([], 'same-cursor', 0));
+    const repeated = await rejected(
+      readRuntimeLogPage(
+        readerOptions({
+          cursor: 'same-cursor',
+        })
       )
     );
-    expect(await rejected(readEventPage(readerOptions()))).to.be.instanceOf(
-      EventsReadError
+
+    expect(repeated).to.be.instanceOf(EventsReadError);
+  });
+
+  it('rejects a page containing a later invalid record before returning any records', async () => {
+    fetchStub.resolves(
+      pageResponse([
+        logRecord(),
+        logRecord({
+          id: 'not-a-valid-log-id',
+        }),
+      ])
     );
+
+    const error = await rejected(readRuntimeLogPage(readerOptions()));
+
+    expect(error).to.be.instanceOf(EventsReadError);
+  });
+
+  it('rejects unsafe records before SDK decoding can warn with response content', async () => {
+    const warn = sinon.spy(console, 'warn');
+    const sensitiveId = 'invalid-log-id-secret';
+
+    fetchStub.resolves(
+      pageResponse([
+        logRecord({
+          id: sensitiveId,
+        }),
+      ])
+    );
+
+    const invalidRecord = await rejected(readRuntimeLogPage(readerOptions()));
+
+    expect((invalidRecord as Error).message).to.equal(
+      'Events returned an invalid response page.'
+    );
+    expect(warn.called).to.equal(false);
 
     fetchStub.reset();
     fetchStub.resolves(
-      pageResponse(
-        Array.from({ length: 21 }, () => eventBatch()),
-        'next',
-        21
+      new Response(
+        JSON.stringify({
+          data: null,
+          pagination: {
+            next: null,
+            page_size: 0,
+          },
+        })
       )
     );
-    expect(await rejected(readEventPage(readerOptions()))).to.be.instanceOf(
-      EventsReadError
+
+    const invalidData = await rejected(readRuntimeLogPage(readerOptions()));
+
+    expect((invalidData as Error).message).to.equal(
+      'Events returned an invalid response page.'
     );
+    expect(warn.called).to.equal(false);
+    expect((invalidRecord as Error).message).not.to.include(sensitiveId);
   });
 
-  it('rejects malformed JSON without exposing the parser error', async () => {
-    fetchStub.resolves(new Response('{"data":', { status: 200 }));
+  it('rejects malformed JSON without exposing parser details', async () => {
+    fetchStub.resolves(
+      new Response('{"data":', {
+        status: 200,
+      })
+    );
 
-    const error = await rejected(readEventPage(readerOptions()));
+    const error = await rejected(readRuntimeLogPage(readerOptions()));
 
     expect(error).to.be.instanceOf(EventsReadError);
     expect((error as Error).message).not.to.include('data');
     expect((error as EventsReadError).retryable).to.equal(false);
   });
 
-  it('counts and bounds streamed unsuccessful response bodies without retrying a cap error', async () => {
+  it('counts and bounds streamed response bodies without retrying a cap error', async () => {
     let cancelled = false;
     const oversized = new Uint8Array(8 * 1024 * 1024 + 1);
     const body = new ReadableStream<Uint8Array>({
-      start: (controller) => {
-        controller.enqueue(oversized);
-      },
+      start: (controller) => controller.enqueue(oversized),
       cancel: () => {
         cancelled = true;
       },
     });
 
-    fetchStub.resolves(new Response(body, { status: 503 }));
+    fetchStub.resolves(
+      new Response(body, {
+        status: 503,
+      })
+    );
     let receivedBytes = 0;
-
     const error = await rejected(
-      readEventPage(
+      readRuntimeLogPage(
         readerOptions({
           onBytes: (bytes) => {
             receivedBytes += bytes;
@@ -682,7 +724,7 @@ describe('Events page reader', () => {
     expect((error as EventsReadError).retryable).to.equal(false);
   });
 
-  it('cancels a pending unsuccessful body read when its request signal aborts', async () => {
+  it('cancels a pending response body read when its request signal aborts', async () => {
     const controller = new AbortController();
     let cancelled = false;
     const body = new ReadableStream<Uint8Array>({
@@ -698,10 +740,13 @@ describe('Events page reader', () => {
       },
     });
 
-    fetchStub.resolves(new Response(body, { status: 503 }));
+    fetchStub.resolves(
+      new Response(body, {
+        status: 503,
+      })
+    );
     let receivedChunks = 0;
-
-    const pending = readEventPage(
+    const pending = readRuntimeLogPage(
       readerOptions({
         signal: controller.signal,
         onBytes: () => {
@@ -723,10 +768,14 @@ describe('Events page reader', () => {
       retryable: true,
     });
 
-    fetchStub.resolves(new Response('unavailable', { status: 503 }));
+    fetchStub.resolves(
+      new Response('unavailable', {
+        status: 503,
+      })
+    );
 
     const error = await rejected(
-      readEventPage(
+      readRuntimeLogPage(
         readerOptions({
           onBytes: () => {
             throw capError;
@@ -744,24 +793,21 @@ describe('Events page reader', () => {
     it(`preserves HTTP ${status} retry policy when its body read fails`, async () => {
       const chunk = new TextEncoder().encode('private body');
       const body = new ReadableStream<Uint8Array>({
-        start: (controller) => {
-          controller.enqueue(chunk);
-        },
-        pull: (controller) => {
-          controller.error(new Error('private stream failure'));
-        },
+        start: (controller) => controller.enqueue(chunk),
+        pull: (controller) => controller.error(new Error('private failure')),
       });
 
       fetchStub.resolves(
         new Response(body, {
           status,
-          headers: { 'retry-after': '30' },
+          headers: {
+            'retry-after': '30',
+          },
         })
       );
       let receivedBytes = 0;
-
       const error = await rejected(
-        readEventPage(
+        readRuntimeLogPage(
           readerOptions({
             onBytes: (bytes) => {
               receivedBytes += bytes;
@@ -782,11 +828,36 @@ describe('Events page reader', () => {
     });
   });
 
-  it('marks transport failures and transient statuses retryable without leaking response data', async () => {
+  it('reports log:read permission and safe query diagnostics', async () => {
+    fetchStub.resolves(
+      new Response('private body', {
+        status: 403,
+      })
+    );
+    const forbidden = await rejected(readRuntimeLogPage(readerOptions()));
+
+    expect((forbidden as Error).message).to.equal(
+      'Events denied the request (HTTP 403): the API key needs log:read.'
+    );
+
+    fetchStub.reset();
+    fetchStub.resolves(
+      new Response('private body', {
+        status: 400,
+      })
+    );
+    const invalid = await rejected(readRuntimeLogPage(readerOptions()));
+
+    expect((invalid as Error).message).to.equal(
+      'Events rejected the request (HTTP 400): invalid log query, resource UUID, or invalid/mismatched cursor.'
+    );
+  });
+
+  it('marks transport failures and transient statuses retryable without leaking data', async () => {
     fetchStub.rejects(
       new Error('secret key fixture-api-key and cursor raw-cursor')
     );
-    const transportError = await rejected(readEventPage(readerOptions()));
+    const transportError = await rejected(readRuntimeLogPage(readerOptions()));
 
     expect(transportError).to.be.instanceOf(EventsReadError);
     expect((transportError as EventsReadError).retryable).to.equal(true);
@@ -797,10 +868,12 @@ describe('Events page reader', () => {
     fetchStub.resolves(
       new Response('private response body', {
         status: 429,
-        headers: { 'retry-after': '7' },
+        headers: {
+          'retry-after': '7',
+        },
       })
     );
-    const statusError = await rejected(readEventPage(readerOptions()));
+    const statusError = await rejected(readRuntimeLogPage(readerOptions()));
 
     expect(statusError).to.be.instanceOf(EventsReadError);
     expect((statusError as EventsReadError).retryable).to.equal(true);
@@ -817,20 +890,26 @@ describe('Events page reader', () => {
     fetchStub.resolves(
       new Response('private error body', {
         status: 503,
-        headers: { 'retry-after': new Date(now + 15_000).toUTCString() },
+        headers: {
+          'retry-after': new Date(now + 15_000).toUTCString(),
+        },
       })
     );
 
-    const unavailable = await rejected(readEventPage(readerOptions()));
+    const unavailable = await rejected(readRuntimeLogPage(readerOptions()));
 
     expect((unavailable as EventsReadError).retryable).to.equal(true);
     expect((unavailable as EventsReadError).retryAfterMs).to.equal(15_000);
 
     for (const status of [400, 401, 403, 500]) {
       fetchStub.reset();
-      fetchStub.resolves(new Response('private error body', { status }));
-      // eslint-disable-next-line no-await-in-loop -- Each permanent status is asserted independently.
-      const error = await rejected(readEventPage(readerOptions()));
+      fetchStub.resolves(
+        new Response('private error body', {
+          status,
+        })
+      );
+      // eslint-disable-next-line no-await-in-loop -- Each permanent status is checked independently.
+      const error = await rejected(readRuntimeLogPage(readerOptions()));
 
       expect(error).to.be.instanceOf(EventsReadError);
       expect((error as EventsReadError).retryable).to.equal(false);
@@ -842,11 +921,13 @@ describe('Events page reader', () => {
     fetchStub.resolves(
       new Response('redirect response body', {
         status: 302,
-        headers: { location: 'https://redirect.example.com/events' },
+        headers: {
+          location: 'https://redirect.example.com/logs',
+        },
       })
     );
 
-    const error = await rejected(readEventPage(readerOptions()));
+    const error = await rejected(readRuntimeLogPage(readerOptions()));
 
     expect(fetchStub.callCount).to.equal(1);
     expect(fetchStub.firstCall.args[1]?.redirect).to.equal('manual');
