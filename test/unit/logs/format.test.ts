@@ -2,23 +2,16 @@
 
 /* eslint-disable camelcase, unicorn/no-null */
 import { expect } from 'chai';
-import type { EventLogRecord } from '../../../src/logs/events';
+import type { RuntimeLogRecord } from '../../../src/logs/events';
 import { formatRuntimeLogRecord } from '../../../src/logs/format';
 
 const fixtureRecord = (
-  overrides: Partial<EventLogRecord> = {}
-): EventLogRecord => ({
-  event_id: 'internal-event',
-  event_type: 'proxy.log',
-  event_timestamp: '2026-09-29T12:00:00.000Z',
-  tenant_id: 'internal-tenant',
+  overrides: Partial<RuntimeLogRecord> = {}
+): RuntimeLogRecord => ({
+  id: 'a'.repeat(64),
   trace_id: 'trace-full-id',
-  resource_type: 'proxy',
-  resource_id: 'proxy-example',
-  invocation_id: 'internal-invocation',
   transform_type: 'response_transform',
   occurred_at: '2026-09-29T11:59:59.000Z',
-  sequence: 12,
   source: 'application',
   record_type: 'log',
   level: 'info',
@@ -28,9 +21,9 @@ const fixtureRecord = (
     event_id: 'customer attribute',
   },
   error: {
-    type: 'ExampleError',
-    message: 'details retained',
-    stack_trace: 'stack retained',
+    name: 'CustomError',
+    cause: { code: 4 },
+    stack: ['complete'],
   },
   event: 'execution.completed',
   outcome: 'success',
@@ -118,16 +111,14 @@ describe('runtime log formatting', () => {
     const output = formatRuntimeLogRecord(record, {
       format: 'pretty',
       color: true,
-      includeResourceHeader: true,
     });
     // eslint-disable-next-line no-control-regex -- Strip only generated SGR color sequences for output assertions.
     const visible = output.replace(/\u001B\[[0-9;]*m/gu, '');
 
-    expect(output).to.include('\u001B[36mproxy proxy-example\u001B[0m');
+    expect(visible).to.match(/^2026-09-29T11:59:59\.000Z ERROR /u);
     expect(output).to.include('\u001B[31mERROR\u001B[0m');
-    expect(visible).to.include(
-      '2026-09-29T11:59:59.000Z ERROR trace=trace-full-id response_transform unsafe'
-    );
+    expect(visible).to.include(` trace_id=${record.trace_id} `);
+    expect(visible).to.include(' response_transform ');
     expect(visible).to.include('unsafe\\u001b[31m message\\n\\u202e');
     expect(visible).to.include(' | {"marker":"kept","nested":{"ordinal":4}}\n');
     expect(visible).to.include('  error:\n  {\n');
@@ -144,7 +135,7 @@ describe('runtime log formatting', () => {
       },
       {
         level: 'info',
-        ansi: 'INFO trace=trace-full-id',
+        ansi: 'INFO',
       },
       {
         level: 'warn',
@@ -211,12 +202,8 @@ describe('runtime log formatting', () => {
       }
     );
 
-    expect(success).to.include(
-      '\u001B[32mexecution.completed\u001B[0m trace=trace-full-id response_transform outcome=success duration=1475.492ms'
-    );
-    expect(failure).to.include(
-      '\u001B[31mexecution.completed\u001B[0m trace=trace-full-id response_transform outcome=failure duration=0ms'
-    );
+    expect(success).to.include('\u001B[32mexecution.completed\u001B[0m');
+    expect(failure).to.include('\u001B[31mexecution.completed\u001B[0m');
     expect(neutral).to.include('\u001B[36mexecution.started\u001B[0m');
   });
 
@@ -273,7 +260,7 @@ describe('runtime log formatting', () => {
   });
 
   it('colors warning and error messages while leaving other messages and attribute values plain', () => {
-    for (const format of ['json', 'json-pretty'] as const) {
+    for (const format of ['pretty', 'json', 'json-pretty'] as const) {
       for (const level of ['debug', 'info', 'warn', 'warning', 'error']) {
         const record = fixtureRecord({
           level,
@@ -290,18 +277,20 @@ describe('runtime log formatting', () => {
           format,
           color: true,
         });
+        const message =
+          format === 'pretty' ? 'request message' : '"request message"';
 
         if (level === 'error') {
-          expect(output).to.include('\u001B[31m"request message"\u001B[0m');
+          expect(output).to.include(`\u001B[31m${message}\u001B[0m`);
         } else if (level === 'warn' || level === 'warning') {
-          expect(output).to.include('\u001B[33m"request message"\u001B[0m');
+          expect(output).to.include(`\u001B[33m${message}\u001B[0m`);
         } else {
           expect(output).to.include(
-            format === 'json' ? ':"request message"' : ': "request message"'
+            format === 'json' ? `:${message}` : ` ${message}`
           );
         }
 
-        if (level === 'info') {
+        if (level === 'info' && format !== 'pretty') {
           expect(output).to.include(
             format === 'json'
               ? '"level"\u001B[0m:"info"'
@@ -311,8 +300,8 @@ describe('runtime log formatting', () => {
 
         expect(output).not.to.include('\u001B[31m"nested');
         expect(output).not.to.include('\u001B[33m"nested');
-        expect(JSON.parse(stripAnsi(output))).to.deep.equal(
-          JSON.parse(formatRuntimeLogRecord(record, { format }))
+        expect(stripAnsi(output)).to.equal(
+          formatRuntimeLogRecord(record, { format })
         );
       }
     }
@@ -337,6 +326,70 @@ describe('runtime log formatting', () => {
         )
       );
     }
+  });
+});
+
+describe('runtime log raw-value preservation', () => {
+  it('preserves absent, null, and empty messages with arbitrary diagnostics', () => {
+    const diagnostics = {
+      name: 'CustomError',
+      cause: { code: 4 },
+      stack: ['complete'],
+    };
+    const attributes = { nested: { values: [false, null, 0, ''] } };
+
+    for (const message of [undefined, null, '']) {
+      const record = fixtureRecord({
+        message,
+        error: diagnostics,
+        attributes,
+        duration_ms: 0,
+      });
+
+      if (message === undefined) {
+        delete record.message;
+      }
+
+      for (const format of ['json', 'json-pretty'] as const) {
+        const parsed = JSON.parse(
+          formatRuntimeLogRecord(record, { format })
+        ) as Record<string, unknown>;
+
+        expect(
+          Object.prototype.hasOwnProperty.call(parsed, 'message')
+        ).to.equal(message !== undefined);
+        expect(parsed.message).to.equal(message);
+        expect(parsed.duration_ms).to.equal(0);
+        expect(parsed.error).to.deep.equal(diagnostics);
+        expect(parsed.attributes).to.deep.equal(attributes);
+        expect(parsed).not.to.have.any.keys('id', 'source', 'record_type');
+      }
+
+      const pretty = formatRuntimeLogRecord(record, { format: 'pretty' });
+
+      expect(pretty).to.include('"name": "CustomError"');
+      expect(pretty).to.include('"code": 4');
+      expect(pretty).to.include('"complete"');
+      expect(pretty).to.include('{"nested":{"values":[false,null,0,""]}}');
+    }
+  });
+
+  it('escapes an unfiltered future Proxy direction without inferring lifecycle', () => {
+    const output = formatRuntimeLogRecord(
+      fixtureRecord({
+        transform_type: 'future\u001B[31m\n\u202E',
+        event: 'application.event',
+        message: 'application message',
+      }),
+      { format: 'pretty' }
+    );
+
+    expect(output).to.include('future\\u001b[31m\\n\\u202e');
+    expect(output).to.include('trace-full-id');
+    expect(output).to.include('application message');
+    expect(output).not.to.include('application.event');
+    expect(output).not.to.include('\u001B');
+    expect(output).not.to.include('\u202E');
   });
 });
 /* eslint-enable camelcase, unicorn/no-null */

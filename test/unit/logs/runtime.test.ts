@@ -2,24 +2,25 @@
 
 /* eslint-disable no-await-in-loop */
 
-/* Null is part of the Events response, pagination, and optional-argument contracts. */
+/* Null is part of the runtime-log response and pagination contract. */
 
 /* eslint-disable unicorn/no-null */
 
 /* Assertions intentionally use public JSON fields as spelled on the wire. */
 
 /* eslint-disable camelcase */
+import * as confirm from '@inquirer/confirm';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import type { RuntimeLogFormat } from '../../../src/logs/format';
-import { followEventLogs, readEventLogs } from '../../../src/logs/runtime';
+import { followRuntimeLogs, readRuntimeLogs } from '../../../src/logs/runtime';
 import type { LogWindow } from '../../../src/logs/time';
 import {
   CapturedWritable,
   deferred,
-  eventsResponse,
-  fixtureEvent,
+  fixtureLog,
   FOLLOWER_TEST_NOW,
+  logsResponse,
 } from './follow-fixture';
 
 interface ProcessOutputCapture {
@@ -35,9 +36,17 @@ type FollowOptions = {
   resourceType: 'reactor' | 'proxy';
   resourceId: string;
   traceId?: string;
+  transformType?: 'request_transform' | 'response_transform';
+  text?: string;
+  level?: string;
   format: RuntimeLogFormat;
   window?: LogWindow;
 };
+
+interface PendingConfirmation {
+  resolve: (answer: boolean) => void;
+  cancel: sinon.SinonSpy;
+}
 
 type WriteCallback = (error?: Error | null) => void;
 
@@ -65,7 +74,9 @@ const writeToCapture = (
 const captureProcessOutput = (
   sandbox: sinon.SinonSandbox
 ): ProcessOutputCapture => {
-  const stdout = new CapturedWritable({ highWaterMark: 1 });
+  const stdout = new CapturedWritable({
+    highWaterMark: 1,
+  });
   const stderr = new CapturedWritable();
   const originalDestroyed = Object.getOwnPropertyDescriptor(
     process.stdout,
@@ -76,14 +87,13 @@ const captureProcessOutput = (
     'errored'
   );
 
-  // Mirror public stream state alongside the captured writes and events.
   Object.defineProperties(process.stdout, {
-    // eslint-disable-next-line accessor-pairs -- Captured stream state is a read-only projection.
+    // eslint-disable-next-line accessor-pairs -- Capture exposes read-only stream state.
     destroyed: {
       configurable: true,
       get: () => stdout.destroyed,
     },
-    // eslint-disable-next-line accessor-pairs -- Captured stream state is a read-only projection.
+    // eslint-disable-next-line accessor-pairs -- Capture exposes read-only stream state.
     errored: {
       configurable: true,
       get: () => stdout.errored,
@@ -114,7 +124,7 @@ const captureProcessOutput = (
         stdout,
         chunk,
         encoding,
-        callback as WriteCallback | undefined
+        callback as WriteCallback
       )) as typeof process.stdout.write);
   const stderrWrite = sandbox
     .stub(process.stderr, 'write')
@@ -123,7 +133,7 @@ const captureProcessOutput = (
         stderr,
         chunk,
         encoding,
-        callback as WriteCallback | undefined
+        callback as WriteCallback
       )) as typeof process.stderr.write);
   let writesRestored = false;
   const restoreWrites = (): void => {
@@ -178,21 +188,8 @@ const delayedFetchResponse = (
   onSettled: () => void
 ): Promise<Response> => {
   const pending = deferred<Response>();
-
-  if (signal?.aborted) {
-    onSettled();
-    pending.reject(
-      signal.reason instanceof Error
-        ? signal.reason
-        : new Error('Request aborted.')
-    );
-
-    return pending.promise;
-  }
-
   const onAbort = (): void => {
-    // Cancellation is registered only after the timer has been initialized.
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- Abort is registered after timer initialization.
     clearTimeout(timer);
     signal?.removeEventListener('abort', onAbort);
     onSettled();
@@ -202,14 +199,15 @@ const delayedFetchResponse = (
         : new Error('Request aborted.')
     );
   };
-
   const timer = setTimeout(() => {
     signal?.removeEventListener('abort', onAbort);
     onSettled();
     pending.resolve(response);
   }, delayMs);
 
-  signal?.addEventListener('abort', onAbort, { once: true });
+  signal?.addEventListener('abort', onAbort, {
+    once: true,
+  });
 
   return pending.promise;
 };
@@ -237,7 +235,9 @@ const fetchUntilAbort = (
           ? signal.reason
           : new Error('Request was aborted.')
       ),
-    { once: true }
+    {
+      once: true,
+    }
   );
 
   return pending.promise;
@@ -248,11 +248,43 @@ const requestUrl = (stub: sinon.SinonStub, index: number): URL => {
 
   return new URL(input instanceof Request ? input.url : String(input));
 };
+const respondWithEmptyPage = (): Promise<Response> =>
+  Promise.resolve(logsResponse());
 
 const jsonRecords = (stream: CapturedWritable): Record<string, unknown>[] =>
   stream.lines.map((line) => JSON.parse(line) as Record<string, unknown>);
 
-describe('logs runtime reads and tailing', () => {
+const setTTY = (stdin: boolean, stdout: boolean, stderr: boolean): void => {
+  // Model an available terminal independently of the test runner's real stdin EOF.
+  Object.defineProperties(process.stdin, {
+    readable: {
+      configurable: true,
+      value: true,
+    },
+    readableEnded: {
+      configurable: true,
+      value: false,
+    },
+    destroyed: {
+      configurable: true,
+      value: false,
+    },
+  });
+  Object.defineProperty(process.stdin, 'isTTY', {
+    configurable: true,
+    value: stdin,
+  });
+  Object.defineProperty(process.stdout, 'isTTY', {
+    configurable: true,
+    value: stdout,
+  });
+  Object.defineProperty(process.stderr, 'isTTY', {
+    configurable: true,
+    value: stderr,
+  });
+};
+
+describe('runtime-log reads and tailing', () => {
   let sandbox: sinon.SinonSandbox;
   let clock: sinon.SinonFakeTimers;
   let fetchStub: sinon.SinonStub;
@@ -261,10 +293,26 @@ describe('logs runtime reads and tailing', () => {
   let originalNoColor: string | undefined;
   let originalTerm: string | undefined;
   let originalExitCode: number | undefined;
-  let originalTtyDescriptor: PropertyDescriptor | undefined;
+  let originalTtyDescriptors: [
+    NodeJS.ReadStream | NodeJS.WriteStream,
+    PropertyDescriptor | undefined
+  ][];
+  let originalInputHealthDescriptors: [
+    string,
+    PropertyDescriptor | undefined
+  ][];
+  let originalRawDescriptor: PropertyDescriptor | undefined;
+  let originalFlowDescriptor: PropertyDescriptor | undefined;
+  let originalSetRawModeDescriptor: PropertyDescriptor | undefined;
+  let originalInputRaw: boolean | undefined;
+  let confirmStub: sinon.SinonStub;
   let originalListenerCounts: {
     sigint: number;
     sigterm: number;
+    stdinKeypress: number;
+    stdinError: number;
+    stdinEnd: number;
+    stdinClose: number;
     stdoutDrain: number;
     stdoutError: number;
     stderrDrain: number;
@@ -275,16 +323,14 @@ describe('logs runtime reads and tailing', () => {
     apiKey: 'fixture-management-key',
     apiBaseUrl: 'https://events.fixture.test',
     resourceType: 'reactor',
-    resourceId: 'reactor-fixture',
+    resourceId: 'c806e731-925a-4157-9f7a-3710a590cd6a',
     format: 'json',
   };
-
   const observeRejection = (promise: Promise<void>): void => {
     promise.then(undefined, () => undefined);
   };
-
   const startTail = (overrides: Partial<FollowOptions> = {}): Promise<void> => {
-    activeTail = followEventLogs({
+    activeTail = followRuntimeLogs({
       ...baseOptions,
       window: {
         start: FOLLOWER_TEST_NOW - 300_000,
@@ -296,9 +342,8 @@ describe('logs runtime reads and tailing', () => {
 
     return activeTail;
   };
-
   const startRead = (overrides: Partial<FollowOptions> = {}): Promise<void> => {
-    activeTail = readEventLogs({
+    activeTail = readRuntimeLogs({
       ...baseOptions,
       ...overrides,
       window: overrides.window ?? {
@@ -314,11 +359,36 @@ describe('logs runtime reads and tailing', () => {
   beforeEach(() => {
     originalNoColor = process.env.NO_COLOR;
     originalTerm = process.env.TERM;
-    originalExitCode = process.exitCode;
-    originalTtyDescriptor = Object.getOwnPropertyDescriptor(
-      process.stdout,
-      'isTTY'
+    originalTtyDescriptors = [
+      [process.stdin, Object.getOwnPropertyDescriptor(process.stdin, 'isTTY')],
+      [
+        process.stdout,
+        Object.getOwnPropertyDescriptor(process.stdout, 'isTTY'),
+      ],
+      [
+        process.stderr,
+        Object.getOwnPropertyDescriptor(process.stderr, 'isTTY'),
+      ],
+    ];
+    originalInputHealthDescriptors = [
+      'readable',
+      'readableEnded',
+      'destroyed',
+    ].map((key) => [key, Object.getOwnPropertyDescriptor(process.stdin, key)]);
+    originalRawDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdin,
+      'isRaw'
     );
+    originalFlowDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdin,
+      'readableFlowing'
+    );
+    originalSetRawModeDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdin,
+      'setRawMode'
+    );
+    originalInputRaw = process.stdin.isRaw;
+    originalExitCode = process.exitCode;
     delete process.env.NO_COLOR;
     process.env.TERM = 'xterm-256color';
     process.exitCode = undefined;
@@ -329,9 +399,14 @@ describe('logs runtime reads and tailing', () => {
     });
     output = captureProcessOutput(sandbox);
     fetchStub = sandbox.stub(globalThis, 'fetch');
+    confirmStub = sandbox.stub(confirm, 'default').resolves(false);
     originalListenerCounts = {
       sigint: process.listenerCount('SIGINT'),
       sigterm: process.listenerCount('SIGTERM'),
+      stdinKeypress: process.stdin.listenerCount('keypress'),
+      stdinError: process.stdin.listenerCount('error'),
+      stdinEnd: process.stdin.listenerCount('end'),
+      stdinClose: process.stdin.listenerCount('close'),
       stdoutDrain: process.stdout.listenerCount('drain'),
       stdoutError: process.stdout.listenerCount('error'),
       stderrDrain: process.stderr.listenerCount('drain'),
@@ -339,6 +414,28 @@ describe('logs runtime reads and tailing', () => {
     };
     activeTail = undefined;
   });
+
+  const pendingConfirmation = (callIndex?: number): PendingConfirmation => {
+    let resolve!: (answer: boolean) => void;
+    const promise = new Promise<boolean>((resolvePromise) => {
+      resolve = resolvePromise;
+    });
+    const cancel = sinon.spy(() => resolve(false));
+    const cancelable = Object.assign(promise, {
+      cancel,
+    });
+
+    if (callIndex === undefined) {
+      confirmStub.returns(cancelable);
+    } else {
+      confirmStub.onCall(callIndex).returns(cancelable);
+    }
+
+    return {
+      resolve,
+      cancel,
+    };
+  };
 
   afterEach(async () => {
     if (activeTail) {
@@ -352,6 +449,10 @@ describe('logs runtime reads and tailing', () => {
     const listenerCounts = {
       sigint: process.listenerCount('SIGINT'),
       sigterm: process.listenerCount('SIGTERM'),
+      stdinKeypress: process.stdin.listenerCount('keypress'),
+      stdinError: process.stdin.listenerCount('error'),
+      stdinEnd: process.stdin.listenerCount('end'),
+      stdinClose: process.stdin.listenerCount('close'),
       stdoutDrain: process.stdout.listenerCount('drain'),
       stdoutError: process.stdout.listenerCount('error'),
       stderrDrain: process.stderr.listenerCount('drain'),
@@ -374,418 +475,433 @@ describe('logs runtime reads and tailing', () => {
       process.env.TERM = originalTerm;
     }
 
-    if (originalTtyDescriptor) {
-      Object.defineProperty(process.stdout, 'isTTY', originalTtyDescriptor);
+    for (const [stream, descriptor] of originalTtyDescriptors) {
+      if (descriptor) {
+        Object.defineProperty(stream, 'isTTY', descriptor);
+      } else {
+        Reflect.deleteProperty(stream, 'isTTY');
+      }
+    }
+
+    for (const [key, descriptor] of originalInputHealthDescriptors) {
+      if (descriptor) {
+        Object.defineProperty(process.stdin, key, descriptor);
+      } else {
+        Reflect.deleteProperty(process.stdin, key);
+      }
+    }
+
+    if (originalRawDescriptor) {
+      Object.defineProperty(process.stdin, 'isRaw', originalRawDescriptor);
     } else {
-      Reflect.deleteProperty(process.stdout, 'isTTY');
+      Reflect.deleteProperty(process.stdin, 'isRaw');
+    }
+
+    if (originalFlowDescriptor) {
+      Object.defineProperty(
+        process.stdin,
+        'readableFlowing',
+        originalFlowDescriptor
+      );
+    } else {
+      Reflect.deleteProperty(process.stdin, 'readableFlowing');
+    }
+
+    if (originalSetRawModeDescriptor) {
+      Object.defineProperty(
+        process.stdin,
+        'setRawMode',
+        originalSetRawModeDescriptor
+      );
+    } else {
+      Reflect.deleteProperty(process.stdin, 'setRawMode');
     }
 
     process.exitCode = originalExitCode;
-
-    expect(listenerCounts).to.deep.equal(originalListenerCounts);
     expect(remainingTimers).to.equal(0);
+    expect(listenerCounts).to.deep.equal(originalListenerCounts);
   });
 
-  it('prints finite read pages promptly, follows empty continuations, deduplicates, then exits', async () => {
+  it('reverses the complete traversal with timestamp ties and opaque IDs', async () => {
     const continuation = deferred<Response>();
-    const first = fixtureEvent({ records: [{ message: 'first' }] });
+    const first = fixtureLog({
+      id: '2'.repeat(64),
+      message: 'first tie',
+    });
+    const second = fixtureLog({
+      id: 'f'.repeat(64),
+      message: 'second tie',
+    });
+    const older = fixtureLog({
+      id: '1'.repeat(64),
+      occurredAt: new Date(FOLLOWER_TEST_NOW - 2_000).toISOString(),
+      message: 'older',
+    });
 
-    fetchStub.onFirstCall().resolves(eventsResponse([first], 'next-page'));
+    fetchStub
+      .onFirstCall()
+      .resolves(logsResponse([first, second], 'opaque-page'));
     fetchStub.onSecondCall().returns(continuation.promise);
-    fetchStub.onThirdCall().resolves(
-      eventsResponse([
-        {
-          ...first,
-          id: 'redelivered',
-          timestamp: new Date(FOLLOWER_TEST_NOW - 500).toISOString(),
-        },
-        fixtureEvent({
-          records: [
-            {
-              sequence: 1,
-              message: 'second',
-            },
-          ],
-        }),
-      ])
-    );
-    const reading = startRead();
+    fetchStub.onThirdCall().resolves(logsResponse([older, first]));
+    const reading = startRead({
+      text: ' Payment failed ',
+    });
 
     await flushAsyncWork(clock);
-    expect(output.stdout.lines).to.have.length(1);
-    expect(fetchStub.callCount).to.equal(2);
-    continuation.resolve(eventsResponse([], 'last-page'));
+    expect(output.stdout.text).to.equal('');
+    continuation.resolve(logsResponse([], 'last-page'));
     await reading;
-
     expect(
       jsonRecords(output.stdout).map((record) => record.message)
-    ).to.deep.equal(['first', 'second']);
+    ).to.deep.equal(['older', 'second tie', 'first tie']);
+    expect(requestUrl(fetchStub, 0).pathname).to.equal(
+      `/reactors/${baseOptions.resourceId}/logs`
+    );
+    expect(
+      requestUrl(fetchStub, 0).searchParams.get('message[search_words]')
+    ).to.equal(' Payment failed ');
     expect([...requestUrl(fetchStub, 1).searchParams.entries()]).to.deep.equal([
-      ['start', 'next-page'],
+      ['start', 'opaque-page'],
     ]);
     expect([...requestUrl(fetchStub, 2).searchParams.entries()]).to.deep.equal([
       ['start', 'last-page'],
     ]);
-    expect(clock.countTimers()).to.equal(0);
-    expect(process.exitCode).to.equal(undefined);
-    expect(output.stderr.lines).to.deep.equal([]);
-    await clock.tickAsync(10_000);
-    expect(fetchStub.callCount).to.equal(3);
   });
 
-  it('reads the requested historical batch window while preserving record occurrence timestamps', async () => {
-    const start = FOLLOWER_TEST_NOW - 3_600_000;
-    const end = FOLLOWER_TEST_NOW - 1_800_000;
-    const occurredAt = new Date(start - 1_000).toISOString();
-
-    fetchStub.resolves(
-      eventsResponse([
-        fixtureEvent({
-          timestamp: new Date(start).toISOString(),
-          records: [
-            {
-              occurredAt,
-              message: 'batch start is included',
-            },
-          ],
-        }),
-      ])
-    );
-    await startRead({
-      window: {
-        start,
-        end,
-      },
-    });
-
-    expect(requestUrl(fetchStub, 0).searchParams.get('start_date')).to.equal(
-      new Date(start).toISOString()
-    );
-    expect(requestUrl(fetchStub, 0).searchParams.get('end_date')).to.equal(
-      new Date(end).toISOString()
-    );
-    expect(jsonRecords(output.stdout)[0].occurred_at).to.equal(occurredAt);
-  });
-
-  it('announces an empty read only after exhausting its pages, without polling', async () => {
+  it('announces an empty read only after exhausting its continuation chain', async () => {
     const continuation = deferred<Response>();
 
-    fetchStub.onFirstCall().resolves(eventsResponse([], 'next-page'));
+    fetchStub.onFirstCall().resolves(logsResponse([], 'empty-page'));
     fetchStub.onSecondCall().returns(continuation.promise);
     const reading = startRead();
 
     await flushAsyncWork(clock);
     expect(output.stderr.lines).to.deep.equal([]);
-    continuation.resolve(eventsResponse());
+    continuation.resolve(logsResponse());
     await reading;
-
     expect(output.stdout.lines).to.deep.equal([]);
     expect(output.stderr.lines).to.deep.equal([
       'No matching runtime logs found in the requested time window.',
     ]);
-    expect(clock.countTimers()).to.equal(0);
-    await clock.tickAsync(10_000);
     expect(fetchStub.callCount).to.equal(2);
-    expect(process.exitCode).to.equal(undefined);
   });
 
-  it('announces an empty initial tail window once and continues delivering logs', async () => {
-    const continuation = deferred<Response>();
+  it('rejects a repeated opaque cursor without exposing it', async () => {
+    const cursor = 'sensitive-continuation';
 
-    fetchStub.callsFake(() => Promise.resolve(eventsResponse()));
-    fetchStub.onFirstCall().resolves(eventsResponse([], 'next-page'));
-    fetchStub.onSecondCall().returns(continuation.promise);
-    fetchStub.onThirdCall().resolves(eventsResponse([fixtureEvent()]));
-    const following = startTail();
+    fetchStub.onFirstCall().resolves(logsResponse([], cursor));
+    fetchStub.onSecondCall().resolves(logsResponse([], cursor));
+    let failure: Error | undefined;
 
-    await flushAsyncWork(clock);
-    expect(output.stderr.lines).to.deep.equal([]);
-    continuation.resolve(eventsResponse());
-    await flushAsyncWork(clock);
-    const notice =
-      'No matching runtime logs found in the initial window. Waiting for new logs...';
-
-    expect(output.stderr.lines).to.deep.equal([notice]);
-    expect(output.stdout.lines).to.deep.equal([]);
-    await clock.tickAsync(15_000);
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(5);
-    expect(output.stdout.lines).to.have.length(1);
-    expect(output.stderr.lines).to.deep.equal([notice]);
-    process.emit('SIGINT');
-    await following;
+    await startRead().catch((error: Error) => {
+      failure = error;
+    });
+    expect(failure?.message).to.include('Partial read');
+    expect(failure?.message).not.to.include(cursor);
+    expect(fetchStub.callCount).to.equal(2);
+    expect([...requestUrl(fetchStub, 1).searchParams.entries()]).to.deep.equal([
+      ['start', cursor],
+    ]);
   });
+  it('retries a failed continuation at the same opaque cursor', async () => {
+    const cursor = 'retry-continuation';
 
-  it('reads both Proxy directions with structured attributes and errors', async () => {
-    fetchStub.resolves(
-      eventsResponse([
-        fixtureEvent({
-          resourceType: 'proxy',
-          resourceId: 'proxy-fixture',
-          records: [
-            {
-              message: 'request',
-              attributes: { request: { amount: 7 } },
-            },
-          ],
+    fetchStub.onFirstCall().resolves(
+      logsResponse(
+        [
+          fixtureLog({
+            id: 'e'.repeat(64),
+            message: 'prefix',
+          }),
+        ],
+        cursor
+      )
+    );
+    fetchStub.onSecondCall().resolves(
+      new Response('private continuation failure', {
+        status: 503,
+        headers: {
+          'retry-after': '0',
+        },
+      })
+    );
+    fetchStub.onThirdCall().resolves(
+      logsResponse([
+        fixtureLog({
+          id: 'f'.repeat(64),
+          message: 'continued',
         }),
-        fixtureEvent({
-          resourceType: 'proxy',
-          resourceId: 'proxy-fixture',
+      ])
+    );
+    const reading = startRead();
+
+    await flushAsyncWork(clock);
+    expect(output.stdout.text).to.equal('');
+    expect(fetchStub.callCount).to.equal(2);
+    await clock.tickAsync(5_000);
+    await reading;
+    expect(fetchStub.callCount).to.equal(3);
+    expect([...requestUrl(fetchStub, 1).searchParams.entries()]).to.deep.equal([
+      ['start', cursor],
+    ]);
+    expect([...requestUrl(fetchStub, 2).searchParams.entries()]).to.deep.equal([
+      ['start', cursor],
+    ]);
+    expect(
+      jsonRecords(output.stdout).map((record) => record.message)
+    ).to.deep.equal(['continued', 'prefix']);
+    expect(output.stderr.lines).to.have.length(2);
+    expect(output.stderr.text).not.to.include('private continuation failure');
+  });
+
+  it('discards an unfinished read window when a continuation fails permanently', async () => {
+    fetchStub.onFirstCall().resolves(
+      logsResponse(
+        [
+          fixtureLog({
+            id: 'a'.repeat(64),
+            message: 'prefix',
+          }),
+        ],
+        'private-cursor'
+      )
+    );
+    fetchStub.onSecondCall().resolves(
+      new Response('private response body', {
+        status: 403,
+      })
+    );
+    let failure: Error | undefined;
+
+    await startRead().catch((error: Error) => {
+      failure = error;
+    });
+    expect(output.stdout.text).to.equal('');
+    expect(failure?.message).to.include('Partial read');
+    expect(failure?.message).not.to.include('private-cursor');
+    expect(failure?.message).not.to.include('private response body');
+    expect(fetchStub.callCount).to.equal(2);
+  });
+
+  it('discards the whole window when a continuation violates the requested level', async () => {
+    fetchStub.onFirstCall().resolves(
+      logsResponse(
+        [
+          fixtureLog({
+            level: 'error',
+            message: 'matching first page',
+          }),
+        ],
+        'level-cursor'
+      )
+    );
+    fetchStub.onSecondCall().resolves(
+      logsResponse([
+        fixtureLog({
+          level: 'warn',
+          message: 'wrong level on continuation',
+        }),
+      ])
+    );
+    let failure: Error | undefined;
+
+    await startRead({ level: 'error' }).catch((error: Error) => {
+      failure = error;
+    });
+
+    expect(failure).to.be.instanceOf(Error);
+    expect(output.stdout.text).to.equal('');
+    expect(fetchStub.callCount).to.equal(2);
+    expect([...requestUrl(fetchStub, 1).searchParams.entries()]).to.deep.equal([
+      ['start', 'level-cursor'],
+    ]);
+  });
+
+  it('prints records scoped by combined Proxy filters', async () => {
+    fetchStub.resolves(
+      logsResponse([
+        fixtureLog({
+          traceId: ' Trace=+%Ω ',
           transformType: 'response_transform',
-          records: [
-            {
-              message: 'response',
-              level: 'error',
-              error: {
-                type: 'Error',
-                message: 'customer failure',
-                stack_trace: 'safe stack',
-              },
-            },
-          ],
+          level: 'error',
+          message: 'matching runtime record',
         }),
       ])
     );
     await startRead({
       resourceType: 'proxy',
-      resourceId: 'proxy-fixture',
+      resourceId: '92feba61-1fb6-42be-a0b5-73bfc9217911',
+      traceId: ' Trace=+%Ω ',
+      transformType: 'response_transform',
+      text: 'matching words',
+      level: 'error',
     });
+    const query = requestUrl(fetchStub, 0).searchParams;
 
-    const records = jsonRecords(output.stdout);
-
-    expect(records.map((record) => record.transform_type)).to.deep.equal([
-      'request_transform',
-      'response_transform',
+    expect(requestUrl(fetchStub, 0).pathname).to.equal(
+      '/proxies/92feba61-1fb6-42be-a0b5-73bfc9217911/logs'
+    );
+    expect(query.get('trace_id')).to.equal(' Trace=+%Ω ');
+    expect(query.get('transform_type')).to.equal('response_transform');
+    expect(query.get('message[search_words]')).to.equal('matching words');
+    expect(query.get('level')).to.equal('error');
+    expect(jsonRecords(output.stdout)).to.deep.equal([
+      {
+        occurred_at: new Date(FOLLOWER_TEST_NOW - 1_000).toISOString(),
+        trace_id: ' Trace=+%Ω ',
+        transform_type: 'response_transform',
+        level: 'error',
+        message: 'matching runtime record',
+      },
     ]);
-    expect(records[0].attributes).to.deep.equal({ request: { amount: 7 } });
-    expect(records[1].error).to.deep.equal({
-      type: 'Error',
-      message: 'customer failure',
-      stack_trace: 'safe stack',
+  });
+
+  it('deduplicates by opaque ID while printing late unseen poll records', async () => {
+    const one = fixtureLog({
+      id: '1'.repeat(64),
+      message: 'same',
     });
-    expect(requestUrl(fetchStub, 0).searchParams.get('data.proxy.id')).to.equal(
-      'proxy-fixture'
-    );
-  });
-
-  it('retries a finite read without advancing its fixed time bounds', async () => {
-    fetchStub.onFirstCall().resolves(eventsResponse([], null, 503));
-    fetchStub.onSecondCall().resolves(eventsResponse([fixtureEvent()]));
-    const reading = startRead();
-
-    await flushAsyncWork(clock);
-    await clock.tickAsync(5_000);
-    await reading;
-
-    expect(requestUrl(fetchStub, 0).searchParams.toString()).to.equal(
-      requestUrl(fetchStub, 1).searchParams.toString()
-    );
-    expect(output.stdout.lines).to.have.length(1);
-    expect(output.stderr.lines).to.have.length(2);
-    expect(clock.countTimers()).to.equal(0);
-  });
-
-  it('reports partial read output on a permanent continuation failure', async () => {
-    fetchStub
-      .onFirstCall()
-      .resolves(eventsResponse([fixtureEvent()], 'private-cursor'));
-    fetchStub
-      .onSecondCall()
-      .resolves(new Response('private response', { status: 403 }));
-
-    let failure: Error | undefined;
-
-    await startRead().catch((error: Error) => {
-      failure = error;
-    });
-    expect(output.stdout.lines).to.have.length(1);
-    expect(failure?.message).to.include('Partial read');
-    expect(failure?.message).not.to.include('private-cursor');
-    expect(failure?.message).not.to.include('private response');
-    expect(fetchStub.callCount).to.equal(2);
-  });
-
-  it('fails finite retrieval at the work limit rather than silently succeeding', async () => {
-    fetchStub.callsFake(() =>
-      Promise.resolve(eventsResponse([], `page-${fetchStub.callCount}`))
-    );
-    let failure: Error | undefined;
-
-    await startRead().catch((error: Error) => {
-      failure = error;
-    });
-    expect(failure?.message).to.include('Partial read');
-    expect(failure?.message).to.include('125-page limit');
-    expect(fetchStub.callCount).to.equal(125);
-  });
-
-  it('cancels an in-flight finite read on SIGTERM', async () => {
-    let requestSignal: AbortSignal | undefined;
-
-    fetchStub.callsFake((_input, init) => {
-      requestSignal = init?.signal ?? undefined;
-
-      return fetchUntilAbort(requestSignal);
-    });
-    const reading = startRead();
-
-    await flushAsyncWork(clock);
-    process.emit('SIGTERM');
-    await reading;
-    expect(requestSignal?.aborted).to.equal(true);
-    expect(process.exitCode).to.equal(143);
-    expect(clock.countTimers()).to.equal(0);
-  });
-
-  it('cancels finite read output under backpressure before fetching a continuation', async () => {
-    output.stdout.blockNextWrite();
-    fetchStub.resolves(eventsResponse([fixtureEvent()], 'continuation'));
-    const reading = startRead();
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.calledOnce).to.be.true;
-    process.emit('SIGINT');
-    await reading;
-    expect(process.exitCode).to.equal(130);
-    expect(clock.countTimers()).to.equal(0);
-  });
-
-  it('ends a finite read cleanly when its output pipe closes', async () => {
-    const error = Object.assign(new Error('closed pipe'), { code: 'EPIPE' });
-
-    output.stdout.failWith(error);
-    fetchStub.resolves(eventsResponse([fixtureEvent()], 'continuation'));
-    await startRead();
-    expect(fetchStub.calledOnce).to.be.true;
-    expect(process.exitCode).to.equal(0);
-    expect(clock.countTimers()).to.equal(0);
-  });
-
-  it('preserves distinct invocations sharing a custom trace while deduplicating page and poll overlap', async () => {
-    const traceId = 'customer_Order-42';
-    const first = fixtureEvent({
-      traceId,
-      invocationId: 'first-invocation',
-      records: [{ message: 'first' }],
+    const two = fixtureLog({
+      id: '2'.repeat(64),
+      message: 'same',
     });
 
-    fetchStub.onFirstCall().resolves(eventsResponse([first], 'next-page'));
+    fetchStub.onFirstCall().resolves(logsResponse([one, two]));
     fetchStub.onSecondCall().resolves(
-      eventsResponse([
-        first,
-        fixtureEvent({
-          traceId,
-          invocationId: 'second-invocation',
-          records: [{ message: 'second' }],
+      logsResponse([
+        one,
+        fixtureLog({
+          id: '3'.repeat(64),
+          message: 'late arrival',
         }),
       ])
     );
-    fetchStub.onThirdCall().resolves(
-      eventsResponse([
-        {
-          ...first,
-          id: 'redelivered-first',
-          timestamp: new Date(FOLLOWER_TEST_NOW + 4_000).toISOString(),
-        },
-        fixtureEvent({
-          traceId,
-          invocationId: 'live-invocation',
-          timestamp: new Date(FOLLOWER_TEST_NOW + 4_000).toISOString(),
-          records: [{ message: 'live' }],
-        }),
-      ])
-    );
-    const following = startTail({ traceId });
+    const following = startTail();
 
     await flushAsyncWork(clock);
     await clock.tickAsync(5_000);
     await flushAsyncWork(clock);
     expect(
       jsonRecords(output.stdout).map((record) => record.message)
-    ).to.deep.equal(['first', 'second', 'live']);
+    ).to.deep.equal(['same', 'same', 'late arrival']);
+    expect(fetchStub.callCount).to.equal(2);
     process.emit('SIGINT');
     await following;
+  });
+
+  it('waits five seconds for a zero-width tail start slightly before current time', async () => {
+    fetchStub.resolves(logsResponse());
+    const start = FOLLOWER_TEST_NOW - 1;
+    const following = followRuntimeLogs({
+      ...baseOptions,
+      format: 'json',
+      window: {
+        start,
+        end: start,
+      },
+    });
+
+    activeTail = following;
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(0);
+    expect(output.stderr.lines).to.deep.equal(['Waiting for logs...']);
+    await clock.tickAsync(4_999);
+    expect(fetchStub.callCount).to.equal(0);
+    await clock.tickAsync(1);
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(1);
+    expect(requestUrl(fetchStub, 0).searchParams.get('start_date')).to.equal(
+      new Date(start).toISOString()
+    );
+    expect(requestUrl(fetchStub, 0).searchParams.get('end_date')).to.equal(
+      new Date(FOLLOWER_TEST_NOW + 5_000).toISOString()
+    );
+    process.emit('SIGINT');
+    await following;
+  });
+  it('starts the implicit default tail at command time after the initial wait', async () => {
+    fetchStub.resolves(logsResponse());
+    const following = followRuntimeLogs({
+      ...baseOptions,
+    });
+
+    activeTail = following;
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(0);
+    expect(output.stderr.lines).to.deep.equal(['Waiting for logs...']);
+    await clock.tickAsync(5_000);
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(1);
+    expect(requestUrl(fetchStub, 0).searchParams.get('start_date')).to.equal(
+      new Date(FOLLOWER_TEST_NOW).toISOString()
+    );
+    expect(requestUrl(fetchStub, 0).searchParams.get('end_date')).to.equal(
+      new Date(FOLLOWER_TEST_NOW + 5_000).toISOString()
+    );
+    process.emit('SIGINT');
+    await following;
+  });
+
+  it('cancels the default no-history wait without starting a request', async () => {
+    const start = FOLLOWER_TEST_NOW - 1;
+    const following = followRuntimeLogs({
+      ...baseOptions,
+      format: 'json',
+      window: {
+        start,
+        end: start,
+      },
+    });
+
+    activeTail = following;
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(0);
+    process.emit('SIGINT');
+    await following;
+    await clock.tickAsync(10_000);
+    expect(fetchStub.callCount).to.equal(0);
     expect(process.exitCode).to.equal(130);
     expect(clock.countTimers()).to.equal(0);
   });
+  it('announces an empty initial history once, then delivers live logs', async () => {
+    fetchStub.onFirstCall().resolves(logsResponse());
+    fetchStub.onSecondCall().resolves(
+      logsResponse([
+        fixtureLog({
+          id: 'd'.repeat(64),
+          message: 'live',
+        }),
+      ])
+    );
+    const following = startTail();
 
-  ['cursor', 'poll'].forEach((transition) => {
-    it(`rejects a different trace after a ${transition} transition without printing its records`, async () => {
-      const traceId = 'customer_Order-42';
-
-      fetchStub.onFirstCall().resolves(
-        eventsResponse(
-          [
-            fixtureEvent({
-              traceId,
-              records: [{ message: 'matching history' }],
-            }),
-          ],
-          transition === 'cursor' ? 'next-page' : null
-        )
-      );
-      fetchStub.onSecondCall().resolves(
-        eventsResponse([
-          fixtureEvent({
-            traceId: 'customer_order-42',
-            invocationId: 'wrong-trace',
-            timestamp: new Date(
-              FOLLOWER_TEST_NOW + (transition === 'poll' ? 4_000 : -1_000)
-            ).toISOString(),
-            records: [{ message: 'wrong trace must not be printed' }],
-          }),
-        ])
-      );
-      const following = startTail({ traceId });
-
-      await flushAsyncWork(clock);
-
-      if (transition === 'poll') {
-        await clock.tickAsync(5_000);
-        await flushAsyncWork(clock);
-      }
-
-      let failure: Error | undefined;
-
-      await following.catch((error: Error) => {
-        failure = error;
-      });
-      expect(failure).to.be.instanceOf(Error);
-      expect(
-        jsonRecords(output.stdout).map((record) => record.message)
-      ).to.deep.equal(['matching history']);
-      expect(clock.countTimers()).to.equal(0);
-    });
+    await flushAsyncWork(clock);
+    expect(output.stderr.lines).to.deep.equal([
+      'No matching runtime logs found in the initial window. Waiting for new logs...',
+    ]);
+    await clock.tickAsync(5_000);
+    await flushAsyncWork(clock);
+    expect(
+      jsonRecords(output.stdout).map((record) => record.message)
+    ).to.deep.equal(['live']);
+    process.emit('SIGINT');
+    await following;
   });
 
-  it('uses custom startup history once and deduplicates across the transition to rolling polls', async () => {
-    const recent = fixtureEvent({
-      invocationId: 'recent',
-      records: [{ message: 'recent' }],
-    });
-
+  it('uses one historical catch-up before switching to a rolling overlap', async () => {
     fetchStub.onFirstCall().resolves(
-      eventsResponse([
-        fixtureEvent({
-          invocationId: 'older',
-          timestamp: new Date(FOLLOWER_TEST_NOW - 900_000).toISOString(),
-          records: [{ message: 'older context' }],
+      logsResponse([
+        fixtureLog({
+          id: 'a'.repeat(64),
+          message: 'history',
         }),
-        recent,
       ])
     );
     fetchStub.onSecondCall().resolves(
-      eventsResponse([
-        {
-          ...recent,
-          id: 'new-delivery',
-          timestamp: new Date(FOLLOWER_TEST_NOW + 4_000).toISOString(),
-        },
-        fixtureEvent({
-          invocationId: 'live',
-          timestamp: new Date(FOLLOWER_TEST_NOW + 4_000).toISOString(),
-          records: [{ message: 'live' }],
+      logsResponse([
+        fixtureLog({
+          id: 'b'.repeat(64),
+          message: 'live',
         }),
       ])
     );
@@ -797,244 +913,24 @@ describe('logs runtime reads and tailing', () => {
     });
 
     await flushAsyncWork(clock);
-    await clock.tickAsync(5_000);
-    await flushAsyncWork(clock);
     expect(requestUrl(fetchStub, 0).searchParams.get('start_date')).to.equal(
       new Date(FOLLOWER_TEST_NOW - 1_800_000).toISOString()
     );
-    expect(requestUrl(fetchStub, 1).searchParams.get('start_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW + 5_000 - 300_000).toISOString()
-    );
-    expect(
-      jsonRecords(output.stdout).map((record) => record.message)
-    ).to.deep.equal(['older context', 'recent', 'live']);
-    process.emit('SIGINT');
-    await following;
-  });
-
-  it('never expands a short startup window into earlier history on subsequent polls', async () => {
-    fetchStub.callsFake(() => Promise.resolve(eventsResponse()));
-    const following = startTail({
-      window: {
-        start: FOLLOWER_TEST_NOW - 30_000,
-        end: FOLLOWER_TEST_NOW,
-      },
-    });
-
-    await flushAsyncWork(clock);
-    await clock.tickAsync(5_000);
-    await flushAsyncWork(clock);
-    expect(requestUrl(fetchStub, 1).searchParams.get('start_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW - 30_000).toISOString()
-    );
-    expect(requestUrl(fetchStub, 1).searchParams.get('end_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW + 5_000).toISOString()
-    );
-    process.emit('SIGINT');
-    await following;
-  });
-
-  it('starts with explicit five-minute history and prints pre-start record context', async () => {
-    const windowEnd = new Date(FOLLOWER_TEST_NOW).toISOString();
-    const eventTimestamp = new Date(FOLLOWER_TEST_NOW - 1_000).toISOString();
-    const occurrenceTimestamp = new Date(
-      FOLLOWER_TEST_NOW - 360_000
-    ).toISOString();
-
-    fetchStub.resolves(
-      eventsResponse([
-        fixtureEvent({
-          timestamp: eventTimestamp,
-          records: [
-            {
-              occurredAt: occurrenceTimestamp,
-              message: 'startup context',
-            },
-          ],
-        }),
-      ])
-    );
-
-    const following = startTail({
-      window: {
-        start: FOLLOWER_TEST_NOW - 300_000,
-        end: FOLLOWER_TEST_NOW,
-      },
-    });
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.calledOnce).to.equal(true);
-
-    const firstRequest = requestUrl(fetchStub, 0);
-
-    expect(firstRequest.pathname).to.equal('/events');
-    expect(firstRequest.searchParams.get('start_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW - 300_000).toISOString()
-    );
-    expect(firstRequest.searchParams.get('end_date')).to.equal(windowEnd);
-    expect(firstRequest.searchParams.get('size')).to.equal('20');
-    const records = jsonRecords(output.stdout);
-
-    expect(records).to.have.length(1);
-    expect(records[0]).to.deep.equal({
-      occurred_at: occurrenceTimestamp,
-      message: 'startup context',
-    });
-    expect(output.stdout.text).to.equal(`${JSON.stringify(records[0])}\n\n`);
-    expect(output.stderr.lines).to.deep.equal([]);
-
-    process.emit('SIGINT');
-    await following;
-    expect(process.exitCode).to.equal(130);
-  });
-
-  it('waits five seconds before the default tail poll and delivers delayed records without extending its start', async () => {
-    fetchStub.callsFake(() =>
-      fetchStub.callCount === 1
-        ? Promise.resolve(eventsResponse())
-        : Promise.resolve(
-            eventsResponse([
-              fixtureEvent({
-                timestamp: new Date(FOLLOWER_TEST_NOW + 8_000).toISOString(),
-                records: [
-                  {
-                    occurredAt: new Date(
-                      FOLLOWER_TEST_NOW - 1_000
-                    ).toISOString(),
-                    message: 'delayed live record',
-                  },
-                ],
-              }),
-            ])
-          )
-    );
-    const following = startTail({ window: undefined });
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(0);
-    expect(output.stderr.lines).to.deep.equal(['Waiting for logs...']);
-
-    await clock.tickAsync(5_000);
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(1);
-    expect(requestUrl(fetchStub, 0).searchParams.get('start_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW).toISOString()
-    );
-    expect(requestUrl(fetchStub, 0).searchParams.get('end_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW + 5_000).toISOString()
-    );
-
+    expect(output.stdout.lines).to.have.length(1);
     await clock.tickAsync(5_000);
     await flushAsyncWork(clock);
     expect(fetchStub.callCount).to.equal(2);
     expect(requestUrl(fetchStub, 1).searchParams.get('start_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW).toISOString()
+      new Date(FOLLOWER_TEST_NOW - 60_000).toISOString()
     );
     expect(
       jsonRecords(output.stdout).map((record) => record.message)
-    ).to.deep.equal(['delayed live record']);
-    expect(jsonRecords(output.stdout)[0].occurred_at).to.equal(
-      new Date(FOLLOWER_TEST_NOW - 1_000).toISOString()
-    );
-    expect(output.stderr.lines).to.deep.equal(['Waiting for logs...']);
-
+    ).to.deep.equal(['history', 'live']);
     process.emit('SIGINT');
     await following;
   });
 
-  it('rejects an event batch timestamp before the default tail start', async () => {
-    fetchStub.resolves(
-      eventsResponse([
-        fixtureEvent({
-          timestamp: new Date(FOLLOWER_TEST_NOW - 1).toISOString(),
-          records: [{ message: 'stale batch' }],
-        }),
-      ])
-    );
-    const following = startTail({ window: undefined });
-    let failure: Error | undefined;
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(0);
-    await clock.tickAsync(5_000);
-    await following.catch((error: Error) => {
-      failure = error;
-    });
-
-    expect(failure?.message).to.include('Partial tail');
-    expect(fetchStub.callCount).to.equal(1);
-    expect(output.stdout.lines).to.deep.equal([]);
-  });
-
-  it('cancels the default tail while waiting for its first poll', async () => {
-    const following = startTail({ window: undefined });
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(0);
-    expect(output.stderr.lines).to.deep.equal(['Waiting for logs...']);
-    process.emit('SIGINT');
-    await following;
-
-    expect(fetchStub.callCount).to.equal(0);
-    expect(process.exitCode).to.equal(130);
-    expect(clock.countTimers()).to.equal(0);
-  });
-
-  it('paces fast polls at five seconds and uses a rolling window without overlapping requests', async () => {
-    let activeRequests = 0;
-    let maximumActiveRequests = 0;
-
-    fetchStub.callsFake((_input, init) => {
-      activeRequests++;
-      maximumActiveRequests = Math.max(maximumActiveRequests, activeRequests);
-      const requestNumber = fetchStub.callCount;
-
-      if (requestNumber === 1) {
-        return delayedFetchResponse(
-          init?.signal,
-          2_000,
-          eventsResponse(),
-          () => {
-            activeRequests--;
-          }
-        );
-      }
-
-      activeRequests--;
-
-      return Promise.resolve(eventsResponse());
-    });
-
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.calledOnce).to.equal(true);
-    await clock.tickAsync(1_999);
-    expect(fetchStub.callCount).to.equal(1);
-    await clock.tickAsync(1);
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(1);
-    await clock.tickAsync(2_999);
-    expect(fetchStub.callCount).to.equal(1);
-    await clock.tickAsync(1);
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(2);
-    expect(maximumActiveRequests).to.equal(1);
-    expect(requestUrl(fetchStub, 0).searchParams.get('start_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW - 300_000).toISOString()
-    );
-    expect(requestUrl(fetchStub, 1).searchParams.get('start_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW + 5_000 - 300_000).toISOString()
-    );
-    expect(requestUrl(fetchStub, 1).searchParams.get('end_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW + 5_000).toISOString()
-    );
-
-    process.emit('SIGINT');
-    await following;
-  });
-
-  it('does not start a new poll while a slow cycle is still running', async () => {
+  it('does not overlap polling cycles when one request is slow', async () => {
     let activeRequests = 0;
     let maximumActiveRequests = 0;
 
@@ -1043,21 +939,15 @@ describe('logs runtime reads and tailing', () => {
       maximumActiveRequests = Math.max(maximumActiveRequests, activeRequests);
 
       if (fetchStub.callCount === 1) {
-        return delayedFetchResponse(
-          init?.signal,
-          8_000,
-          eventsResponse(),
-          () => {
-            activeRequests--;
-          }
-        );
+        return delayedFetchResponse(init?.signal, 8_000, logsResponse(), () => {
+          activeRequests--;
+        });
       }
 
       activeRequests--;
 
-      return Promise.resolve(eventsResponse());
+      return Promise.resolve(logsResponse());
     });
-
     const following = startTail();
 
     await clock.tickAsync(7_999);
@@ -1067,706 +957,63 @@ describe('logs runtime reads and tailing', () => {
     await flushAsyncWork(clock);
     expect(fetchStub.callCount).to.equal(2);
     expect(maximumActiveRequests).to.equal(1);
-    expect(requestUrl(fetchStub, 1).searchParams.get('end_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW + 8_000).toISOString()
-    );
-
     process.emit('SIGINT');
     await following;
   });
 
-  it('exhausts empty and short continuation pages before polling again', async () => {
-    const event = fixtureEvent({
-      eventId: 'short-page-event',
-      records: [{ message: 'short continuation page' }],
-    });
-    let visibleBeforeFinalContinuation = false;
-
-    fetchStub.callsFake((input) => {
-      const url = new URL(String(input));
-      const cursor = url.searchParams.get('start');
-
-      if (cursor === 'empty-cursor') {
-        return Promise.resolve(eventsResponse([event], 'short-cursor'));
-      }
-
-      if (cursor === 'short-cursor') {
-        visibleBeforeFinalContinuation = output.stdout.text.includes(
-          'short continuation page'
-        );
-
-        return Promise.resolve(eventsResponse());
-      }
-
-      return Promise.resolve(eventsResponse([], 'empty-cursor'));
+  it('retrieves records across a forward wall-clock jump without leaving a gap', async () => {
+    const dateNow = sandbox.stub(Date, 'now').returns(FOLLOWER_TEST_NOW);
+    const gapTime = FOLLOWER_TEST_NOW + 1_000;
+    const gapRecord = fixtureLog({
+      id: 'd'.repeat(64),
+      occurredAt: new Date(gapTime).toISOString(),
+      message: 'record during pause',
     });
 
+    fetchStub.onFirstCall().resolves(logsResponse());
+    fetchStub.onSecondCall().callsFake(() => {
+      const start = Date.parse(
+        requestUrl(fetchStub, 1).searchParams.get('start_date') as string
+      );
+
+      return Promise.resolve(logsResponse(start <= gapTime ? [gapRecord] : []));
+    });
     const following = startTail();
 
     await flushAsyncWork(clock);
-
-    expect(fetchStub.callCount).to.equal(3);
-    expect([...requestUrl(fetchStub, 1).searchParams.entries()]).to.deep.equal([
-      ['start', 'empty-cursor'],
-    ]);
-    expect([...requestUrl(fetchStub, 2).searchParams.entries()]).to.deep.equal([
-      ['start', 'short-cursor'],
-    ]);
-    expect(visibleBeforeFinalContinuation).to.equal(true);
-    expect(
-      jsonRecords(output.stdout).map((record) => record.message)
-    ).to.deep.equal(['short continuation page']);
-
-    process.emit('SIGINT');
-    await following;
-  });
-
-  it('writes each validated page before requesting its continuation', async () => {
-    const event = fixtureEvent({
-      eventId: 'first-page-event',
-      records: [{ message: 'first page is visible' }],
-    });
-    let visibleBeforeContinuation = false;
-
-    fetchStub.callsFake((input) => {
-      const url = new URL(String(input));
-
-      if (url.searchParams.has('start')) {
-        visibleBeforeContinuation = output.stdout.text.includes(
-          'first page is visible'
-        );
-
-        return Promise.resolve(eventsResponse([], null));
-      }
-
-      return Promise.resolve(eventsResponse([event], 'opaque-continuation'));
-    });
-
-    output.stdout.blockNextWrite();
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(1);
-    expect(output.stdout.lines).to.have.length(1);
-    output.stdout.releaseAll();
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(2);
-    expect(visibleBeforeContinuation).to.equal(true);
-    expect([...requestUrl(fetchStub, 1).searchParams.entries()]).to.deep.equal([
-      ['start', 'opaque-continuation'],
-    ]);
-    expect(output.stdout.lines).to.have.length(1);
-
-    process.emit('SIGINT');
-    await following;
-  });
-
-  it('deduplicates timestamp-changing redelivery while retaining the newest envelope timestamp', async () => {
-    const eventTimes = [
-      new Date(FOLLOWER_TEST_NOW - 290_000).toISOString(),
-      new Date(FOLLOWER_TEST_NOW - 292_000).toISOString(),
-      new Date(FOLLOWER_TEST_NOW - 284_000).toISOString(),
-    ];
-    const eventIds: Record<number, string> = {
-      1: 'initial-batch',
-      2: 'older-redelivery',
-      4: 'later-redelivery',
-    };
-    let cycle = 0;
-
-    fetchStub.callsFake((input) => {
-      const url = new URL(String(input));
-
-      if (!url.searchParams.has('start')) {
-        cycle++;
-
-        if (cycle === 1 || cycle === 2 || cycle === 4) {
-          const eventId = eventIds[cycle];
-          const timestamp = eventTimes[cycle === 4 ? 2 : cycle - 1];
-
-          return Promise.resolve(
-            eventsResponse([
-              fixtureEvent({
-                invocationId: 'retained-invocation',
-                records: [
-                  {
-                    sequence: 7,
-                    message: 'one record identity',
-                  },
-                ],
-                eventId,
-                timestamp,
-              }),
-            ])
-          );
-        }
-      }
-
-      return Promise.resolve(eventsResponse());
-    });
-
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    expect(output.stdout.lines).to.have.length(1);
-
-    for (let cycleIndex = 0; cycleIndex < 3; cycleIndex++) {
-      await clock.tickAsync(5_000);
-      await flushAsyncWork(clock);
-    }
-
-    expect(fetchStub.callCount).to.equal(4);
-    expect(output.stdout.lines).to.have.length(1);
-    expect(jsonRecords(output.stdout)[0]).to.include({
-      message: 'one record identity',
-      occurred_at: new Date(FOLLOWER_TEST_NOW - 350_000).toISOString(),
-    });
-
-    process.emit('SIGINT');
-    await following;
-  });
-
-  it('prints records that become visible in a later overlapping window', async () => {
-    const delayedEvent = fixtureEvent({
-      eventId: 'late-indexed-event',
-      timestamp: new Date(FOLLOWER_TEST_NOW + 4_000).toISOString(),
-      records: [
-        {
-          occurredAt: new Date(FOLLOWER_TEST_NOW + 2_000).toISOString(),
-          message: 'late but still in window',
-        },
-      ],
-    });
-
-    fetchStub.callsFake(() => {
-      if (fetchStub.callCount === 1) {
-        return Promise.resolve(eventsResponse());
-      }
-
-      return Promise.resolve(eventsResponse([delayedEvent]));
-    });
-
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    expect(output.stdout.lines).to.deep.equal([]);
+    expect(fetchStub.calledOnce).to.equal(true);
+    dateNow.returns(FOLLOWER_TEST_NOW + 600_000);
     await clock.tickAsync(5_000);
     await flushAsyncWork(clock);
-
-    expect(fetchStub.callCount).to.equal(2);
-    expect(jsonRecords(output.stdout)).to.have.length(1);
-    expect(jsonRecords(output.stdout)[0]).to.include({
-      message: 'late but still in window',
-      occurred_at: new Date(FOLLOWER_TEST_NOW + 2_000).toISOString(),
-    });
-
     process.emit('SIGINT');
     await following;
-  });
-
-  it('keeps Proxy directions distinct and deduplicates a rebatched duplicate', async () => {
-    const common = {
-      resourceType: 'proxy' as const,
-      resourceId: 'proxy-fixture',
-      invocationId: 'same-proxy-invocation',
-      records: [
-        {
-          sequence: 3,
-          message: 'same sequence',
-        },
-      ],
-    };
-
-    fetchStub.resolves(
-      eventsResponse([
-        fixtureEvent({
-          ...common,
-          eventId: 'request-first',
-        }),
-        fixtureEvent({
-          ...common,
-          eventId: 'response-first',
-          transformType: 'response_transform',
-        }),
-        fixtureEvent({
-          ...common,
-          eventId: 'request-republished',
-          timestamp: new Date(FOLLOWER_TEST_NOW - 500).toISOString(),
-        }),
-        fixtureEvent({
-          ...common,
-          eventId: 'other-tenant',
-          tenantId: 'another-tenant',
-          records: [
-            {
-              sequence: 3,
-              message: 'another tenant',
-            },
-          ],
-        }),
-        fixtureEvent({
-          ...common,
-          eventId: 'other-invocation',
-          invocationId: 'another-invocation',
-          records: [
-            {
-              sequence: 3,
-              message: 'another invocation',
-            },
-          ],
-        }),
-      ])
-    );
-
-    const following = startTail({
-      resourceType: 'proxy',
-      resourceId: 'proxy-fixture',
-    });
-
-    await flushAsyncWork(clock);
-    const records = jsonRecords(output.stdout);
-
-    expect(records).to.have.length(4);
-    expect(records.map((record) => record.transform_type)).to.deep.equal([
-      'request_transform',
-      'response_transform',
-      'request_transform',
-      'request_transform',
-    ]);
-    expect(records.map((record) => record.message)).to.deep.equal([
-      'same sequence',
-      'same sequence',
-      'another tenant',
-      'another invocation',
-    ]);
-
-    process.emit('SIGINT');
-    await following;
-  });
-
-  it('retains displayed prefix when a later continuation is invalid', async () => {
-    const nextCursor = 'private-continuation-value';
-    const firstEvent = fixtureEvent({
-      eventId: 'safe-prefix',
-      records: [{ message: 'prefix survives later failure' }],
-    });
-    const invalidEvent = fixtureEvent({
-      eventId: 'invalid-scope-event',
-      resourceId: 'different-resource',
-      records: [{ message: 'must not be displayed' }],
-    });
-
-    fetchStub.onFirstCall().resolves(eventsResponse([firstEvent], nextCursor));
-    fetchStub.onSecondCall().resolves(eventsResponse([invalidEvent]));
-
-    const following = startTail();
-    let failure: unknown;
-
-    try {
-      await following;
-    } catch (error) {
-      failure = error;
-    }
-
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
-    expect((failure as Error).message).not.to.include(nextCursor);
-    expect((failure as Error).message).not.to.include(baseOptions.apiKey);
-    expect(fetchStub.callCount).to.equal(2);
-    expect([...requestUrl(fetchStub, 1).searchParams.entries()]).to.deep.equal([
-      ['start', nextCursor],
-    ]);
     expect(
       jsonRecords(output.stdout).map((record) => record.message)
-    ).to.deep.equal(['prefix survives later failure']);
-    expect(output.stdout.text).not.to.include('must not be displayed');
+    ).to.deep.equal(['record during pause']);
   });
 
-  it('rejects a repeated cursor without exposing it or starting a newer window', async () => {
-    const repeatedCursor = 'sensitive-pagination-cursor';
-
-    fetchStub.onFirstCall().resolves(eventsResponse([], repeatedCursor));
-    fetchStub.onSecondCall().resolves(eventsResponse([], repeatedCursor));
-    const following = startTail();
-    let failure: unknown;
-
-    try {
-      await following;
-    } catch (error) {
-      failure = error;
-    }
-
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
-    expect((failure as Error).message).not.to.include(repeatedCursor);
-    expect(fetchStub.callCount).to.equal(2);
-    expect([...requestUrl(fetchStub, 1).searchParams.entries()]).to.deep.equal([
-      ['start', repeatedCursor],
-    ]);
-    expect(output.stdout.lines).to.deep.equal([]);
-  });
-
-  for (const retryCase of [
-    {
-      label: 'transport failures',
-      status: 0,
-      waitMs: 5_000,
-    },
-    {
-      label: 'HTTP 429',
-      status: 429,
-      waitMs: 5_000,
-      retryAfter: '0',
-    },
-    {
-      label: 'HTTP 503 with a longer Retry-After date',
-      status: 503,
-      waitMs: 7_000,
-      retryAfter: new Date(FOLLOWER_TEST_NOW + 7_000).toUTCString(),
-    },
-  ]) {
-    /* eslint-disable-next-line no-loop-func -- this test closes over its immutable retry case. */
-    it(`retries ${retryCase.label} on the same page and reports recovery to stderr`, async () => {
-      const event = fixtureEvent({
-        eventId: 'retried-page-record',
-        records: [{ message: 'recovered record' }],
-      });
-
-      fetchStub.callsFake(() => {
-        if (fetchStub.callCount === 1) {
-          if (retryCase.status === 0) {
-            return Promise.reject(new TypeError('private transport detail'));
-          }
-
-          return Promise.resolve(
-            new Response('private error body', {
-              status: retryCase.status,
-              headers: retryCase.retryAfter
-                ? { 'retry-after': retryCase.retryAfter }
-                : {},
-            })
-          );
-        }
-
-        return Promise.resolve(eventsResponse([event]));
-      });
-
-      const following = startTail();
-
-      await flushAsyncWork(clock);
-      expect(fetchStub.callCount).to.equal(1);
-      await clock.tickAsync(retryCase.waitMs - 1);
-      expect(fetchStub.callCount).to.equal(1);
-      await clock.tickAsync(1);
-      await flushAsyncWork(clock);
-      expect(fetchStub.callCount).to.be.at.least(2);
-      expect(requestUrl(fetchStub, 0).searchParams.get('start_date')).to.equal(
-        requestUrl(fetchStub, 1).searchParams.get('start_date')
-      );
-      expect(
-        jsonRecords(output.stdout).map((record) => record.message)
-      ).to.deep.equal(['recovered record']);
-      expect(
-        output.stdout.lines.map((line) => JSON.parse(line))
-      ).to.have.length(1);
-      expect(output.stderr.lines).to.have.length(2);
-      expect(output.stderr.text).not.to.include('private error body');
-      expect(output.stderr.text).not.to.include('private transport detail');
-
-      process.emit('SIGINT');
-      await following;
-    });
-  }
-
-  it('retries a failed continuation at the same opaque cursor', async () => {
-    const continuation = 'retry-this-cursor';
-    const prefixEvent = fixtureEvent({
-      eventId: 'before-retry',
-      records: [{ message: 'continuation prefix' }],
-    });
-    const continuationEvent = fixtureEvent({
-      eventId: 'after-retry',
-      invocationId: 'continuation-invocation',
-      records: [{ message: 'continuation recovered' }],
-    });
-    let initialRequests = 0;
-    let continuationAttempts = 0;
-
-    fetchStub.callsFake((input, init) => {
-      const request = new URL(String(input));
-      const cursor = request.searchParams.get('start');
-
-      if (cursor === null) {
-        initialRequests++;
-
-        return initialRequests === 1
-          ? Promise.resolve(eventsResponse([prefixEvent], continuation))
-          : fetchUntilAbort(init?.signal);
-      }
-
-      if (cursor !== continuation) {
-        return fetchUntilAbort(init?.signal);
-      }
-
-      continuationAttempts++;
-
-      if (continuationAttempts === 1) {
-        return Promise.resolve(
-          new Response('private continuation failure', {
-            status: 503,
-            headers: { 'retry-after': '0' },
-          })
-        );
-      }
-
-      return Promise.resolve(eventsResponse([continuationEvent]));
-    });
-
+  it('waits rather than moving a completed polling window backwards', async () => {
+    fetchStub.callsFake(() => Promise.resolve(logsResponse()));
+    const dateNow = sandbox.stub(Date, 'now').returns(FOLLOWER_TEST_NOW);
     const following = startTail();
 
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(1);
+    await clock.tickAsync(15_000);
+    expect(fetchStub.callCount).to.equal(1);
+    dateNow.restore();
+    await clock.tickAsync(5_000);
     await flushAsyncWork(clock);
     expect(fetchStub.callCount).to.equal(2);
-    expect(
-      jsonRecords(output.stdout).map((record) => record.message)
-    ).to.deep.equal(['continuation prefix']);
-    expect(output.stderr.lines).to.have.length(1);
-
-    await clock.tickAsync(4_999);
-    expect(fetchStub.callCount).to.equal(2);
-    await clock.tickAsync(1);
-    await flushAsyncWork(clock);
-
-    expect(continuationAttempts).to.equal(2);
-    expect([...requestUrl(fetchStub, 1).searchParams.entries()]).to.deep.equal([
-      ['start', continuation],
-    ]);
-    expect([...requestUrl(fetchStub, 2).searchParams.entries()]).to.deep.equal([
-      ['start', continuation],
-    ]);
-    expect(
-      jsonRecords(output.stdout).map((record) => record.message)
-    ).to.deep.equal(['continuation prefix', 'continuation recovered']);
-    expect(output.stderr.lines).to.have.length(2);
-
+    expect(requestUrl(fetchStub, 1).searchParams.get('end_date')).to.equal(
+      new Date(FOLLOWER_TEST_NOW + 20_000).toISOString()
+    );
     process.emit('SIGINT');
     await following;
-    expect(process.exitCode).to.equal(130);
   });
 
-  for (const status of [302, 400, 401, 403, 500]) {
-    /* eslint-disable-next-line no-loop-func -- each test captures its immutable HTTP status. */
-    it(`fails permanently on HTTP ${status} without retrying or leaking response content`, async () => {
-      fetchStub.resolves(
-        new Response('private response payload and fixture key', {
-          status,
-        })
-      );
-      const following = startTail();
-      let failure: unknown;
-
-      try {
-        await following;
-      } catch (error) {
-        failure = error;
-      }
-
-      expect(failure).to.be.instanceOf(Error);
-      const message = (failure as Error).message;
-
-      expect(message).to.include('Partial tail');
-      expect(message).not.to.include('private response payload');
-      expect(message).not.to.include(baseOptions.apiKey);
-      expect(fetchStub.callCount).to.equal(1);
-      expect(output.stderr.lines).to.deep.equal([]);
-
-      if (status === 400) {
-        expect(message).to.include('malformed query');
-      }
-
-      if (status === 401) {
-        expect(message).to.match(/invalid or expired/iu);
-      }
-
-      if (status === 403) {
-        expect(message).to.include('event:read');
-      }
-
-      if (status === 500) {
-        expect(message).to.include('500');
-      }
-    });
-  }
-
-  it('cancels an in-flight fetch on SIGTERM and removes signal listeners', async () => {
-    let requestSignal: AbortSignal | undefined;
-
-    fetchStub.callsFake((_input, init) => {
-      requestSignal = init?.signal ?? undefined;
-
-      return fetchUntilAbort(requestSignal);
-    });
-    const originalSigintListeners = process.listenerCount('SIGINT');
-    const originalSigtermListeners = process.listenerCount('SIGTERM');
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.calledOnce).to.equal(true);
-
-    process.emit('SIGTERM');
-    await following;
-
-    expect(requestSignal?.aborted).to.equal(true);
-    expect(process.exitCode).to.equal(143);
-    expect(process.listenerCount('SIGINT')).to.equal(originalSigintListeners);
-    expect(process.listenerCount('SIGTERM')).to.equal(originalSigtermListeners);
-    expect(clock.countTimers()).to.equal(0);
-  });
-
-  it('cancels a response body read when interrupted', async () => {
-    let bodyCancelled = false;
-    const body = new ReadableStream<Uint8Array>({
-      cancel: () => {
-        bodyCancelled = true;
-      },
-    });
-
-    fetchStub.resolves(
-      new Response(body, {
-        headers: { 'content-type': 'application/json' },
-      })
-    );
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.calledOnce).to.equal(true);
-    expect(output.stdout.lines).to.deep.equal([]);
-
-    process.emit('SIGINT');
-    await following;
-    await flushAsyncWork(clock);
-
-    expect(bodyCancelled).to.equal(true);
-    expect(process.exitCode).to.equal(130);
-    expect(clock.countTimers()).to.equal(0);
-  });
-
-  it('cancels the five-second polling sleep without starting another request', async () => {
-    fetchStub.resolves(eventsResponse());
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(1);
-    expect(clock.countTimers()).to.be.greaterThan(0);
-
-    process.emit('SIGINT');
-    await following;
-    await clock.tickAsync(10_000);
-
-    expect(fetchStub.callCount).to.equal(1);
-    expect(process.exitCode).to.equal(130);
-    expect(clock.countTimers()).to.equal(0);
-  });
-
-  it('cancels a blocked stdout write before requesting a continuation', async () => {
-    output.stdout.blockNextWrite();
-    fetchStub.resolves(
-      eventsResponse(
-        [
-          fixtureEvent({
-            eventId: 'blocked-record',
-            records: [{ message: 'held' }],
-          }),
-          fixtureEvent({
-            eventId: 'not-yet-written',
-            invocationId: 'later-invocation',
-          }),
-        ],
-        'blocked-cursor'
-      )
-    );
-    const originalDrainListeners = process.stdout.listenerCount('drain');
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    expect(output.stdout.lines).to.have.length(1);
-    expect(fetchStub.callCount).to.equal(1);
-
-    process.emit('SIGTERM');
-    await following;
-    output.stdout.releaseAll();
-    await flushAsyncWork(clock);
-
-    expect(output.stdout.lines).to.have.length(1);
-    expect(fetchStub.callCount).to.equal(1);
-    expect(process.exitCode).to.equal(143);
-    expect(process.stdout.listenerCount('drain')).to.equal(
-      originalDrainListeners
-    );
-  });
-
-  it('treats EPIPE as a clean output shutdown', async () => {
-    const brokenPipe = Object.assign(new Error('pipe closed'), {
-      code: 'EPIPE',
-    });
-
-    output.stdout.failWith(brokenPipe);
-    fetchStub.resolves(
-      eventsResponse([fixtureEvent({ eventId: 'pipe-record' })])
-    );
-    const following = startTail();
-
-    await following;
-    output.restoreWrites();
-
-    expect(process.exitCode).to.equal(0);
-    expect(output.stderr.lines).to.deep.equal([]);
-    expect(fetchStub.callCount).to.equal(1);
-  });
-
-  it('surfaces non-EPIPE output failures with a partial-tail warning', async () => {
-    output.stdout.failWith(new Error('output device failed'));
-    fetchStub.resolves(
-      eventsResponse([fixtureEvent({ eventId: 'failed-output-record' })])
-    );
-    const following = startTail();
-    let failure: unknown;
-
-    try {
-      await following;
-    } catch (error) {
-      failure = error;
-    }
-
-    output.restoreWrites();
-
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
-    expect((failure as Error).message).not.to.include('fixture-management-key');
-    expect(process.exitCode).to.equal(undefined);
-    expect(fetchStub.callCount).to.equal(1);
-  });
-
-  it('fails promptly when stdout is already destroyed before the first record', async () => {
-    output.stdout.destroy();
-    fetchStub.resolves(eventsResponse([fixtureEvent()]));
-    let failure: unknown;
-    const following = startTail().catch((error: unknown) => {
-      failure = error;
-    });
-
-    await flushAsyncWork(clock);
-    output.restoreWrites();
-
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
-    expect(output.stdout.lines).to.deep.equal([]);
-    expect(fetchStub.callCount).to.equal(1);
-    expect(clock.countTimers()).to.equal(0);
-    await following;
-  });
-
-  it('stays active beyond sixty seconds of healthy polling until interrupted', async () => {
-    fetchStub.callsFake(() => Promise.resolve(eventsResponse()));
+  it('keeps healthy polling active beyond sixty seconds until interrupted', async () => {
+    fetchStub.callsFake(() => Promise.resolve(logsResponse()));
     const following = startTail();
 
     await flushAsyncWork(clock);
@@ -1783,134 +1030,142 @@ describe('logs runtime reads and tailing', () => {
     expect(process.exitCode).to.equal(130);
   });
 
-  it('stops at the public pagination work bound without requesting another page', async () => {
-    fetchStub.callsFake(() =>
-      Promise.resolve(
-        eventsResponse([], `page-cursor-${fetchStub.callCount + 1}`)
-      )
+  it('retries a failed page with unchanged bounds and reports recovery', async () => {
+    fetchStub.onFirstCall().resolves(
+      new Response('private payload', {
+        status: 503,
+        headers: {
+          'retry-after': '0',
+        },
+      })
     );
-    const following = startTail();
-    let failure: unknown;
+    fetchStub.onSecondCall().resolves(
+      logsResponse([
+        fixtureLog({
+          message: 'recovered',
+        }),
+      ])
+    );
+    const reading = startRead();
 
-    try {
-      await following;
-    } catch (error) {
-      failure = error;
-    }
-
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
-    expect(fetchStub.callCount).to.equal(125);
-    expect(output.stdout.lines).to.deep.equal([]);
+    await flushAsyncWork(clock);
+    await clock.tickAsync(5_000);
+    await reading;
+    expect(requestUrl(fetchStub, 0).searchParams.toString()).to.equal(
+      requestUrl(fetchStub, 1).searchParams.toString()
+    );
+    expect(jsonRecords(output.stdout)[0].message).to.equal('recovered');
+    expect(output.stderr.text).not.to.include('private payload');
   });
 
-  it('rejects new output when the retained-record identity count is full', async () => {
-    output.stdout.discardCapturedOutput();
-    const fiftyThousandRecords = Array.from(
-      { length: 50_000 },
-      (_, sequence) => ({
-        sequence,
-      })
+  for (const retryCase of [
+    {
+      label: 'transport errors',
+      status: 0,
+      delay: 5_000,
+    },
+    {
+      label: 'HTTP 429',
+      status: 429,
+      delay: 5_000,
+      retryAfter: '0',
+    },
+    {
+      label: 'HTTP 503 with Retry-After date',
+      status: 503,
+      delay: 7_000,
+      retryAfter: new Date(FOLLOWER_TEST_NOW + 7_000).toUTCString(),
+    },
+  ]) {
+    /* eslint-disable-next-line no-loop-func -- each test uses one immutable retry policy. */
+    it(`retries ${retryCase.label} on the same page`, async () => {
+      fetchStub.callsFake(() => {
+        if (fetchStub.callCount > 1) {
+          return Promise.resolve(
+            logsResponse([
+              fixtureLog({
+                message: 'retried',
+              }),
+            ])
+          );
+        }
+
+        if (retryCase.status === 0) {
+          return Promise.reject(new TypeError('private transport detail'));
+        }
+
+        return Promise.resolve(
+          new Response('private response', {
+            status: retryCase.status,
+            headers: retryCase.retryAfter
+              ? {
+                  'retry-after': retryCase.retryAfter,
+                }
+              : {},
+          })
+        );
+      });
+      const reading = startRead();
+
+      await flushAsyncWork(clock);
+      await clock.tickAsync(retryCase.delay - 1);
+      expect(fetchStub.callCount).to.equal(1);
+      await clock.tickAsync(1);
+      await reading;
+      expect(fetchStub.callCount).to.equal(2);
+      expect(jsonRecords(output.stdout)[0].message).to.equal('retried');
+      expect(requestUrl(fetchStub, 0).searchParams.toString()).to.equal(
+        requestUrl(fetchStub, 1).searchParams.toString()
+      );
+      expect(output.stderr.lines).to.have.length(2);
+      expect(output.stderr.text).not.to.include('private');
+    });
+  }
+
+  it('fails explicitly at the 125-page work limit', async () => {
+    fetchStub.callsFake(() =>
+      Promise.resolve(logsResponse([], `cursor-${fetchStub.callCount}`))
+    );
+    let failure: Error | undefined;
+
+    await startRead().catch((error: Error) => {
+      failure = error;
+    });
+    expect(failure?.message).to.include('Partial read');
+    expect(failure?.message).to.include('125-page limit');
+    expect(fetchStub.callCount).to.equal(125);
+  });
+
+  it('counts duplicate records toward the 2,500-record window limit', async () => {
+    const repeatedRecords = Array.from(
+      {
+        length: 20,
+      },
+      (_, index) =>
+        fixtureLog({
+          id: index.toString(16).padStart(64, '0'),
+          message: 'same',
+        })
     );
 
     fetchStub.callsFake((input) => {
       const cursor = new URL(String(input)).searchParams.get('start');
-
-      if (cursor === null) {
-        return Promise.resolve(
-          eventsResponse(
-            [
-              fixtureEvent({
-                eventId: 'cache-page-one',
-                invocationId: 'cache-page-one',
-                records: fiftyThousandRecords,
-              }),
-            ],
-            'retained-cursor'
-          )
-        );
-      }
-
-      if (cursor === 'retained-cursor') {
-        return Promise.resolve(
-          eventsResponse(
-            [
-              fixtureEvent({
-                eventId: 'cache-page-two',
-                invocationId: 'cache-page-two',
-                records: fiftyThousandRecords,
-              }),
-            ],
-            'overflow-cursor'
-          )
-        );
-      }
+      const page =
+        cursor === null ? 0 : Number(cursor.replace('record-page-', ''));
 
       return Promise.resolve(
-        eventsResponse([
-          fixtureEvent({
-            eventId: 'identity-overflow',
-            invocationId: 'identity-overflow',
-          }),
-        ])
-      );
-    });
-
-    const following = startTail();
-    let failure: unknown;
-
-    for (let attempt = 0; attempt < 12 && fetchStub.callCount < 3; attempt++) {
-      await flushAsyncWork(clock);
-    }
-
-    try {
-      await following;
-    } catch (error) {
-      failure = error;
-    }
-
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
-    expect(output.stdout.writeCount).to.equal(100_000);
-    expect(fetchStub.callCount).to.equal(3);
-    expect(clock.countTimers()).to.equal(0);
-  });
-
-  it('bounds encoded identity memory independently of record count', async () => {
-    output.stdout.discardCapturedOutput();
-    const longInvocation = 'i'.repeat(4 * 1024 * 1024 + 128);
-
-    fetchStub.callsFake(() => {
-      const eventIndex = fetchStub.callCount - 1;
-
-      return Promise.resolve(
-        eventsResponse(
-          [
-            fixtureEvent({
-              eventId: `encoded-identity-${eventIndex}`,
-              invocationId: `${longInvocation}${eventIndex}`,
-            }),
-          ],
-          eventIndex < 3 ? `encoded-cursor-${eventIndex + 1}` : null
+        logsResponse(
+          repeatedRecords,
+          page < 124 ? `record-page-${page + 1}` : null
         )
       );
     });
-    const following = startTail();
-    let failure: unknown;
-
-    try {
-      await following;
-    } catch (error) {
-      failure = error;
-    }
-
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
-    expect(fetchStub.callCount).to.equal(4);
-    expect(output.stdout.writeCount).to.equal(3);
+    await startRead();
+    expect(fetchStub.callCount).to.equal(125);
+    expect(jsonRecords(output.stdout)).to.have.length(20);
   });
 
-  it('counts bytes from failed attempts against the cycle-wide receive bound', async () => {
+  it('counts failed response bytes against the cycle-wide receive limit', async () => {
     const maxResponse = new Uint8Array(8 * 1024 * 1024 - 4_096);
     const attemptsByCursor = new Map<string, number>();
 
@@ -1932,7 +1187,9 @@ describe('logs runtime reads and tailing', () => {
         return Promise.resolve(
           new Response(body, {
             status: 503,
-            headers: { 'retry-after': '0' },
+            headers: {
+              'retry-after': '0',
+            },
           })
         );
       }
@@ -1943,29 +1200,26 @@ describe('logs runtime reads and tailing', () => {
           : Number(cursor.replace('cycle-cursor-', ''));
 
       return Promise.resolve(
-        eventsResponse(
+        logsResponse(
           [],
           pageNumber < 4 ? `cycle-cursor-${pageNumber + 1}` : null
         )
       );
     });
-    const following = startTail();
-    let failure: unknown;
-
-    try {
-      await clock.runAllAsync();
-      await following;
-    } catch (error) {
+    let failure: Error | undefined;
+    const reading = startRead().catch((error: Error) => {
       failure = error;
-    }
+    });
 
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
+    await flushAsyncWork(clock);
+    await clock.tickAsync(40_000);
+    await reading;
+    expect(failure?.message).to.include('Partial read');
+    expect(failure?.message).to.include('64 MiB');
     expect(fetchStub.callCount).to.equal(13);
-    expect(output.stdout.lines).to.deep.equal([]);
   });
 
-  it('aborts a pending request at its deadline before retrying the same page', async () => {
+  it('aborts a request at its deadline before retrying the same page', async () => {
     const requestSignals: AbortSignal[] = [];
 
     fetchStub.callsFake((_input, init) => {
@@ -1977,32 +1231,45 @@ describe('logs runtime reads and tailing', () => {
 
       return fetchUntilAbort(signal);
     });
-    const following = startTail();
+    const reading = startRead();
 
     await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(1);
-
     await clock.tickAsync(19_999);
     expect(requestSignals[0].aborted).to.equal(false);
-    expect(fetchStub.callCount).to.equal(1);
     await clock.tickAsync(1);
     await flushAsyncWork(clock);
     expect(requestSignals[0].aborted).to.equal(true);
     expect(fetchStub.callCount).to.equal(1);
-
     await clock.tickAsync(4_999);
     expect(fetchStub.callCount).to.equal(1);
     await clock.tickAsync(1);
     await flushAsyncWork(clock);
     expect(fetchStub.callCount).to.equal(2);
-    expect(requestSignals[1].aborted).to.equal(false);
-    expect(output.stderr.lines).to.have.length(1);
-
     process.emit('SIGINT');
-    await following;
-    expect(requestSignals[1].aborted).to.equal(true);
+    await reading;
+  });
+
+  it('cancels a pending Retry-After wait on interruption', async () => {
+    fetchStub.resolves(
+      new Response('private transient detail', {
+        status: 503,
+        headers: {
+          'retry-after': '30',
+        },
+      })
+    );
+    const reading = startRead();
+
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(1);
+    expect(output.stderr.lines).to.have.length(1);
+    process.emit('SIGINT');
+    await reading;
+    await clock.tickAsync(30_000);
+    expect(fetchStub.callCount).to.equal(1);
     expect(process.exitCode).to.equal(130);
     expect(clock.countTimers()).to.equal(0);
+    expect(output.stderr.text).not.to.include('private transient detail');
   });
 
   it('enforces the cycle deadline across requests and retries', async () => {
@@ -2017,484 +1284,1179 @@ describe('logs runtime reads and tailing', () => {
 
       return fetchUntilAbort(signal);
     });
+    let failure: Error | undefined;
     const following = startTail();
 
     await clock.tickAsync(60_000);
-    let failure: unknown;
-
-    try {
-      await following;
-    } catch (error) {
+    await following.catch((error: Error) => {
       failure = error;
-    }
-
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
+    });
+    expect(failure?.message).to.include('Partial tail');
     expect(fetchStub.callCount).to.equal(3);
     expect(requestSignals).to.have.length(3);
     expect(requestSignals.every((signal) => signal.aborted)).to.equal(true);
-    expect(clock.countTimers()).to.equal(0);
   });
 
-  it('prints lifecycle and application records with structured context without treating completion as shutdown', async () => {
-    const event = fixtureEvent({
-      eventId: 'lifecycle-batch',
-      invocationId: 'lifecycle-invocation',
-      traceId: 'trace-context',
-      records: [
-        {
-          sequence: 2,
-          source: 'platform',
-          recordType: 'lifecycle',
-          event: 'execution.started',
-          message: null,
-        },
-        {
-          sequence: 4,
-          source: 'application',
-          recordType: 'log',
-          level: 'error',
-          message: 'request failed',
-          attributes: {
-            request_id: 'nested-context',
-            event_id: 'attribute-event-id',
-            resource_id: 'attribute-resource-id',
-            sequence: 1_000,
-          },
-          error: {
-            type: 'TypeError',
-            message: 'invalid request',
-            stack_trace: 'safe stack',
-          },
-        },
-        {
-          sequence: 8,
-          source: 'platform',
-          recordType: 'lifecycle',
-          event: 'execution.completed',
-          outcome: 'succeeded',
-          durationMs: 19,
-        },
-      ],
-    });
+  for (const status of [302, 400, 401, 403, 500]) {
+    /* eslint-disable-next-line no-loop-func -- each callback captures its HTTP status. */
+    it(`fails permanently on HTTP ${status} without leaking response content`, async () => {
+      fetchStub.resolves(
+        new Response('private response payload', {
+          status,
+        })
+      );
+      let failure: Error | undefined;
 
-    fetchStub.resolves(eventsResponse([event]));
-
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    const records = jsonRecords(output.stdout);
-
-    expect(records).to.have.length(3);
-    expect(records[0]).to.include({
-      occurred_at: new Date(FOLLOWER_TEST_NOW - 61_000).toISOString(),
-      event: 'execution.started',
-      message: null,
-      trace_id: 'trace-context',
-    });
-    expect(records[1]).to.include({
-      occurred_at: new Date(FOLLOWER_TEST_NOW - 60_999).toISOString(),
-      trace_id: 'trace-context',
-      level: 'error',
-      message: 'request failed',
-    });
-    expect(records[1]).not.to.have.any.keys(
-      'event_id',
-      'event_type',
-      'event_timestamp',
-      'tenant_id',
-      'resource_type',
-      'resource_id',
-      'invocation_id',
-      'sequence',
-      'source',
-      'record_type'
-    );
-    expect(records[1].attributes).to.deep.equal({
-      request_id: 'nested-context',
-      event_id: 'attribute-event-id',
-      resource_id: 'attribute-resource-id',
-      sequence: 1_000,
-    });
-    expect(records[1].error).to.deep.equal({
-      type: 'TypeError',
-      message: 'invalid request',
-      stack_trace: 'safe stack',
-    });
-    expect(records[2]).to.include({
-      occurred_at: new Date(FOLLOWER_TEST_NOW - 60_998).toISOString(),
-      trace_id: 'trace-context',
-      event: 'execution.completed',
-      outcome: 'succeeded',
-      duration_ms: 19,
-    });
-    expect(fetchStub.callCount).to.equal(1);
-    expect(clock.countTimers()).to.be.greaterThan(0);
-
-    process.emit('SIGINT');
-    await following;
-  });
-
-  it('waits instead of moving the completed event window backwards', async () => {
-    fetchStub.callsFake(() => Promise.resolve(eventsResponse()));
-    const dateNow = sandbox.stub(Date, 'now').returns(FOLLOWER_TEST_NOW);
-    const following = startTail();
-
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(1);
-    await clock.tickAsync(15_000);
-    expect(fetchStub.callCount).to.equal(1);
-
-    dateNow.restore();
-    await clock.tickAsync(5_000);
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(2);
-    expect(requestUrl(fetchStub, 1).searchParams.get('end_date')).to.equal(
-      new Date(FOLLOWER_TEST_NOW + 20_000).toISOString()
-    );
-
-    process.emit('SIGINT');
-    await following;
-  });
-
-  it('prints compact inline attributes and separates pretty entries with a blank line', async () => {
-    Object.defineProperty(process.stdout, 'isTTY', {
-      configurable: true,
-      value: false,
-    });
-    fetchStub.resolves(
-      eventsResponse([
-        fixtureEvent({
-          traceId: 'trace-fixture',
-          records: [
-            {
-              occurredAt: '2026-09-29T11:59:00.000Z',
-              level: 'info',
-              message: 'first',
-              attributes: {
-                nested: {
-                  count: 2,
-                },
-                values: [true, 'kept'],
-              },
-            },
-            {
-              occurredAt: '2026-09-29T11:59:01.000Z',
-              level: 'warn',
-              message: 'second',
-            },
-          ],
-        }),
-      ])
-    );
-
-    await startRead({ format: 'pretty' });
-
-    expect(output.stdout.text).to.equal(
-      'reactor reactor-fixture\n' +
-        '2026-09-29T11:59:00.000Z INFO trace=trace-fixture first | {"nested":{"count":2},"values":[true,"kept"]}\n\n' +
-        '2026-09-29T11:59:01.000Z WARN trace=trace-fixture second\n\n'
-    );
-    expect(output.stdout.writeCount).to.equal(2);
-    expect(output.stderr.lines).to.deep.equal([]);
-  });
-
-  it('separates compact and formatted JSON entries with one blank line and one write each', async () => {
-    Object.defineProperty(process.stdout, 'isTTY', {
-      configurable: true,
-      value: false,
-    });
-    fetchStub.callsFake(() =>
-      Promise.resolve(
-        eventsResponse([
-          fixtureEvent({
-            records: [
-              {
-                message: 'first JSON record',
-              },
-              {
-                sequence: 1,
-                message: 'second JSON record',
-              },
-            ],
-          }),
-        ])
-      )
-    );
-
-    for (const format of ['json', 'json-pretty'] as const) {
-      const firstChunk = output.stdout.chunks.length;
-      const firstWrite = output.stdout.writeCount;
-
-      await startRead({ format });
-
-      const chunks = output.stdout.chunks.slice(firstChunk);
-
-      expect(output.stdout.writeCount - firstWrite).to.equal(2);
-      expect(chunks).to.have.length(2);
-      expect(chunks.every((chunk) => chunk.endsWith('\n\n'))).to.equal(true);
-      expect(
-        chunks.map((chunk) => JSON.parse(chunk.trim()).message)
-      ).to.deep.equal(['first JSON record', 'second JSON record']);
-
-      output.stdout.chunks.length = firstChunk;
-    }
-
-    expect(output.stdout.text).to.equal('');
-  });
-
-  it('prints one safe, colored human record with a single resource header write', async () => {
-    Object.defineProperty(process.stdout, 'isTTY', {
-      configurable: true,
-      value: true,
-    });
-    const unsafeMessage = ['ansi \u001B[31m text', '\u202E bidi'].join('\n');
-    const occurrenceTimestamp = new Date(
-      FOLLOWER_TEST_NOW - 60_000
-    ).toISOString();
-    const event = fixtureEvent({
-      traceId: 'full-trace-context',
-      records: [
-        {
-          occurredAt: occurrenceTimestamp,
-          level: 'info',
-          message: unsafeMessage,
-        },
-      ],
-    });
-
-    fetchStub.callsFake(() => Promise.resolve(eventsResponse([event])));
-
-    const writesBefore = output.stdout.writeCount;
-    const prettyFollowing = startTail({ format: 'pretty' });
-
-    await flushAsyncWork(clock);
-    process.emit('SIGINT');
-    await prettyFollowing;
-
-    expect(output.stdout.writeCount - writesBefore).to.equal(1);
-    const prettyChunk = output.stdout.chunks[output.stdout.chunks.length - 1];
-    // eslint-disable-next-line no-control-regex -- Strip only generated SGR color sequences for output assertions.
-    const terminalVisible = prettyChunk.replace(/\u001B\[[0-9;]*m/gu, '');
-
-    expect(prettyChunk).to.include(
-      '\u001B[36mreactor reactor-fixture\u001B[0m'
-    );
-    expect(prettyChunk).to.include(
-      `${occurrenceTimestamp} INFO trace=full-trace-context`
-    );
-    expect(terminalVisible).to.include(occurrenceTimestamp);
-    expect(terminalVisible).to.include('full-trace-context');
-    expect(terminalVisible).to.include('ansi \\u001b[31m text\\n\\u202e bidi');
-    expect(terminalVisible).not.to.include('\u001B');
-    expect(terminalVisible).not.to.include('\u202E');
-    expect(output.stderr.lines).to.deep.equal([]);
-  });
-
-  for (const colorSetting of [
-    {
-      label: 'NO_COLOR',
-      environment: 'no-color',
-    },
-    {
-      label: 'TERM=dumb',
-      environment: 'dumb',
-    },
-    {
-      label: 'redirected stdout',
-      environment: 'non-tty',
-    },
-  ]) {
-    /* eslint-disable-next-line no-loop-func -- the test closes over its immutable color setting. */
-    it(`disables pretty color for ${colorSetting.label}`, async () => {
-      Object.defineProperty(process.stdout, 'isTTY', {
-        configurable: true,
-        value: true,
+      await startRead().catch((error: Error) => {
+        failure = error;
       });
+      expect(failure?.message).to.include('Partial read');
+      expect(failure?.message).not.to.include('private response payload');
+      expect(fetchStub.callCount).to.equal(1);
 
-      if (colorSetting.environment === 'no-color') {
-        process.env.NO_COLOR = '';
-      } else if (colorSetting.environment === 'dumb') {
-        process.env.TERM = 'dumb';
-      } else {
-        Object.defineProperty(process.stdout, 'isTTY', {
-          configurable: true,
-          value: false,
-        });
+      if (status === 403) {
+        expect(failure?.message).to.include('log:read');
       }
 
-      fetchStub.resolves(
-        eventsResponse([
-          fixtureEvent({
-            records: [
-              {
-                source: 'platform',
-                recordType: 'lifecycle',
-                event: 'execution.started',
-              },
-            ],
-          }),
-        ])
-      );
-
-      const following = startTail({ format: 'pretty' });
-
-      await flushAsyncWork(clock);
-      process.emit('SIGINT');
-      await following;
-
-      expect(output.stdout.lines).to.have.length(2);
-      expect(output.stdout.text).not.to.include('\u001B');
-      expect(output.stdout.text).to.include('reactor reactor-fixture');
-      expect(output.stdout.text).to.include('execution.started');
+      if (status === 500) {
+        expect(failure?.message).to.include('500');
+      }
     });
   }
 
-  it('colors compact and formatted JSON errors on terminal output', async () => {
-    Object.defineProperty(process.stdout, 'isTTY', {
-      configurable: true,
-      value: true,
+  it('cancels an in-flight read and a backpressured write on signals', async () => {
+    let requestSignal: AbortSignal | undefined;
+
+    fetchStub.callsFake((_input, init) => {
+      requestSignal = init?.signal ?? undefined;
+
+      return fetchUntilAbort(requestSignal);
     });
-    process.env.TERM = 'xterm-256color';
-    fetchStub.callsFake(() =>
-      Promise.resolve(
-        eventsResponse([
-          fixtureEvent({
-            records: [
-              {
-                level: 'error',
-                message: 'request failed',
-              },
-            ],
-          }),
-        ])
-      )
-    );
+    const reading = startRead();
 
-    for (const format of ['json', 'json-pretty'] as const) {
-      const chunkStart = output.stdout.chunks.length;
+    await flushAsyncWork(clock);
+    process.emit('SIGTERM');
+    await reading;
+    expect(requestSignal?.aborted).to.equal(true);
+    expect(process.exitCode).to.equal(143);
 
-      await startRead({ format });
-
-      const chunk = output.stdout.chunks[chunkStart];
-
-      expect(chunk).to.include('\u001B[2m"level"\u001B[0m');
-      expect(chunk).to.include('\u001B[31m"error"\u001B[0m');
-      // eslint-disable-next-line no-control-regex -- Strip generated SGR sequences to verify terminal JSON content.
-      expect(JSON.parse(chunk.replace(/\u001B\[[0-9;]*m/gu, ''))).to.include({
-        level: 'error',
-        message: 'request failed',
-      });
-    }
-  });
-
-  it('suppresses JSON color for NO_COLOR, TERM=dumb, and redirected stdout', async () => {
-    const colorSettings = [
-      {
-        environment: 'no-color',
-      },
-      {
-        environment: 'dumb',
-      },
-      {
-        environment: 'non-tty',
-      },
-    ] as const;
-
-    fetchStub.callsFake(() =>
-      Promise.resolve(eventsResponse([fixtureEvent()]))
-    );
-
-    for (const format of ['json', 'json-pretty'] as const) {
-      for (const colorSetting of colorSettings) {
-        Object.defineProperty(process.stdout, 'isTTY', {
-          configurable: true,
-          value: colorSetting.environment !== 'non-tty',
-        });
-        delete process.env.NO_COLOR;
-        process.env.TERM = 'xterm-256color';
-
-        if (colorSetting.environment === 'no-color') {
-          process.env.NO_COLOR = '';
-        } else if (colorSetting.environment === 'dumb') {
-          process.env.TERM = 'dumb';
-        }
-
-        const chunkStart = output.stdout.chunks.length;
-
-        await startRead({ format });
-
-        const chunk = output.stdout.chunks[chunkStart];
-
-        expect(chunk).not.to.include('\u001B');
-        expect(chunk.endsWith('\n\n')).to.equal(true);
-        expect(JSON.parse(chunk.trim())).to.be.an('object');
-        output.stdout.chunks.length = chunkStart;
-      }
-    }
-  });
-
-  it('stops retrying after three transient page attempts without advancing the cursor', async () => {
-    fetchStub.callsFake(() =>
-      Promise.resolve(
-        new Response('private retry body', {
-          status: 503,
-          headers: { 'retry-after': '0' },
-        })
-      )
+    output.stdout.blockNextWrite();
+    fetchStub.resolves(
+      logsResponse([
+        fixtureLog({
+          message: 'blocked',
+        }),
+      ])
     );
     const following = startTail();
 
     await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(1);
-    await clock.tickAsync(5_000);
-    await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(2);
-    await clock.tickAsync(5_000);
-    await flushAsyncWork(clock);
-    let failure: unknown;
-
-    try {
-      await following;
-    } catch (error) {
-      failure = error;
-    }
-
-    expect(failure).to.be.instanceOf(Error);
-    expect((failure as Error).message).to.include('Partial tail');
-    expect((failure as Error).message).not.to.include('private retry body');
-    expect(fetchStub.callCount).to.equal(3);
-    expect(requestUrl(fetchStub, 0).searchParams.get('start_date')).to.equal(
-      requestUrl(fetchStub, 2).searchParams.get('start_date')
-    );
-    expect(requestUrl(fetchStub, 0).searchParams.get('end_date')).to.equal(
-      requestUrl(fetchStub, 2).searchParams.get('end_date')
-    );
-    expect(output.stdout.lines).to.deep.equal([]);
-    expect(output.stderr.lines).to.have.length(1);
+    process.emit('SIGINT');
+    await following;
+    expect(process.exitCode).to.equal(130);
   });
 
-  it('cancels a pending Retry-After wait on interruption', async () => {
+  it('cancels a response body read when the request is interrupted', async () => {
+    let bodyCancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      cancel: () => {
+        bodyCancelled = true;
+      },
+    });
+
     fetchStub.resolves(
-      new Response('transient detail', {
-        status: 503,
-        headers: { 'retry-after': '30' },
+      new Response(body, {
+        headers: {
+          'content-type': 'application/json',
+        },
       })
     );
     const following = startTail();
 
     await flushAsyncWork(clock);
-    expect(fetchStub.callCount).to.equal(1);
-    expect(output.stderr.lines).to.have.length(1);
-
+    expect(fetchStub.calledOnce).to.equal(true);
     process.emit('SIGINT');
     await following;
-    await clock.tickAsync(30_000);
-
-    expect(fetchStub.callCount).to.equal(1);
+    await flushAsyncWork(clock);
+    expect(bodyCancelled).to.equal(true);
     expect(process.exitCode).to.equal(130);
     expect(clock.countTimers()).to.equal(0);
-    expect(output.stderr.text).not.to.include('transient detail');
+  });
+
+  it('treats EPIPE as a clean tail shutdown', async () => {
+    const brokenPipe = Object.assign(new Error('pipe closed'), {
+      code: 'EPIPE',
+    });
+
+    output.stdout.failWith(brokenPipe);
+    fetchStub.resolves(
+      logsResponse([
+        fixtureLog({
+          message: 'pipe record',
+        }),
+      ])
+    );
+    await startTail();
+    output.restoreWrites();
+    expect(process.exitCode).to.equal(0);
+  });
+
+  it('reports non-EPIPE stdout failures as partial reads', async () => {
+    output.stdout.failWith(new Error('output device failed'));
+    fetchStub.resolves(
+      logsResponse([
+        fixtureLog({
+          message: 'failed record',
+        }),
+      ])
+    );
+    let failure: Error | undefined;
+
+    await startRead().catch((error: Error) => {
+      failure = error;
+    });
+    output.restoreWrites();
+    expect(failure?.message).to.include('Partial read');
+    expect(failure?.message).not.to.include(baseOptions.apiKey);
+  });
+
+  it('fails with a partial read when stderr cannot report a retry', async () => {
+    output.stderr.failWith(new Error('stderr device failed'));
+    fetchStub.resolves(
+      new Response('private response', {
+        status: 503,
+      })
+    );
+    let failure: Error | undefined;
+
+    await startRead().catch((error: Error) => {
+      failure = error;
+    });
+    output.restoreWrites();
+    expect(failure?.message).to.include('Partial read');
+    expect(failure?.message).to.include('stderr device failed');
+  });
+
+  it('prints application and lifecycle records with occurrence-time identity', async () => {
+    fetchStub.resolves(
+      logsResponse([
+        fixtureLog({
+          id: 'c'.repeat(64),
+          source: 'platform',
+          recordType: 'lifecycle',
+          occurredAt: '2026-09-29T11:59:00.000Z',
+          event: 'execution.started',
+          durationMs: 0,
+          error: {
+            name: 'CustomError',
+            cause: {
+              code: 4,
+            },
+            stack: ['complete'],
+          },
+          attributes: {
+            nested: {
+              value: true,
+            },
+          },
+        }),
+      ])
+    );
+    await startRead();
+    const record = jsonRecords(output.stdout)[0];
+
+    expect(record).to.include({
+      occurred_at: '2026-09-29T11:59:00.000Z',
+      event: 'execution.started',
+      duration_ms: 0,
+    });
+    expect(record).not.to.have.any.keys(
+      'id',
+      'source',
+      'record_type',
+      'resource_type',
+      'resource_id'
+    );
+  });
+
+  it('exhausts historical cursors before live polling and keeps only rolling bounds', async () => {
+    const continuation = deferred<Response>();
+    const recent = fixtureLog({
+      id: 'a'.repeat(64),
+      message: 'recent history',
+    });
+    const old = fixtureLog({
+      id: 'b'.repeat(64),
+      occurredAt: new Date(FOLLOWER_TEST_NOW - 1_700_000).toISOString(),
+      message: 'old history',
+    });
+
+    fetchStub.onFirstCall().resolves(logsResponse([recent], 'history'));
+    fetchStub.onSecondCall().returns(continuation.promise);
+    fetchStub.onThirdCall().resolves(logsResponse([recent], 'seen-page'));
+    fetchStub.onCall(3).resolves(
+      logsResponse([
+        fixtureLog({
+          id: 'c'.repeat(64),
+          message: 'late arrival',
+        }),
+      ])
+    );
+    const following = startTail({
+      window: {
+        start: FOLLOWER_TEST_NOW - 1_800_000,
+        end: FOLLOWER_TEST_NOW,
+      },
+    });
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(10_000);
+    expect(fetchStub.callCount).to.equal(2);
+    expect(output.stdout.text).to.equal('');
+    continuation.resolve(logsResponse([old]));
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(4);
+    expect(requestUrl(fetchStub, 2).searchParams.get('start_date')).to.equal(
+      new Date(FOLLOWER_TEST_NOW - 60_000).toISOString()
+    );
+    expect(
+      jsonRecords(output.stdout).map((record) => record.message)
+    ).to.deep.equal(['old history', 'recent history', 'late arrival']);
+    process.emit('SIGINT');
+    await following;
+  });
+
+  it('retains completed tail output but discards the next failed window', async () => {
+    fetchStub.onFirstCall().resolves(
+      logsResponse([
+        fixtureLog({
+          id: 'a'.repeat(64),
+          message: 'completed',
+        }),
+      ])
+    );
+    fetchStub.onSecondCall().resolves(
+      logsResponse(
+        [
+          fixtureLog({
+            id: 'b'.repeat(64),
+            message: 'unfinished',
+          }),
+        ],
+        'failed'
+      )
+    );
+    fetchStub.onThirdCall().resolves(
+      new Response('{}', {
+        status: 403,
+      })
+    );
+    let failure: Error | undefined;
+    const following = startTail().catch((error: Error) => {
+      failure = error;
+    });
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(5_000);
+    await following;
+    expect(failure?.message).to.include('Partial tail');
+    expect(
+      jsonRecords(output.stdout).map((record) => record.message)
+    ).to.deep.equal(['completed']);
+  });
+
+  it('does not emit incomplete history or enter live polling after catch-up fails', async () => {
+    fetchStub.onFirstCall().resolves(
+      logsResponse(
+        [
+          fixtureLog({
+            message: 'unfinished history',
+          }),
+        ],
+        'failed'
+      )
+    );
+    fetchStub.onSecondCall().resolves(
+      new Response('{}', {
+        status: 403,
+      })
+    );
+    let failure: Error | undefined;
+
+    await startTail({
+      window: {
+        start: FOLLOWER_TEST_NOW - 1_800_000,
+        end: FOLLOWER_TEST_NOW,
+      },
+    }).catch((error: Error) => {
+      failure = error;
+    });
+    await clock.tickAsync(10_000);
+    expect(output.stdout.text).to.equal('');
+    expect(fetchStub.callCount).to.equal(2);
+    expect(failure?.message).to.include('Partial tail');
+  });
+
+  it('does not flush pending records when an outstanding continuation is cancelled', async () => {
+    fetchStub.onFirstCall().resolves(
+      logsResponse(
+        [
+          fixtureLog({
+            message: 'pending',
+          }),
+        ],
+        'cancelled'
+      )
+    );
+    fetchStub
+      .onSecondCall()
+      .callsFake((_input, init) => fetchUntilAbort(init?.signal));
+    const reading = startRead();
+
+    await flushAsyncWork(clock);
+    process.emit('SIGINT');
+    await reading;
+    expect(output.stdout.text).to.equal('');
+    expect(process.exitCode).to.equal(130);
+  });
+
+  it('honors output backpressure after collection before emitting the remaining prefix', async () => {
+    const newer = fixtureLog({
+      id: 'b'.repeat(64),
+      message: 'newer',
+    });
+    const older = fixtureLog({
+      id: 'a'.repeat(64),
+      message: 'older',
+    });
+
+    fetchStub.onFirstCall().resolves(logsResponse([newer], 'older'));
+    fetchStub.onSecondCall().resolves(logsResponse([older]));
+    output.stdout.blockNextWrite();
+    const reading = startRead();
+
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(2);
+    expect(
+      jsonRecords(output.stdout).map((record) => record.message)
+    ).to.deep.equal(['older']);
+    output.stdout.releaseOne();
+    await flushAsyncWork(clock);
+    await reading;
+    expect(
+      jsonRecords(output.stdout).map((record) => record.message)
+    ).to.deep.equal(['older', 'newer']);
+  });
+
+  it('prints only timestamped pretty entries across pages and completed windows', async () => {
+    fetchStub.onFirstCall().resolves(
+      logsResponse(
+        [
+          fixtureLog({
+            id: 'b'.repeat(64),
+            level: 'info',
+            message: 'newer',
+          }),
+        ],
+        'older'
+      )
+    );
+    fetchStub.onSecondCall().resolves(
+      logsResponse([
+        fixtureLog({
+          id: 'a'.repeat(64),
+          level: 'info',
+          message: 'older',
+        }),
+      ])
+    );
+    fetchStub.onThirdCall().resolves(
+      logsResponse([
+        fixtureLog({
+          id: 'c'.repeat(64),
+          level: 'info',
+          message: 'live',
+        }),
+      ])
+    );
+    const following = startTail({
+      format: 'pretty',
+    });
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(5_000);
+    await flushAsyncWork(clock);
+    const timestamp = new Date(FOLLOWER_TEST_NOW - 1_000).toISOString();
+
+    expect(output.stdout.text.trim().split('\n\n')).to.deep.equal([
+      `${timestamp} INFO older`,
+      `${timestamp} INFO newer`,
+      `${timestamp} INFO live`,
+    ]);
+    process.emit('SIGINT');
+    await following;
+  });
+  it('requests busy-tail renewal at sixty minutes, pauses output, and resumes the rolling stream', async () => {
+    setTTY(true, false, true);
+    const traceId = ' Trace=+%Ω ';
+    const transformType = 'response_transform' as const;
+    const recentRecord = fixtureLog({
+      id: 'b'.repeat(64),
+      occurredAt: new Date(FOLLOWER_TEST_NOW + 3_594_000).toISOString(),
+      traceId,
+      transformType,
+      level: 'error',
+      message: 'recent poll',
+    });
+    const lateRecord = fixtureLog({
+      id: 'c'.repeat(64),
+      occurredAt: new Date(FOLLOWER_TEST_NOW + 3_629_000).toISOString(),
+      traceId,
+      transformType,
+      level: 'error',
+      message: 'late arrival',
+    });
+
+    fetchStub.callsFake(() => {
+      const query = requestUrl(fetchStub, fetchStub.callCount - 1).searchParams;
+      const end = Date.parse(query.get('end_date') as string);
+
+      expect(query.get('level')).to.equal('error');
+
+      if (performance.now() >= 3_595_000 && performance.now() < 3_600_000) {
+        return Promise.resolve(logsResponse([recentRecord]));
+      }
+
+      if (performance.now() >= 3_600_000 && performance.now() < 3_635_000) {
+        return Promise.resolve(logsResponse([recentRecord, lateRecord]));
+      }
+
+      return Promise.resolve(
+        logsResponse([
+          fixtureLog({
+            id: fetchStub.callCount.toString(16).padStart(64, '0'),
+            occurredAt: new Date(end - 1_000).toISOString(),
+            traceId,
+            transformType,
+            level: 'error',
+            message: 'busy record',
+          }),
+        ])
+      );
+    });
+    const confirmation = pendingConfirmation(0);
+    const secondConfirmation = pendingConfirmation(1);
+    const following = startTail({
+      resourceType: 'proxy',
+      resourceId: '92feba61-1fb6-42be-a0b5-73bfc9217911',
+      traceId,
+      transformType,
+      text: 'Payment failed',
+      level: 'error',
+      window: {
+        start: FOLLOWER_TEST_NOW - 3_600_000,
+        end: FOLLOWER_TEST_NOW,
+      },
+    });
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_599_999);
+    await flushAsyncWork(clock);
+    expect(confirmStub.called).to.equal(false);
+    await clock.tickAsync(1);
+    await flushAsyncWork(clock);
+    expect(confirmStub.calledOnce).to.equal(true);
+    const callsWhilePaused = fetchStub.callCount;
+    const outputWhilePaused = output.stdout.text;
+
+    await clock.tickAsync(30_000);
+    expect(fetchStub.callCount).to.equal(callsWhilePaused);
+    expect(output.stdout.text).to.equal(outputWhilePaused);
+
+    confirmation.resolve(true);
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(callsWhilePaused + 1);
+    const resumedQuery = requestUrl(fetchStub, callsWhilePaused).searchParams;
+
+    expect(resumedQuery.get('trace_id')).to.equal(traceId);
+    expect(resumedQuery.get('transform_type')).to.equal(transformType);
+    expect(resumedQuery.get('level')).to.equal('error');
+    expect(resumedQuery.get('message[search_words]')).to.equal(
+      'Payment failed'
+    );
+    expect(resumedQuery.get('start_date')).to.equal(
+      new Date(FOLLOWER_TEST_NOW + 3_630_000 - 60_000).toISOString()
+    );
+    const resumedMessages = jsonRecords(output.stdout).map(
+      (record) => record.message
+    );
+
+    expect(resumedMessages).to.include('recent poll');
+    expect(resumedMessages).to.include('late arrival');
+    expect(
+      resumedMessages.filter((message) => message === 'recent poll')
+    ).to.have.length(1);
+    expect(
+      resumedMessages.filter((message) => message === 'late arrival')
+    ).to.have.length(1);
+    expect(
+      jsonRecords(output.stdout).every((record) => record.level === 'error')
+    ).to.equal(true);
+
+    await clock.tickAsync(3_599_999);
+    await flushAsyncWork(clock);
+    expect(confirmStub.calledOnce).to.equal(true);
+    await clock.tickAsync(1);
+    await flushAsyncWork(clock);
+    expect(confirmStub.calledTwice).to.equal(true);
+    process.emit('SIGINT');
+    await following;
+    expect(process.exitCode).to.equal(130);
+    expect(secondConfirmation.cancel.calledOnce).to.equal(true);
+  });
+
+  it('renews an empty tail only at the full sixty-minute boundary', async () => {
+    setTTY(true, true, true);
+    fetchStub.callsFake(respondWithEmptyPage);
+    const confirmation = pendingConfirmation();
+    const following = startTail();
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_599_999);
+    await flushAsyncWork(clock);
+    expect(confirmStub.called).to.equal(false);
+    await clock.tickAsync(1);
+    await flushAsyncWork(clock);
+    expect(confirmStub.calledOnce).to.equal(true);
+    const callsWhilePaused = fetchStub.callCount;
+
+    await clock.tickAsync(10_000);
+    expect(fetchStub.callCount).to.equal(callsWhilePaused);
+    confirmation.resolve(false);
+    await following;
+    expect(fetchStub.callCount).to.equal(callsWhilePaused);
+    expect(process.exitCode).to.equal(0);
+  });
+
+  it('finishes an in-flight window before renewing and resumes with recent deduplication', async () => {
+    setTTY(true, true, true);
+    const boundaryRecord = fixtureLog({
+      id: 'f'.repeat(64),
+      occurredAt: new Date(FOLLOWER_TEST_NOW + 3_594_000).toISOString(),
+      message: 'boundary record',
+    });
+    const pausedRecord = fixtureLog({
+      id: 'e'.repeat(64),
+      occurredAt: new Date(FOLLOWER_TEST_NOW + 3_597_000).toISOString(),
+      message: 'record during renewal pause',
+    });
+
+    fetchStub.callsFake((_input, init) => {
+      if (performance.now() >= 3_595_000 && performance.now() < 3_600_000) {
+        return delayedFetchResponse(
+          init?.signal,
+          10_000,
+          logsResponse([boundaryRecord]),
+          () => undefined
+        );
+      }
+
+      return performance.now() >= 3_600_000
+        ? Promise.resolve(logsResponse([pausedRecord, boundaryRecord]))
+        : respondWithEmptyPage();
+    });
+    const confirmation = pendingConfirmation();
+    const following = startTail();
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_600_000);
+    await flushAsyncWork(clock);
+    expect(confirmStub.called).to.equal(false);
+    expect(output.stdout.text).to.equal('');
+    await clock.tickAsync(5_000);
+    await flushAsyncWork(clock);
+    expect(confirmStub.calledOnce).to.equal(true);
+    // eslint-disable-next-line no-control-regex -- Remove generated terminal SGR before inspecting the emitted JSON.
+    const visible = output.stdout.text.replace(/\u001B\[[0-9;]*m/gu, '');
+
+    expect(JSON.parse(visible)).to.have.property('message', 'boundary record');
+    const callsWhilePaused = fetchStub.callCount;
+
+    await clock.tickAsync(10_000);
+    expect(fetchStub.callCount).to.equal(callsWhilePaused);
+    confirmation.resolve(true);
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(callsWhilePaused + 1);
+    expect(
+      requestUrl(fetchStub, callsWhilePaused).searchParams.get('start_date')
+    ).to.equal(new Date(FOLLOWER_TEST_NOW + 3_615_000 - 60_000).toISOString());
+    // eslint-disable-next-line no-control-regex -- Remove generated terminal SGR before inspecting resumed JSON.
+    const resumed = output.stdout.text.replace(/\u001B\[[0-9;]*m/gu, '');
+    const records: unknown[] = resumed
+      .trim()
+      .split('\n\n')
+      .map((record) => JSON.parse(record));
+
+    expect(records).to.have.length(2);
+    expect(records[0]).to.include({ message: 'boundary record' });
+    expect(records[1]).to.include({ message: 'record during renewal pause' });
+    process.emit('SIGINT');
+    await following;
+    expect(process.exitCode).to.equal(130);
+  });
+
+  it('counts historical catch-up toward the renewal session without resetting after completion', async () => {
+    setTTY(true, true, true);
+    fetchStub.onFirstCall().callsFake((_input, init) =>
+      delayedFetchResponse(
+        init?.signal,
+        10_000,
+        logsResponse([
+          fixtureLog({
+            id: '1'.repeat(64),
+            message: 'history',
+          }),
+        ]),
+        () => undefined
+      )
+    );
+    fetchStub.callsFake(respondWithEmptyPage);
+    const confirmation = pendingConfirmation();
+    const following = startTail({
+      window: {
+        start: FOLLOWER_TEST_NOW - 1_800_000,
+        end: FOLLOWER_TEST_NOW,
+      },
+    });
+
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(1);
+    await clock.tickAsync(3_599_999);
+    await flushAsyncWork(clock);
+    expect(output.stdout.text).to.include('history');
+    await flushAsyncWork(clock);
+    expect(confirmStub.called).to.equal(false);
+    await clock.tickAsync(1);
+    await flushAsyncWork(clock);
+    expect(confirmStub.calledOnce).to.equal(true);
+    confirmation.resolve(false);
+    await following;
+    expect(process.exitCode).to.equal(0);
+  });
+
+  it('stops successfully on decline and does not ask reads to renew', async () => {
+    setTTY(true, true, true);
+    fetchStub.callsFake(respondWithEmptyPage);
+    await startRead();
+    expect(confirmStub.called).to.equal(false);
+    const confirmation = pendingConfirmation();
+    const following = startTail();
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_600_000);
+    await flushAsyncWork(clock);
+    expect(confirmStub.calledOnce).to.equal(true);
+    const requestCount = fetchStub.callCount;
+
+    confirmation.resolve(false);
+    await following;
+    expect(fetchStub.callCount).to.equal(requestCount);
+    expect(process.exitCode).to.equal(0);
+  });
+
+  it('stays paused for days and resumes only the recent minute before normal polling', async () => {
+    setTTY(true, false, true);
+    const pauseDuration = 2 * 24 * 60 * 60 * 1_000;
+    const resumedAt = FOLLOWER_TEST_NOW + 3_600_000 + pauseDuration;
+    const pausedRecord = fixtureLog({
+      id: 'd'.repeat(64),
+      occurredAt: new Date(resumedAt - 120_000).toISOString(),
+      message: 'older paused history',
+    });
+    const recentRecord = fixtureLog({
+      id: 'e'.repeat(64),
+      occurredAt: new Date(resumedAt - 1_000).toISOString(),
+      message: 'recent log',
+    });
+    const nextRecord = fixtureLog({
+      id: 'f'.repeat(64),
+      occurredAt: new Date(resumedAt + 4_000).toISOString(),
+      message: 'next live poll',
+    });
+
+    fetchStub.callsFake(() => {
+      const query = requestUrl(fetchStub, fetchStub.callCount - 1).searchParams;
+      const start = Date.parse(query.get('start_date') as string);
+      const end = Date.parse(query.get('end_date') as string);
+      const records = [nextRecord, recentRecord, pausedRecord].filter(
+        (record) => {
+          const occurredAt = Date.parse(record.occurred_at);
+
+          return occurredAt >= start && occurredAt < end;
+        }
+      );
+
+      return Promise.resolve(logsResponse(records));
+    });
+    const confirmation = pendingConfirmation();
+    const following = startTail();
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_600_000);
+    await flushAsyncWork(clock);
+    expect(confirmStub.calledOnce).to.equal(true);
+    const requestCount = fetchStub.callCount;
+    const pausedOutput = output.stdout.text;
+
+    await clock.tickAsync(pauseDuration);
+    expect(confirmation.cancel.called).to.equal(false);
+    expect(fetchStub.callCount).to.equal(requestCount);
+    expect(output.stdout.text).to.equal(pausedOutput);
+    confirmation.resolve(true);
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(requestCount + 1);
+    const resumedQuery = requestUrl(fetchStub, requestCount).searchParams;
+
+    expect(resumedQuery.get('start_date')).to.equal(
+      new Date(resumedAt - 60_000).toISOString()
+    );
+    expect(resumedQuery.get('end_date')).to.equal(
+      new Date(resumedAt).toISOString()
+    );
+    expect(
+      jsonRecords(output.stdout).map((record) => record.message)
+    ).to.deep.equal(['recent log']);
+    await clock.tickAsync(5_000);
+    await flushAsyncWork(clock);
+    expect(fetchStub.callCount).to.equal(requestCount + 2);
+    expect(
+      requestUrl(fetchStub, requestCount + 1).searchParams.get('start_date')
+    ).to.equal(new Date(resumedAt - 60_000).toISOString());
+    expect(
+      jsonRecords(output.stdout).map((record) => record.message)
+    ).to.deep.equal(['recent log', 'next live poll']);
+    process.emit('SIGINT');
+    await following;
+    expect(process.exitCode).to.equal(130);
+  });
+
+  it('stops on EOF and Ctrl+D without starting another API request', async () => {
+    for (const inputEnd of ['end', 'ctrlD'] as const) {
+      setTTY(true, false, true);
+      fetchStub.callsFake(respondWithEmptyPage);
+      const confirmation = pendingConfirmation();
+      const following = startTail();
+
+      await flushAsyncWork(clock);
+      await clock.tickAsync(3_600_000);
+      await flushAsyncWork(clock);
+      const requestCount = fetchStub.callCount;
+
+      if (inputEnd === 'end') {
+        process.stdin.emit('end');
+      } else {
+        process.stdin.emit('keypress', '', {
+          ctrl: true,
+          name: 'd',
+        });
+      }
+
+      await following;
+      expect(confirmation.cancel.calledOnce).to.equal(true);
+      expect(fetchStub.callCount).to.equal(requestCount);
+      expect(process.exitCode).to.equal(0);
+      process.exitCode = undefined;
+    }
+  });
+
+  it('does not renew without interactive stdin and stderr, even when stdout is piped', async () => {
+    for (const [stdinTTY, stderrTTY] of [
+      [false, true],
+      [true, false],
+    ] as const) {
+      setTTY(stdinTTY, false, stderrTTY);
+      fetchStub.callsFake(respondWithEmptyPage);
+      const following = startTail();
+
+      await flushAsyncWork(clock);
+      await clock.tickAsync(3_600_000);
+      await following;
+      expect(confirmStub.called).to.equal(false);
+      expect(process.exitCode).to.equal(0);
+      expect(fetchStub.callCount).to.be.greaterThan(0);
+      process.exitCode = undefined;
+    }
+  });
+
+  it('preserves signal and EPIPE statuses while a confirmation is pending', async () => {
+    for (const stop of ['SIGINT', 'SIGTERM', 'EPIPE'] as const) {
+      confirmStub.resetHistory();
+      setTTY(true, false, true);
+      fetchStub.callsFake(respondWithEmptyPage);
+      const confirmation = pendingConfirmation();
+      const following = startTail();
+
+      await flushAsyncWork(clock);
+      await clock.tickAsync(3_600_000);
+      await flushAsyncWork(clock);
+      expect(confirmStub.calledOnce).to.equal(true);
+
+      if (stop === 'EPIPE') {
+        process.stdout.emit(
+          'error',
+          Object.assign(new Error('closed'), {
+            code: 'EPIPE',
+          })
+        );
+      } else {
+        process.emit(stop);
+      }
+
+      await following;
+      expect(confirmation.cancel.calledOnce).to.equal(true);
+      expect(fetchStub.callCount).to.be.greaterThan(0);
+      expect(process.exitCode).to.equal(
+        stop === 'SIGINT' ? 130 : stop === 'SIGTERM' ? 143 : 0
+      );
+      process.exitCode = undefined;
+    }
+  });
+
+  it('bridges raw Ctrl+C during confirmation and cleans up its input listener', async () => {
+    setTTY(true, true, true);
+    fetchStub.callsFake(respondWithEmptyPage);
+    const confirmation = pendingConfirmation();
+    const following = startTail();
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_600_000);
+    await flushAsyncWork(clock);
+    const keypressListeners = process.stdin.listenerCount('keypress');
+
+    expect(keypressListeners).to.equal(
+      originalListenerCounts.stdinKeypress + 1
+    );
+    process.stdin.emit('keypress', '', {
+      ctrl: true,
+      name: 'c',
+    });
+    await following;
+    expect(confirmation.cancel.calledOnce).to.equal(true);
+    expect(process.exitCode).to.equal(130);
+    expect(process.stdin.listenerCount('keypress')).to.equal(
+      originalListenerCounts.stdinKeypress
+    );
+  });
+
+  it('fails on prompt errors and noninteractive stop-notice failures', async () => {
+    setTTY(true, true, true);
+    fetchStub.callsFake(respondWithEmptyPage);
+    confirmStub.rejects(new Error('prompt failed'));
+    let promptError: Error | undefined;
+    const promptFailure = startTail();
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_600_000);
+    await promptFailure.catch((error: Error) => {
+      promptError = error;
+    });
+    expect(promptError?.message).to.include('Partial tail');
+    expect(promptError?.message).to.include('prompt failed');
+
+    confirmStub.resetBehavior();
+    confirmStub.resetHistory();
+    confirmStub.resolves(false);
+    setTTY(false, false, true);
+    let statusError: Error | undefined;
+    const outputFailure = startTail();
+
+    await flushAsyncWork(clock);
+    output.stderr.failWith(new Error('status output failed'));
+    await clock.tickAsync(3_599_999);
+    expect(confirmStub.called).to.equal(false);
+    await clock.tickAsync(1);
+    await outputFailure.catch((error: Error) => {
+      statusError = error;
+    });
+    expect(statusError?.message).to.include('Partial tail');
+    expect(statusError?.message).to.include('status output failed');
+    expect(confirmStub.called).to.equal(false);
+  });
+
+  it('restores input raw mode and streaming state after prompt cancellation', async () => {
+    for (const initialFlow of [null, true] as const) {
+      confirmStub.resetHistory();
+      setTTY(true, true, true);
+      Object.defineProperty(process.stdin, 'readableFlowing', {
+        configurable: true,
+        value: initialFlow,
+      });
+      const pause = sandbox.stub(process.stdin, 'pause').callsFake(() => {
+        Object.defineProperty(process.stdin, 'readableFlowing', {
+          configurable: true,
+          value: false,
+        });
+
+        return process.stdin;
+      });
+      const resume = sandbox.stub(process.stdin, 'resume').callsFake(() => {
+        Object.defineProperty(process.stdin, 'readableFlowing', {
+          configurable: true,
+          value: true,
+        });
+
+        return process.stdin;
+      });
+
+      Object.defineProperty(process.stdin, 'setRawMode', {
+        configurable: true,
+        writable: true,
+        value: (raw: boolean) => {
+          Object.defineProperty(process.stdin, 'isRaw', {
+            configurable: true,
+            value: raw,
+          });
+
+          return process.stdin;
+        },
+      });
+      const setRawMode = sandbox
+        .stub(process.stdin, 'setRawMode')
+        .callsFake((raw) => {
+          Object.defineProperty(process.stdin, 'isRaw', {
+            configurable: true,
+            value: raw,
+          });
+
+          return process.stdin;
+        });
+
+      fetchStub.callsFake(respondWithEmptyPage);
+      const confirmation = pendingConfirmation();
+
+      confirmStub.callsFake(() => {
+        Object.defineProperty(process.stdin, 'isRaw', {
+          configurable: true,
+          value: true,
+        });
+        Object.defineProperty(process.stdin, 'readableFlowing', {
+          configurable: true,
+          value: true,
+        });
+        let resolvePrompt!: (answer: boolean) => void;
+        const prompt = new Promise<boolean>((resolve) => {
+          resolvePrompt = resolve;
+        });
+        const cancel = sinon.spy(() => {
+          resolvePrompt(false);
+          confirmation.cancel();
+        });
+
+        return Object.assign(prompt, {
+          cancel,
+        });
+      });
+      const following = startTail();
+
+      await flushAsyncWork(clock);
+      await clock.tickAsync(3_600_000);
+      await flushAsyncWork(clock);
+      process.emit('SIGINT');
+      await following;
+      expect(confirmation.cancel.calledOnce).to.equal(true);
+      expect(
+        setRawMode.calledOnceWithExactly(originalInputRaw ?? false)
+      ).to.equal(true);
+      expect(process.stdin.isRaw).to.equal(originalInputRaw ?? false);
+
+      if (initialFlow) {
+        expect(resume.calledOnce).to.equal(true);
+        expect(pause.called).to.equal(false);
+        expect(process.stdin.readableFlowing).to.equal(true);
+      } else {
+        expect(pause.calledOnce).to.equal(true);
+        expect(resume.called).to.equal(false);
+        expect(process.stdin.readableFlowing).not.to.equal(true);
+      }
+
+      process.exitCode = undefined;
+      pause.restore();
+      resume.restore();
+      setRawMode.restore();
+    }
+  });
+
+  it('waits through a clock regression without renewing early', async () => {
+    setTTY(true, true, true);
+    fetchStub.callsFake(respondWithEmptyPage);
+    const confirmation = pendingConfirmation();
+    const following = startTail();
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_599_999);
+    await flushAsyncWork(clock);
+    expect(confirmStub.called).to.equal(false);
+    const currentMonotonic = performance.now();
+
+    clock.setSystemTime(FOLLOWER_TEST_NOW - 3_600_000);
+    expect(performance.now()).to.equal(currentMonotonic);
+    await clock.tickAsync(1);
+    await flushAsyncWork(clock);
+    expect(confirmStub.calledOnce).to.equal(true);
+    confirmation.resolve(false);
+    await following;
+  });
+
+  it('fails when stdin errors during a pending confirmation', async () => {
+    setTTY(true, true, true);
+    fetchStub.callsFake(respondWithEmptyPage);
+    const confirmation = pendingConfirmation();
+    const following = startTail();
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_600_000);
+    await flushAsyncWork(clock);
+    let inputError: Error | undefined;
+
+    process.stdin.emit('error', new Error('input device failed'));
+    await following.catch((error: Error) => {
+      inputError = error;
+    });
+    expect(inputError?.message).to.include('Partial tail');
+    expect(inputError?.message).to.include('input device failed');
+    expect(confirmation.cancel.calledOnce).to.equal(true);
+    expect(process.exitCode).to.equal(undefined);
+  });
+
+  it('bounds a blocked noninteractive stop notice without starting a prompt', async () => {
+    setTTY(false, false, true);
+    fetchStub.callsFake(respondWithEmptyPage);
+    const following = startTail();
+
+    await flushAsyncWork(clock);
+    output.stderr.blockNextWrite();
+    await clock.tickAsync(3_600_000);
+    await flushAsyncWork(clock);
+    const requestCount = fetchStub.callCount;
+
+    await clock.tickAsync(59_999);
+    expect(confirmStub.called).to.equal(false);
+    expect(fetchStub.callCount).to.equal(requestCount);
+    await clock.tickAsync(1);
+    await following;
+    expect(process.exitCode).to.equal(0);
+    expect(confirmStub.called).to.equal(false);
+    expect(fetchStub.callCount).to.equal(requestCount);
+  });
+
+  it('prioritizes session cancellation over a concurrently submitted yes', async () => {
+    setTTY(true, false, true);
+    fetchStub.callsFake(respondWithEmptyPage);
+    const confirmation = pendingConfirmation();
+    const following = startTail();
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(3_600_000);
+    await flushAsyncWork(clock);
+    const requestCount = fetchStub.callCount;
+
+    confirmation.resolve(true);
+    process.emit('SIGTERM');
+    await following;
+    expect(process.exitCode).to.equal(143);
+    expect(fetchStub.callCount).to.equal(requestCount);
+  });
+
+  it('discards over-limit catch-up without entering live polling', async () => {
+    const record = fixtureLog({
+      id: 'a'.repeat(64),
+      message: 'unfinished history',
+    });
+
+    fetchStub.callsFake(() =>
+      Promise.resolve(
+        logsResponse([record], `history-page-${fetchStub.callCount}`)
+      )
+    );
+    let failure: Error | undefined;
+
+    await startTail({
+      window: {
+        start: FOLLOWER_TEST_NOW - 1_800_000,
+        end: FOLLOWER_TEST_NOW,
+      },
+    }).catch((error: Error) => {
+      failure = error;
+    });
+    expect(failure?.message).to.include('Partial tail');
+    expect(failure?.message).to.include('125-page limit');
+    expect(output.stdout.text).to.equal('');
+    expect(fetchStub.callCount).to.equal(125);
+    await clock.tickAsync(10_000);
+    expect(fetchStub.callCount).to.equal(125);
+  });
+
+  it('expires catch-up and poll identities while tailing beyond 100,000 total records', async () => {
+    let windowNumber = 0;
+    let ordinal = 0;
+    let currentOccurrence = '';
+
+    fetchStub.callsFake((input) => {
+      const query = new URL(String(input)).searchParams;
+      const cursor = query.get('start');
+      const page =
+        cursor === null ? 0 : Number(cursor.replace('identity-page-', ''));
+
+      if (cursor === null) {
+        windowNumber++;
+      }
+
+      // Cursors contain the original window. Capture its occurrence time once.
+      if (page === 0) {
+        const end = Date.parse(query.get('end_date') ?? '');
+
+        currentOccurrence = new Date(
+          end - (windowNumber === 1 ? 600_000 : 1_000)
+        ).toISOString();
+      }
+
+      const records = Array.from(
+        {
+          length: 20,
+        },
+        () => {
+          ordinal++;
+
+          return fixtureLog({
+            id: ordinal.toString(16).padStart(64, '0'),
+            occurredAt: currentOccurrence,
+            message: 'completed',
+          });
+        }
+      );
+
+      return Promise.resolve(
+        logsResponse(records, page < 124 ? `identity-page-${page + 1}` : null)
+      );
+    });
+    let failure: Error | undefined;
+    const following = startTail({
+      window: {
+        start: FOLLOWER_TEST_NOW - 1_800_000,
+        end: FOLLOWER_TEST_NOW,
+      },
+    }).catch((error: Error) => {
+      failure = error;
+    });
+
+    await flushAsyncWork(clock);
+    await clock.tickAsync(205_000);
+    process.emit('SIGINT');
+    await following;
+    expect(failure).to.equal(undefined);
+    expect(windowNumber).to.equal(42);
+    expect(output.stdout.lines).to.have.length(105_000);
+    expect(process.exitCode).to.equal(130);
   });
 });
 /* eslint-enable unicorn/no-null */

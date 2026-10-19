@@ -1,14 +1,13 @@
 /* Public log fields intentionally mirror the Events JSON contract. */
 
 /* eslint-disable camelcase, unicorn/no-null */
-import type { EventLogRecord } from './events';
+import type { RuntimeLogRecord } from './events';
 
 type RuntimeLogFormat = 'pretty' | 'json' | 'json-pretty';
 
 interface FormatRuntimeLogOptions {
   format: RuntimeLogFormat;
   color?: boolean;
-  includeResourceHeader?: boolean;
 }
 
 const unsafeTerminalCharacters =
@@ -25,7 +24,7 @@ const inlineText = (value: string): string => serialize(value).slice(1, -1);
 const colorize = (text: string, color: string | undefined): string =>
   color ? `\u001B[${color}m${text}\u001B[0m` : text;
 
-const recordColor = (record: EventLogRecord): string | undefined => {
+const recordColor = (record: RuntimeLogRecord): string | undefined => {
   if (record.record_type === 'lifecycle') {
     if (record.outcome === 'failure') {
       return '31';
@@ -53,7 +52,19 @@ const recordColor = (record: EventLogRecord): string | undefined => {
   }
 };
 
-const publicRecord = (record: EventLogRecord): Record<string, unknown> => ({
+const messageColor = (record: RuntimeLogRecord): string | undefined => {
+  switch (record.level?.toLowerCase()) {
+    case 'warn':
+    case 'warning':
+      return '33';
+    case 'error':
+      return '31';
+    default:
+      return undefined;
+  }
+};
+
+const publicRecord = (record: RuntimeLogRecord): Record<string, unknown> => ({
   occurred_at: record.occurred_at,
   ...(record.level !== undefined ? { level: record.level } : {}),
   ...(record.event !== undefined ? { event: record.event } : {}),
@@ -72,7 +83,7 @@ const publicRecord = (record: EventLogRecord): Record<string, unknown> => ({
   ...(record.attributes !== undefined ? { attributes: record.attributes } : {}),
 });
 
-const highlightJson = (json: string, record: EventLogRecord): string => {
+const highlightJson = (json: string, record: RuntimeLogRecord): string => {
   let depth = 0;
   let rootField: string | undefined;
 
@@ -117,13 +128,7 @@ const highlightJson = (json: string, record: EventLogRecord): string => {
       } else if (depth === 1 && rootField === 'level') {
         color = recordColor(record);
       } else if (depth === 1 && rootField === 'message') {
-        const level = record.level?.toLowerCase();
-
-        if (level === 'error') {
-          color = '31';
-        } else if (level === 'warn' || level === 'warning') {
-          color = '33';
-        }
+        color = messageColor(record);
       } else if (
         depth === 1 &&
         rootField === 'outcome' &&
@@ -139,22 +144,26 @@ const highlightJson = (json: string, record: EventLogRecord): string => {
 };
 
 const prettyRecord = (
-  record: EventLogRecord,
+  record: RuntimeLogRecord,
   options: FormatRuntimeLogOptions
 ): string => {
   const color = options.color ? recordColor(record) : undefined;
-  const prefix = options.includeResourceHeader
-    ? `${colorize(
-        `${record.resource_type} ${inlineText(record.resource_id)}`,
-        options.color ? '36' : undefined
-      )}\n`
-    : '';
   const trace =
     record.trace_id !== undefined
-      ? ` trace=${inlineText(record.trace_id)}`
+      ? ` trace_id=${inlineText(record.trace_id)}`
       : '';
   const transform =
-    record.transform_type !== undefined ? ` ${record.transform_type}` : '';
+    record.transform_type !== undefined
+      ? ` ${inlineText(record.transform_type)}`
+      : '';
+  const message = Object.prototype.hasOwnProperty.call(record, 'message')
+    ? record.message === null
+      ? 'null'
+      : colorize(
+          inlineText(record.message as string),
+          options.color ? messageColor(record) : undefined
+        )
+    : undefined;
   let summary: string;
 
   if (record.record_type === 'lifecycle') {
@@ -169,26 +178,16 @@ const prettyRecord = (
     ]
       .filter((value) => value !== undefined)
       .join(' ');
-    const message = Object.prototype.hasOwnProperty.call(record, 'message')
-      ? ` message=${
-          record.message === null
-            ? 'null'
-            : inlineText(record.message as string)
-        }`
-      : '';
 
     summary = `${colorize(event, color)}${trace}${transform}${
       lifecycle ? ` ${lifecycle}` : ''
-    }${message}`;
+    }${message !== undefined ? ` message=${message}` : ''}`;
   } else {
     const severity = inlineText((record.level ?? 'log').toUpperCase());
-    const message = Object.prototype.hasOwnProperty.call(record, 'message')
-      ? record.message === null
-        ? 'null'
-        : inlineText(record.message as string)
-      : '';
 
-    summary = `${colorize(severity, color)}${trace}${transform} ${message}`;
+    summary = `${colorize(severity, color)}${trace}${transform} ${
+      message ?? ''
+    }`;
   }
 
   const attributes =
@@ -205,11 +204,11 @@ const prettyRecord = (
   }
 
   // The shared writer adds the second newline separating pretty entries.
-  return `${prefix}${lines.join('\n')}\n`;
+  return `${lines.join('\n')}\n`;
 };
 
 const formatRuntimeLogRecord = (
-  record: EventLogRecord,
+  record: RuntimeLogRecord,
   options: FormatRuntimeLogOptions
 ): string => {
   if (options.format === 'pretty') {

@@ -18,9 +18,9 @@ describe('log time windows', () => {
     });
   });
 
-  it('defaults to the five minutes preceding command start', () => {
+  it('defaults to the hour preceding command start', () => {
     expect(resolveLogWindow({}, NOW)).to.deep.equal({
-      start: NOW - 300_000,
+      start: NOW - 3_600_000,
       end: NOW,
     });
   });
@@ -37,7 +37,7 @@ describe('log time windows', () => {
         NOW - Number(milliseconds)
       );
       expect(resolveLogWindow({ until: String(value) }, NOW)).to.deep.equal({
-        start: NOW - Number(milliseconds) - 300_000,
+        start: NOW - Number(milliseconds) - 3_600_000,
         end: NOW - Number(milliseconds),
       });
     });

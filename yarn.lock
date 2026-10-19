@@ -442,10 +442,10 @@
     read-pkg-up "^7.0.1"
     semver-regex "^3.1.3"
 
-"@basis-theory/node-sdk@^6.3.0":
-  version "6.3.0"
-  resolved "https://registry.npmjs.org/@basis-theory/node-sdk/-/node-sdk-6.3.0.tgz#5a083669f644ffbbaebf6efc8252996a17f4ef52"
-  integrity sha512-4OLtsjsa5GtX27rgcqk22wSTxtl9ju2cno/N1BLo7xBmuQnY1xGfQwMsU2zuTE1i3c6cfctOU5GxITmeF7tRTA==
+"@basis-theory/node-sdk@6.4.0":
+  version "6.4.0"
+  resolved "https://registry.npmjs.org/@basis-theory/node-sdk/-/node-sdk-6.4.0.tgz#ab9775ae8c5f5066d452cab0c9d0325bc7f56867"
+  integrity sha512-2nF3/eLnQTrdMgPZ8T7yZ6Y27sXIxv+KrtIsbOCXakYLNUykcA+L1oT16xVDsQUkbuCE3yr3JY7FumJwhx/Y7g==
 
 "@colors/colors@1.5.0":
   version "1.5.0"

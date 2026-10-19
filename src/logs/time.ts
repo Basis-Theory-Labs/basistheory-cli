@@ -1,4 +1,4 @@
-const DEFAULT_LOOKBACK_MS = 300_000;
+const DEFAULT_READ_LOOKBACK_MS = 3_600_000;
 
 interface LogWindow {
   start: number;
@@ -82,7 +82,7 @@ const resolveLogWindow = (
     flags.until === undefined ? now : parseTime(flags.until, now, 'until');
   const start =
     flags.since === undefined
-      ? end - DEFAULT_LOOKBACK_MS
+      ? end - DEFAULT_READ_LOOKBACK_MS
       : parseTime(flags.since, now, 'since');
 
   if (start < 0 || start >= end) {
@@ -110,4 +110,4 @@ const resolveTailWindow = (
     : resolveLogWindow(flags, now);
 
 export type { LogWindow };
-export { DEFAULT_LOOKBACK_MS, resolveLogWindow, resolveTailWindow };
+export { resolveLogWindow, resolveTailWindow };
