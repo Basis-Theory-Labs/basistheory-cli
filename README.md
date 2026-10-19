@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/4.4.0 linux-x64 node-v22.23.3
+@basis-theory-labs/cli/5.0.0 linux-x64 node-v22.23.3
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -66,7 +66,7 @@ EXAMPLES
   $ bt applications
 ```
 
-_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.4.0/dist/commands/applications/index.ts)_
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v5.0.0/dist/commands/applications/index.ts)_
 
 ## `bt applications create`
 
@@ -155,7 +155,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.4.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v5.0.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -288,23 +288,27 @@ EXAMPLES
 
 ## `bt proxies logs read ID`
 
-Read a fixed window of Proxy runtime logs through Events and exit. Requires `event:read` and runtime logging already enabled.
+Read individual Proxy runtime-log records through the dedicated Events endpoint and exit. Requires `log:read` and runtime logging already enabled.
 
 ```
 USAGE
   $ bt proxies logs read ID -x <value> [--trace-id <value>] [--transform-type request_transform|response_transform]
-    [--since <value>] [--until <value>] [--format pretty|json|json-pretty]
+    [--level <value>] [--message-search <value>] [--since <value>] [--until <value>] [--format pretty|json|json-pretty]
 
 ARGUMENTS
   ID  Proxy id
 
 FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
-  --format=<option>             [default: pretty] pretty: readable logs; json: compact objects; json-pretty: indented
-                                objects. Entries are separated by blank lines; colors are enabled in terminals
+  --format=<option>             [default: pretty] pretty: readable logs (trace_id=...); json: compact objects;
+                                json-pretty: indented objects. Entries are separated by blank lines; terminal colors
+                                include warning/error messages
                                 <options: pretty|json|json-pretty>
+  --level=<value>               show logs with the specified level (e.g. debug, info, warn, error)
+  --message-search=<value>      all query words must match one runtime-log message; combines with other filters using
+                                AND
   --since=<value>               window start: positive duration (30s, 5m, 2h, 1d, 1w) or ISO timestamp with timezone;
-                                defaults to five minutes before the end
+                                defaults to one hour before the end
   --trace-id=<value>            exact, case-sensitive stored BT trace ID; combines with transform direction using AND
   --transform-type=<option>     exact transform direction; includes both directions when omitted
                                 <options: request_transform|response_transform>
@@ -312,25 +316,40 @@ FLAGS
                                 command start
 
 DESCRIPTION
-  Read a fixed window of Proxy runtime logs through Events and exit. Requires `event:read` and runtime logging already
-  enabled.
+  Read individual Proxy runtime-log records through the dedicated Events endpoint and exit. Requires `log:read` and
+  runtime logging already enabled.
+
+  Optional --level shows logs with the specified level (for example debug, info, warn, or error). All supplied filters
+  combine using AND.
+
+  --message-search searches only the message field and returns matching records, without neighboring records from their
+  original batch. All analyzed query words must match one message, case-insensitively; word order and adjacency do not
+  matter. Shell quotes group one argument, not an exact phrase. Substring, partial-word, wildcard, fuzzy, phrase, and
+  raw-query modes are unsupported. The API owns normalization and limits queries to 256 normalized characters and 1,024
+  input characters.
 
   Optional --trace-id matches the effective stored BT trace ID exactly and case-sensitively. A submitted header may be
   sanitized by Vault; the CLI does not normalize or trim it. A reused trace ID can match multiple invocations.
-  --transform-type filters request or response transforms, alone or combined with trace ID using AND; omitting it
-  includes both directions.
+  --transform-type filters request or response transforms; omitting it includes both directions. All supplied filters
+  combine with message search using AND.
 
-  Defaults to the five minutes preceding --until, or command start when --until is omitted, regardless of filters.
-  Supply --since, for example --since 30d, to request a larger window. Explicit relative values use command-start time.
-  Windows include their start and exclude their end, filtering event batch timestamps rather than individual record
-  occurrence times. Each matching batch is expanded in record sequence; flattened output has no global chronological
-  ordering. History is limited by server retention and tenant entitlements; the API clamps unavailable history. Indexing
-  is asynchronous and pagination is not a snapshot, so empty or exhausted results do not prove complete coverage. Large
-  windows may hit bounded work limits and fail with partial output. Application logs come from the injected `logger`,
-  not arbitrary stdout or `console.log`; collection requires resource opt-in and the platform runtime-log gate. Does not
-  enable logging or open a tunnel.
+  Defaults to the hour preceding --until, or command start when --until is omitted, with or without filters. Supply
+  --since to request a different window. Relative values use one command-start clock. Bounds apply to individual
+  occurred_at times, inclusive at start and exclusive at end. Every page is collected before the complete window is
+  emitted chronologically, oldest first; initial output is delayed until retrieval completes.
+
+  Each window is bounded to 2,500 returned records, 125 pages, 64 MiB received, and 60 seconds. Work-limit or retrieval
+  failures are explicit; an unfinished retrieval window is not emitted. Output failures may leave an emitted prefix.
+  Retry with a smaller range rather than assuming truncated results are complete.
+
+  The API clamps history to retention and tenant entitlements. Indexing is asynchronous and pagination is not a
+  snapshot; empty or exhausted results do not prove complete coverage, and complete pre-cutover history is not
+  guaranteed. Application logs come from the injected `logger`, not arbitrary stdout or `console.log`; collection
+  requires resource opt-in and the platform runtime-log gate. This command does not enable logging or open a tunnel.
 
 EXAMPLES
+  $ bt proxies logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --level error --trace-id customer_Order-42 --transform-type response_transform --message-search "Payment failed" --since 30m
+
   $ bt proxies logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --trace-id customer_Order-42 --since 30d
 
   $ bt proxies logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --transform-type request_transform
@@ -344,21 +363,25 @@ EXAMPLES
 
 ## `bt proxies logs tail ID`
 
-Tail Proxy runtime logs through Events. Requires `event:read` and runtime logging already enabled.
+Tail individual Proxy runtime-log records through the dedicated Events endpoint. Requires `log:read` and runtime logging already enabled.
 
 ```
 USAGE
   $ bt proxies logs tail ID -x <value> [--trace-id <value>] [--transform-type request_transform|response_transform]
-    [--since <value>] [--format pretty|json|json-pretty]
+    [--level <value>] [--message-search <value>] [--since <value>] [--format pretty|json|json-pretty]
 
 ARGUMENTS
   ID  Proxy id
 
 FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
-  --format=<option>             [default: pretty] pretty: readable logs; json: compact objects; json-pretty: indented
-                                objects. Entries are separated by blank lines; colors are enabled in terminals
+  --format=<option>             [default: pretty] pretty: readable logs (trace_id=...); json: compact objects;
+                                json-pretty: indented objects. Entries are separated by blank lines; terminal colors
+                                include warning/error messages
                                 <options: pretty|json|json-pretty>
+  --level=<value>               show logs with the specified level (e.g. debug, info, warn, error)
+  --message-search=<value>      all query words must match one runtime-log message; combines with other filters using
+                                AND
   --since=<value>               include initial history from a positive duration (30s, 5m, 2h, 1d, 1w) or ISO timestamp
                                 with timezone; omitted means watch from command start
   --trace-id=<value>            exact, case-sensitive stored BT trace ID; combines with transform direction using AND
@@ -366,22 +389,49 @@ FLAGS
                                 <options: request_transform|response_transform>
 
 DESCRIPTION
-  Tail Proxy runtime logs through Events. Requires `event:read` and runtime logging already enabled.
+  Tail individual Proxy runtime-log records through the dedicated Events endpoint. Requires `log:read` and runtime
+  logging already enabled.
+
+  Optional --level shows logs with the specified level (for example debug, info, warn, or error). All supplied filters
+  combine using AND.
+
+  --message-search searches only the message field and returns matching records, without neighboring records from their
+  original batch. All analyzed query words must match one message, case-insensitively; word order and adjacency do not
+  matter. Shell quotes group one argument, not an exact phrase. Substring, partial-word, wildcard, fuzzy, phrase, and
+  raw-query modes are unsupported. The API owns normalization and limits queries to 256 normalized characters and 1,024
+  input characters.
 
   Optional --trace-id matches the effective stored BT trace ID exactly and case-sensitively. A submitted header may be
   sanitized by Vault; the CLI does not normalize or trim it. A reused trace ID can match multiple invocations.
   --transform-type filters request or response transforms, alone or combined with trace ID using AND; omitting it
   includes both directions. Filters apply to initial history and every live poll.
 
-  Starts watching from command time, regardless of filters. Supply --since to retrieve initial history before following
-  new logs. Polls every five seconds with a rolling five-minute overlap that never reaches before the requested start.
-  Time windows filter event batches, not individual record occurrence times; a newly arriving batch can contain records
-  that occurred before command start. History is limited by server retention and tenant entitlements; the API clamps
-  unavailable history. Large initial windows may hit bounded work limits and fail with partial output. Visibility is
-  delayed and best-effort; output has no durable resume or global chronological ordering. Application logs come from the
-  injected `logger`, not arbitrary stdout or `console.log`; collection requires resource opt-in and the platform
-  runtime-log gate. Silence does not distinguish an idle resource, a wrong ID or filter, disabled collection, or delayed
-  indexing. Runs until interrupted, output closes, or an error occurs.
+  Starts at command time and waits five seconds before the first poll. Optional --since performs one immediate bounded
+  catch-up, then switches to five-second polling. During normal polling, each window starts one minute before the end of
+  the last completed window, never before the requested start, and ends at the new poll time. After a slow poll, this
+  includes the elapsed time without leaving an unqueried gap, subject to the same work limits. --until is unsupported;
+  use logs read for finite history. Bounds apply to individual occurred_at times, inclusive at start and exclusive at
+  end. Every complete window is collected before chronological, oldest-first emission. Late arrivals can appear after
+  newer output from earlier polls, so there is no global order across polls or durable resume guarantee.
+
+  Initial history delays first output and must fit the same per-window limits: 2,500 returned records, 125 pages, 64 MiB
+  received, and 60 seconds. Retrieval, validation, and work-limit failures exit explicitly without emitting incomplete
+  history or starting live polling. Completed earlier output remains on a later failure; output failures can leave an
+  emitted prefix. Use logs read for finite or smaller historical ranges instead of expecting silent truncation.
+
+  Busy and idle tails require renewal every 60 minutes, including initial catch-up time. The current bounded window
+  finishes first, allowing up to one 60-second cycle of grace. Polling and log output stay paused indefinitely while
+  stderr asks "Keep tailing?", default No. Yes starts another 60-minute session and immediately fetches the most recent
+  minute, never before the requested start, then resumes normal polling without repeating initial history or clearing
+  deduplication state. Earlier logs from the pause may be skipped; use logs read to retrieve them within retention. No
+  or Enter stops successfully. Renewal needs interactive stdin and stderr; stdout may be piped. Noninteractive tails
+  stop normally with an explanation.
+
+  The API clamps history to retention and tenant entitlements. Indexing is asynchronous and pagination is not a
+  snapshot; complete pre-cutover history is not guaranteed. Application logs come from the injected `logger`, not
+  arbitrary stdout or `console.log`; collection requires resource opt-in and the platform runtime-log gate. Silence may
+  mean an idle resource, wrong ID or filter, disabled collection, or delayed indexing. This command does not enable
+  logging or open a tunnel. Interruptions, closed output, and errors also stop tailing.
 
 EXAMPLES
   $ bt proxies logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca
@@ -392,7 +442,9 @@ EXAMPLES
 
   $ bt proxies logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --trace-id customer_Order-42 --transform-type response_transform --since 30m --format json
 
-  $ bt proxies logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --since 30m --format json
+  $ bt proxies logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --level error --since 30m --format json
+
+  $ bt proxies logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --message-search "Payment failed" --transform-type response_transform --since 5m
 ```
 
 ## `bt proxies update ID`
@@ -497,7 +549,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v4.4.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v5.0.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 
@@ -599,45 +651,67 @@ EXAMPLES
 
 ## `bt reactors logs read ID`
 
-Read a fixed window of Reactor runtime logs through Events and exit. Requires `event:read` and runtime logging already enabled.
+Read individual Reactor runtime-log records through the dedicated Events endpoint and exit. Requires `log:read` and runtime logging already enabled.
 
 ```
 USAGE
-  $ bt reactors logs read ID -x <value> [--trace-id <value>] [--since <value>] [--until <value>] [--format
-    pretty|json|json-pretty]
+  $ bt reactors logs read ID -x <value> [--trace-id <value>] [--level <value>] [--message-search <value>] [--since
+    <value>] [--until <value>] [--format pretty|json|json-pretty]
 
 ARGUMENTS
   ID  Reactor id
 
 FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
-  --format=<option>             [default: pretty] pretty: readable logs; json: compact objects; json-pretty: indented
-                                objects. Entries are separated by blank lines; colors are enabled in terminals
+  --format=<option>             [default: pretty] pretty: readable logs (trace_id=...); json: compact objects;
+                                json-pretty: indented objects. Entries are separated by blank lines; terminal colors
+                                include warning/error messages
                                 <options: pretty|json|json-pretty>
+  --level=<value>               show logs with the specified level (e.g. debug, info, warn, error)
+  --message-search=<value>      all query words must match one runtime-log message; combines with other filters using
+                                AND
   --since=<value>               window start: positive duration (30s, 5m, 2h, 1d, 1w) or ISO timestamp with timezone;
-                                defaults to five minutes before the end
+                                defaults to one hour before the end
   --trace-id=<value>            exact, case-sensitive stored BT trace ID
   --until=<value>               window end (exclusive): positive duration or ISO timestamp with timezone; defaults to
                                 command start
 
 DESCRIPTION
-  Read a fixed window of Reactor runtime logs through Events and exit. Requires `event:read` and runtime logging already
-  enabled.
+  Read individual Reactor runtime-log records through the dedicated Events endpoint and exit. Requires `log:read` and
+  runtime logging already enabled.
 
-  Optional --trace-id matches the effective stored BT trace ID exactly and case-sensitively. A submitted header may be
-  sanitized by Vault; the CLI does not normalize or trim it. A reused trace ID can match multiple invocations.
+  Optional --level shows logs with the specified level (for example debug, info, warn, or error). All supplied filters
+  combine using AND.
 
-  Defaults to the five minutes preceding --until, or command start when --until is omitted, regardless of filters.
-  Supply --since, for example --since 30d, to request a larger window. Explicit relative values use command-start time.
-  Windows include their start and exclude their end, filtering event batch timestamps rather than individual record
-  occurrence times. Each matching batch is expanded in record sequence; flattened output has no global chronological
-  ordering. History is limited by server retention and tenant entitlements; the API clamps unavailable history. Indexing
-  is asynchronous and pagination is not a snapshot, so empty or exhausted results do not prove complete coverage. Large
-  windows may hit bounded work limits and fail with partial output. Application logs come from the injected `logger`,
-  not arbitrary stdout or `console.log`; collection requires resource opt-in and the platform runtime-log gate. Does not
-  enable logging or open a tunnel.
+  --message-search searches only the message field and returns matching records, without neighboring records from their
+  original batch. All analyzed query words must match one message, case-insensitively; word order and adjacency do not
+  matter. Shell quotes group one argument, not an exact phrase. Substring, partial-word, wildcard, fuzzy, phrase, and
+  raw-query modes are unsupported. The API owns normalization and limits queries to 256 normalized characters and 1,024
+  input characters.
+
+  Optional --trace-id matches the effective stored BT trace ID exactly and case-sensitively and combines with message
+  search using AND. A submitted header may be sanitized by Vault; the CLI does not normalize or trim it. A reused trace
+  ID can match multiple invocations.
+
+  Defaults to the hour preceding --until, or command start when --until is omitted, with or without filters. Supply
+  --since to request a different window. Relative values use one command-start clock. Bounds apply to individual
+  occurred_at times, inclusive at start and exclusive at end. Every page is collected before the complete window is
+  emitted chronologically, oldest first; initial output is delayed until retrieval completes.
+
+  Each window is bounded to 2,500 returned records, 125 pages, 64 MiB received, and 60 seconds. Work-limit or retrieval
+  failures are explicit; an unfinished retrieval window is not emitted. Output failures may leave an emitted prefix.
+  Retry with a smaller range rather than assuming truncated results are complete.
+
+  The API clamps history to retention and tenant entitlements. Indexing is asynchronous and pagination is not a
+  snapshot; empty or exhausted results do not prove complete coverage, and complete pre-cutover history is not
+  guaranteed. Application logs come from the injected `logger`, not arbitrary stdout or `console.log`; collection
+  requires resource opt-in and the platform runtime-log gate. This command does not enable logging or open a tunnel.
 
 EXAMPLES
+  $ bt reactors logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --level error --message-search "Payment failed"
+
+  $ bt reactors logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --message-search "Payment failed" --until 30m
+
   $ bt reactors logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --trace-id customer_Order-42 --since 30d
 
   $ bt reactors logs read 03858bf5-32d3-4a2e-b74b-daeea0883bca --since 1h --until 30m
@@ -647,39 +721,72 @@ EXAMPLES
 
 ## `bt reactors logs tail ID`
 
-Tail Reactor runtime logs through Events. Requires `event:read` and runtime logging already enabled.
+Tail individual Reactor runtime-log records through the dedicated Events endpoint. Requires `log:read` and runtime logging already enabled.
 
 ```
 USAGE
-  $ bt reactors logs tail ID -x <value> [--trace-id <value>] [--since <value>] [--format pretty|json|json-pretty]
+  $ bt reactors logs tail ID -x <value> [--trace-id <value>] [--level <value>] [--message-search <value>] [--since
+    <value>] [--format pretty|json|json-pretty]
 
 ARGUMENTS
   ID  Reactor id
 
 FLAGS
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
-  --format=<option>             [default: pretty] pretty: readable logs; json: compact objects; json-pretty: indented
-                                objects. Entries are separated by blank lines; colors are enabled in terminals
+  --format=<option>             [default: pretty] pretty: readable logs (trace_id=...); json: compact objects;
+                                json-pretty: indented objects. Entries are separated by blank lines; terminal colors
+                                include warning/error messages
                                 <options: pretty|json|json-pretty>
+  --level=<value>               show logs with the specified level (e.g. debug, info, warn, error)
+  --message-search=<value>      all query words must match one runtime-log message; combines with other filters using
+                                AND
   --since=<value>               include initial history from a positive duration (30s, 5m, 2h, 1d, 1w) or ISO timestamp
                                 with timezone; omitted means watch from command start
   --trace-id=<value>            exact, case-sensitive stored BT trace ID
 
 DESCRIPTION
-  Tail Reactor runtime logs through Events. Requires `event:read` and runtime logging already enabled.
+  Tail individual Reactor runtime-log records through the dedicated Events endpoint. Requires `log:read` and runtime
+  logging already enabled.
+
+  Optional --level shows logs with the specified level (for example debug, info, warn, or error). All supplied filters
+  combine using AND.
+
+  --message-search searches only the message field and returns matching records, without neighboring records from their
+  original batch. All analyzed query words must match one message, case-insensitively; word order and adjacency do not
+  matter. Shell quotes group one argument, not an exact phrase. Substring, partial-word, wildcard, fuzzy, phrase, and
+  raw-query modes are unsupported. The API owns normalization and limits queries to 256 normalized characters and 1,024
+  input characters.
 
   Optional --trace-id matches the effective stored BT trace ID exactly and case-sensitively. A submitted header may be
-  sanitized by Vault; the CLI does not normalize or trim it. A reused trace ID can match multiple invocations.
+  sanitized by Vault; the CLI does not normalize or trim it. A reused trace ID can match multiple invocations. Filters
+  apply to initial history and every live poll.
 
-  Starts watching from command time, regardless of filters. Supply --since to retrieve initial history before following
-  new logs. Polls every five seconds with a rolling five-minute overlap that never reaches before the requested start.
-  Time windows filter event batches, not individual record occurrence times; a newly arriving batch can contain records
-  that occurred before command start. History is limited by server retention and tenant entitlements; the API clamps
-  unavailable history. Large initial windows may hit bounded work limits and fail with partial output. Visibility is
-  delayed and best-effort; output has no durable resume or global chronological ordering. Application logs come from the
-  injected `logger`, not arbitrary stdout or `console.log`; collection requires resource opt-in and the platform
-  runtime-log gate. Silence does not distinguish an idle resource, a wrong ID or filter, disabled collection, or delayed
-  indexing. Runs until interrupted, output closes, or an error occurs.
+  Starts at command time and waits five seconds before the first poll. Optional --since performs one immediate bounded
+  catch-up, then switches to five-second polling. During normal polling, each window starts one minute before the end of
+  the last completed window, never before the requested start, and ends at the new poll time. After a slow poll, this
+  includes the elapsed time without leaving an unqueried gap, subject to the same work limits. --until is unsupported;
+  use logs read for finite history. Bounds apply to individual occurred_at times, inclusive at start and exclusive at
+  end. Every complete window is collected before chronological, oldest-first emission. Late arrivals can appear after
+  newer output from earlier polls, so there is no global order across polls or durable resume guarantee.
+
+  Initial history delays first output and must fit the same per-window limits: 2,500 returned records, 125 pages, 64 MiB
+  received, and 60 seconds. Retrieval, validation, and work-limit failures exit explicitly without emitting incomplete
+  history or starting live polling. Completed earlier output remains on a later failure; output failures can leave an
+  emitted prefix. Use logs read for finite or smaller historical ranges instead of expecting silent truncation.
+
+  Busy and idle tails require renewal every 60 minutes, including initial catch-up time. The current bounded window
+  finishes first, allowing up to one 60-second cycle of grace. Polling and log output stay paused indefinitely while
+  stderr asks "Keep tailing?", default No. Yes starts another 60-minute session and immediately fetches the most recent
+  minute, never before the requested start, then resumes normal polling without repeating initial history or clearing
+  deduplication state. Earlier logs from the pause may be skipped; use logs read to retrieve them within retention. No
+  or Enter stops successfully. Renewal needs interactive stdin and stderr; stdout may be piped. Noninteractive tails
+  stop normally with an explanation.
+
+  The API clamps history to retention and tenant entitlements. Indexing is asynchronous and pagination is not a
+  snapshot; complete pre-cutover history is not guaranteed. Application logs come from the injected `logger`, not
+  arbitrary stdout or `console.log`; collection requires resource opt-in and the platform runtime-log gate. Silence may
+  mean an idle resource, wrong ID or filter, disabled collection, or delayed indexing. This command does not enable
+  logging or open a tunnel. Interruptions, closed output, and errors also stop tailing.
 
 EXAMPLES
   $ bt reactors logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca
@@ -688,7 +795,9 @@ EXAMPLES
 
   $ bt reactors logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --trace-id customer_Order-42 --since 30m --format json
 
-  $ bt reactors logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --since 30m --format json
+  $ bt reactors logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --level error --since 30m --format json
+
+  $ bt reactors logs tail 03858bf5-32d3-4a2e-b74b-daeea0883bca --message-search "Payment failed" --since 5m
 ```
 
 ## `bt reactors update ID`

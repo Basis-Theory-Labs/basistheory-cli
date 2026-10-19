@@ -1,3 +1,19 @@
+# [5.0.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v4.4.0...v5.0.0) (2026-10-19)
+
+
+### Features
+
+* **ENG-13301:** add runtime log message search and renewable tailing ([#49](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/49)) ([9cec69e](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/9cec69e22ab809e650aadd4c31ad557a6760b406))
+
+
+### BREAKING CHANGES
+
+* **ENG-13301:** Runtime log commands require log:read, select individual records by occurrence time, emit complete windows chronologically, and require periodic tail renewal.
+
+* fix(ENG-13301): color execution starts green
+
+* feat(ENG-13301): support message search in log tails
+
 # [4.4.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v4.3.0...v4.4.0) (2026-10-12)
 
 
