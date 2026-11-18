@@ -73,7 +73,7 @@ const validateProxyApplicationId = (
 
   if (hasConfigurable && !hasLegacy) {
     throw new Error(
-      `--application-id is only valid when at least one transform uses a legacy runtime (${LEGACY_RUNTIME_IMAGE}). Use --{request,response}-transform-permissions instead.`
+      `--application-id is only valid when at least one transform uses a legacy runtime (${LEGACY_RUNTIME_IMAGE}). Use --{request,response}-transform-permissions or --{request,response}-transform-execution-role instead.`
     );
   }
 };
@@ -84,7 +84,17 @@ const promptTransformRuntime = async (
   transformCode: string | undefined,
   image: string | undefined
 ): Promise<BasisTheory.Runtime | undefined> => {
+  const executionRole = flags[`${prefix}-transform-execution-role`] as
+    | string
+    | undefined;
+
   if (!transformCode) {
+    if (executionRole) {
+      throw new Error(
+        `--${prefix}-transform-execution-role requires ${prefix} transform code. Supply --${prefix}-transform-code or enter a code path at the prompt.`
+      );
+    }
+
     return undefined;
   }
 
@@ -104,6 +114,7 @@ const promptTransformRuntime = async (
     permissions: flags[`${prefix}-transform-permissions`] as
       | string[]
       | undefined,
+    'execution-role': executionRole,
   };
 
   const labelPrefix = `${prefix.charAt(0).toUpperCase()}${prefix.slice(

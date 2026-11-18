@@ -22,7 +22,7 @@ describe('proxies create', () => {
   let proxiesGetStub: sinon.SinonStub;
 
   beforeEach(() => {
-    inputStub = new PromptStub(sinon.stub(input, 'default'));
+    inputStub = new PromptStub(sinon.stub(input, 'default')).resolves('');
     confirmStub = new PromptStub(sinon.stub(confirm, 'default'));
     selectStub = new PromptStub(sinon.stub(select, 'default'));
     readFileStub = sinon.stub(files, 'readFileContents');
@@ -42,6 +42,236 @@ describe('proxies create', () => {
 
   afterEach(() => {
     sinon.restore();
+  });
+
+  describe('execution roles', () => {
+    const rolePath = './execution-role.json';
+    const roles = {
+      rules: {
+        rules: [
+          {
+            priority: 1,
+            container: '/synthetic/',
+            permissions: ['token:read'],
+          },
+        ],
+      },
+      permissions: { permissions: ['token:read'] },
+    };
+    const args = [
+      'proxies:create',
+      '--name',
+      'Execution Role Proxy',
+      '--destination-url',
+      'https://example.com/api',
+      '--no-wait',
+    ];
+
+    (['request', 'response'] as const).forEach((direction) => {
+      const label = direction === 'request' ? 'Request' : 'Response';
+      const rolePrompt = sinon.match.has(
+        'message',
+        sinon.match(new RegExp(`^${label} transform:.*execution role`, 'iu'))
+      );
+      const permissionsPrompt = sinon.match.has(
+        'message',
+        sinon.match(
+          new RegExp(`^${label} transform:.*permissions\\s*\\(`, 'iu')
+        )
+      );
+      const transformArgs = [
+        `--${direction}-transform-code`,
+        `./${direction}.js`,
+        `--${direction}-transform-image`,
+        'node22',
+        `--${direction}-transform-resources`,
+        'standard',
+      ];
+
+      Object.entries(roles).forEach(([kind, role]) => {
+        it(`creates a ${direction} role containing ${kind} without clearing permissions or prompting for access`, async () => {
+          readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+
+          const result = await runCommand([
+            ...args,
+            ...transformArgs,
+            `--${direction}-transform-execution-role`,
+            rolePath,
+          ]);
+
+          expect(result.error).to.not.exist;
+          expect(proxiesCreateStub.calledOnce).to.be.true;
+          const runtime =
+            proxiesCreateStub.firstCall.args[0][`${direction}Transforms`][0]
+              .options.runtime;
+
+          expect(runtime.executionRole).to.deep.equal(role);
+          expect(runtime).not.to.have.property('permissions');
+          expect(inputStub.stub.calledWith(rolePrompt)).to.be.false;
+          expect(inputStub.stub.calledWith(permissionsPrompt)).to.be.false;
+        });
+      });
+
+      it(`rejects a ${direction} role if the code prompt is left blank`, async () => {
+        const result = await runCommand([
+          ...args,
+          `--${direction}-transform-image`,
+          'node22',
+          `--${direction}-transform-execution-role`,
+          rolePath,
+        ]);
+
+        expect(result.error?.message).to.include(
+          `--${direction}-transform-code`
+        );
+        expect(proxiesCreateStub.called).to.be.false;
+      });
+
+      it(`applies a ${direction} role to code supplied at the prompt`, async () => {
+        inputStub.stub
+          .withArgs(
+            sinon.match.has('message', sinon.match(`${label} Transform code`))
+          )
+          .resolves(`./${direction}.js`);
+        readFileStub.withArgs(rolePath).returns(JSON.stringify(roles.rules));
+
+        const result = await runCommand([
+          ...args,
+          `--${direction}-transform-image`,
+          'node22',
+          `--${direction}-transform-execution-role`,
+          rolePath,
+        ]);
+
+        expect(result.error).to.not.exist;
+        const [transform] =
+          proxiesCreateStub.firstCall.args[0][`${direction}Transforms`];
+
+        expect(transform.options.runtime.executionRole).to.deep.equal(
+          roles.rules
+        );
+      });
+
+      it(`skips the ${direction} role-file prompt when permissions are supplied`, async () => {
+        const result = await runCommand([
+          ...args,
+          ...transformArgs,
+          `--${direction}-transform-permissions`,
+          'token:read',
+        ]);
+
+        expect(result.error).to.not.exist;
+        const runtime =
+          proxiesCreateStub.firstCall.args[0][`${direction}Transforms`][0]
+            .options.runtime;
+
+        expect(runtime.permissions).to.deep.equal(['token:read']);
+        expect(runtime).not.to.have.property('executionRole');
+        expect(inputStub.stub.calledWith(rolePrompt)).to.be.false;
+      });
+
+      [true, false].forEach((useFile) => {
+        it(`uses ${
+          useFile
+            ? 'a prompted role file'
+            : 'permissions after a blank role-file choice'
+        } for the ${direction} transform`, async () => {
+          readFileStub.withArgs(rolePath).returns(JSON.stringify(roles.rules));
+          inputStub.stub.withArgs(rolePrompt).resolves(useFile ? rolePath : '');
+          inputStub.stub.withArgs(permissionsPrompt).resolves('token:read');
+
+          const result = await runCommand([...args, ...transformArgs]);
+
+          expect(result.error).to.not.exist;
+          const runtime =
+            proxiesCreateStub.firstCall.args[0][`${direction}Transforms`][0]
+              .options.runtime;
+
+          expect(inputStub.stub.calledWith(rolePrompt)).to.be.true;
+          expect(inputStub.stub.calledWith(permissionsPrompt)).to.equal(
+            !useFile
+          );
+
+          if (useFile) {
+            expect(runtime.executionRole).to.deep.equal(roles.rules);
+            expect(runtime).not.to.have.property('permissions');
+          } else {
+            expect(runtime.permissions).to.deep.equal(['token:read']);
+            expect(runtime).not.to.have.property('executionRole');
+          }
+        });
+      });
+
+      it(`rejects conflicting ${direction} access flags before creating`, async () => {
+        const result = await runCommand([
+          ...args,
+          ...transformArgs,
+          `--${direction}-transform-execution-role`,
+          rolePath,
+          `--${direction}-transform-permissions`,
+          'token:read',
+        ]);
+
+        expect(result.error).to.exist;
+        expect(result.error!.message).to.contain(
+          `--${direction}-transform-execution-role`
+        );
+        expect(result.error!.message).to.contain(
+          `--${direction}-transform-permissions`
+        );
+        expect(proxiesCreateStub.called).to.be.false;
+      });
+
+      it(`rejects an execution role on a node-bt ${direction} transform`, async () => {
+        const result = await runCommand([
+          ...args,
+          `--${direction}-transform-code`,
+          `./${direction}.js`,
+          `--${direction}-transform-image`,
+          'node-bt',
+          `--${direction}-transform-execution-role`,
+          rolePath,
+        ]);
+
+        expect(result.error).to.exist;
+        expect(result.error!.message).to.contain(
+          `--${direction}-transform-execution-role`
+        );
+        expect(proxiesCreateStub.called).to.be.false;
+      });
+
+      it(`allows a ${direction} execution role with permissions on the other direction`, async () => {
+        const other = direction === 'request' ? 'response' : 'request';
+
+        readFileStub.withArgs(rolePath).returns(JSON.stringify(roles.rules));
+
+        const result = await runCommand([
+          ...args,
+          ...transformArgs,
+          `--${direction}-transform-execution-role`,
+          rolePath,
+          `--${other}-transform-code`,
+          `./${other}.js`,
+          `--${other}-transform-image`,
+          'node22',
+          `--${other}-transform-resources`,
+          'standard',
+          `--${other}-transform-permissions`,
+          'token:create',
+        ]);
+
+        expect(result.error).to.not.exist;
+        const model = proxiesCreateStub.firstCall.args[0];
+        const roleRuntime = model[`${direction}Transforms`][0].options.runtime;
+        const permissionsRuntime =
+          model[`${other}Transforms`][0].options.runtime;
+
+        expect(roleRuntime.executionRole).to.deep.equal(roles.rules);
+        expect(roleRuntime).not.to.have.property('permissions');
+        expect(permissionsRuntime.permissions).to.deep.equal(['token:create']);
+        expect(permissionsRuntime).not.to.have.property('executionRole');
+      });
+    });
   });
 
   describe('with inline flags', () => {
@@ -716,9 +946,8 @@ describe('proxies create', () => {
       ]);
 
       expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        '--application-id is only valid when at least one transform uses a legacy runtime (node-bt). Use --{request,response}-transform-permissions instead.'
-      );
+      expect(result.error!.message).to.contain('--application-id');
+      expect(proxiesCreateStub.called).to.be.false;
     });
 
     it('allows --application-id when at least one transform is legacy', async () => {

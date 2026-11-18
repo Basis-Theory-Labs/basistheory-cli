@@ -61,9 +61,14 @@ const PROXY_FLAGS = {
     description: `request-transform resource tier (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     options: ['standard', 'large', 'xlarge'],
   }),
+  'request-transform-execution-role': Flags.file({
+    description: `path to JSON file containing the request-transform execution role object with permissions or rules (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only; update requires --request-transform-code)`,
+    exclusive: ['request-transform-permissions'],
+  }),
   'request-transform-permissions': Flags.string({
-    description: `request-transform permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
+    description: `request-transform permission to grant, repeatable; on update, removes any request-transform execution role (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     multiple: true,
+    exclusive: ['request-transform-execution-role'],
   }),
   'response-transform-image': Flags.string({
     description: `response-transform runtime image (${VALID_RUNTIME_IMAGES_LABEL})`,
@@ -86,9 +91,14 @@ const PROXY_FLAGS = {
     description: `response-transform resource tier (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     options: ['standard', 'large', 'xlarge'],
   }),
+  'response-transform-execution-role': Flags.file({
+    description: `path to JSON file containing the response-transform execution role object with permissions or rules (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only; update requires --response-transform-code)`,
+    exclusive: ['response-transform-permissions'],
+  }),
   'response-transform-permissions': Flags.string({
-    description: `response-transform permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
+    description: `response-transform permission to grant, repeatable; on update, removes any response-transform execution role (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     multiple: true,
+    exclusive: ['response-transform-execution-role'],
   }),
   'no-wait': Flags.boolean({
     description: `do not wait for proxy to be ready (requires at least one transform with ${CONFIGURABLE_RUNTIME_IMAGES_LABEL})`,

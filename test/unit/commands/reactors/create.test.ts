@@ -24,7 +24,7 @@ describe('reactors create', () => {
 
   beforeEach(() => {
     confirmStub = sinon.stub(confirm, 'default').resolves(false);
-    inputStub = new PromptStub(sinon.stub(input, 'default'));
+    inputStub = new PromptStub(sinon.stub(input, 'default')).resolves('');
     selectStub = new PromptStub(sinon.stub(select, 'default'));
     readFileStub = sinon.stub(files, 'readFileContents');
     reactorsCreateStub = sinon.stub();
@@ -42,6 +42,144 @@ describe('reactors create', () => {
 
   afterEach(() => {
     sinon.restore();
+  });
+
+  describe('execution roles', () => {
+    const rolePath = './execution-role.json';
+    const rolePrompt = sinon.match.has(
+      'message',
+      sinon.match(/execution role/iu)
+    );
+    const permissionsPrompt = sinon.match.has(
+      'message',
+      sinon.match(/permissions\s*\(/iu)
+    );
+    const roles = {
+      rules: {
+        rules: [
+          {
+            priority: 1,
+            container: '/synthetic/',
+            permissions: ['token:read'],
+          },
+        ],
+      },
+      permissions: { permissions: ['token:read'] },
+    };
+    const args = [
+      'reactors:create',
+      '--name',
+      'Execution Role Reactor',
+      '--code',
+      './reactor.js',
+      '--image',
+      'node22',
+      '--resources',
+      'standard',
+      '--no-wait',
+    ];
+
+    Object.entries(roles).forEach(([kind, role]) => {
+      it(`creates with an execution role containing ${kind} without clearing permissions`, async () => {
+        readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+
+        const result = await runCommand([
+          ...args,
+          '--execution-role',
+          rolePath,
+        ]);
+
+        expect(result.error).to.not.exist;
+        expect(reactorsCreateStub.calledOnce).to.be.true;
+        const runtime = reactorsCreateStub.firstCall.args[0].runtime;
+
+        expect(runtime.executionRole).to.deep.equal(role);
+        expect(runtime).not.to.have.property('permissions');
+        expect(inputStub.stub.calledWith(rolePrompt)).to.be.false;
+        expect(inputStub.stub.calledWith(permissionsPrompt)).to.be.false;
+      });
+    });
+
+    it('skips the role-file prompt when permissions are supplied', async () => {
+      const result = await runCommand([...args, '--permissions', 'token:read']);
+
+      expect(result.error).to.not.exist;
+      const runtime = reactorsCreateStub.firstCall.args[0].runtime;
+
+      expect(runtime.permissions).to.deep.equal(['token:read']);
+      expect(runtime).not.to.have.property('executionRole');
+      expect(inputStub.stub.calledWith(rolePrompt)).to.be.false;
+    });
+
+    [true, false].forEach((useFile) => {
+      it(`uses ${
+        useFile
+          ? 'the prompted role file without prompting for permissions'
+          : 'prompted permissions after a blank role-file choice'
+      }`, async () => {
+        readFileStub.withArgs(rolePath).returns(JSON.stringify(roles.rules));
+        inputStub.stub.withArgs(rolePrompt).resolves(useFile ? rolePath : '');
+        inputStub.stub.withArgs(permissionsPrompt).resolves('token:read');
+
+        const result = await runCommand(args);
+
+        expect(result.error).to.not.exist;
+        const runtime = reactorsCreateStub.firstCall.args[0].runtime;
+
+        expect(inputStub.stub.calledWith(rolePrompt)).to.be.true;
+        expect(inputStub.stub.calledWith(permissionsPrompt)).to.equal(!useFile);
+
+        if (useFile) {
+          expect(runtime.executionRole).to.deep.equal(roles.rules);
+          expect(runtime).not.to.have.property('permissions');
+        } else {
+          expect(runtime.permissions).to.deep.equal(['token:read']);
+          expect(runtime).not.to.have.property('executionRole');
+        }
+      });
+    });
+
+    it('rejects role and permissions flags together before creating', async () => {
+      const result = await runCommand([
+        ...args,
+        '--execution-role',
+        rolePath,
+        '--permissions',
+        'token:read',
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain('--execution-role');
+      expect(result.error!.message).to.contain('--permissions');
+      expect(reactorsCreateStub.called).to.be.false;
+    });
+
+    it('rejects an execution role on node-bt', async () => {
+      const result = await runCommand([
+        'reactors:create',
+        '--name',
+        'Legacy Reactor',
+        '--code',
+        './reactor.js',
+        '--image',
+        'node-bt',
+        '--execution-role',
+        rolePath,
+      ]);
+
+      expect(result.error).to.exist;
+      expect(result.error!.message).to.contain('--execution-role');
+      expect(reactorsCreateStub.called).to.be.false;
+    });
+
+    it('rejects a malformed role file before creating', async () => {
+      readFileStub.withArgs(rolePath).returns('{');
+
+      const result = await runCommand([...args, '--execution-role', rolePath]);
+
+      expect(result.error).to.exist;
+      expect(reactorsCreateStub.called).to.be.false;
+    });
   });
 
   describe('with inline flags', () => {
@@ -775,9 +913,8 @@ describe('reactors create', () => {
         ]);
 
         expect(result.error).to.exist;
-        expect(result.error!.message).to.contain(
-          `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES_LABEL}). Use --permissions to grant specific access instead.`
-        );
+        expect(result.error!.message).to.contain('--application-id');
+        expect(reactorsCreateStub.called).to.be.false;
       });
     });
   });

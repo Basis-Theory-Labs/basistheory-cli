@@ -30,6 +30,7 @@ TypeScript CLI built with oclif. This is a public repository; keep guidance and 
 - For command changes, update descriptions, flags, arguments, and examples in `src/commands/`. Do not regenerate or edit the generated usage, table of contents, or command reference in `README.md` as part of normal feature work.
 - Release and packaging own README generation: `package.json`'s `version` and `prepack` scripts run `oclif readme`, and `.releaserc.json` includes `README.md` in the release commit. A release after merge generates the command reference from the command metadata.
 - Edit `README.md` only when explicitly requested or when changing hand-authored content outside its generated sections. Keep machine-specific regeneration churn out of feature changes.
+- Leave `CHANGELOG.md` untouched in feature and fix PRs, including `Unreleased` entries. At release time, semantic-release generates the notes from Conventional Commits and commits the updated changelog.
 
 ## Git and PR Workflow
 

@@ -9,6 +9,7 @@ export {
   isLegacyRuntimeImage,
   validateRuntimeImage,
   parseRuntimePackageJsonFile,
+  parseExecutionRoleFile,
   buildRuntime,
   buildReactorRuntime,
   getMaxRuntimeTimeout,

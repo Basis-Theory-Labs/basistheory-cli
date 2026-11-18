@@ -8,6 +8,7 @@ import { createModelFromFlags, PROXY_FLAGS } from '../../proxies/utils';
 import {
   buildRuntime,
   CONFIGURABLE_RUNTIME_IMAGES_LABEL,
+  LEGACY_RUNTIME_IMAGE,
   needsPolling,
   waitForResourceState,
 } from '../../runtime';
@@ -56,6 +57,12 @@ export default class Update extends BaseCommand {
         '--response-transform-package-json ./response/package.json ' +
         '--response-transform-permissions token:read',
     },
+    {
+      description:
+        'Set a response transform execution role from a JSON file, replacing runtime permissions',
+      command:
+        '<%= config.bin %> <%= command.id %> <proxy-id> --response-transform-code ./response.js --response-transform-execution-role ./response-execution-role.json',
+    },
   ];
 
   public static flags = {
@@ -103,12 +110,14 @@ export default class Update extends BaseCommand {
       'request-transform-warm-concurrency': requestTransformWarmConcurrency,
       'request-transform-resources': requestTransformResources,
       'request-transform-permissions': requestTransformPermissions,
+      'request-transform-execution-role': requestTransformExecutionRole,
       'response-transform-image': responseTransformImage,
       'response-transform-package-json': responseTransformPackageJson,
       'response-transform-timeout': responseTransformTimeout,
       'response-transform-warm-concurrency': responseTransformWarmConcurrency,
       'response-transform-resources': responseTransformResources,
       'response-transform-permissions': responseTransformPermissions,
+      'response-transform-execution-role': responseTransformExecutionRole,
       'no-wait': noWait,
       watch,
       logs,
@@ -116,23 +125,47 @@ export default class Update extends BaseCommand {
 
     validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
 
-    const requestTransformRuntime = buildRuntime({
-      image: requestTransformImage,
-      packageJson: requestTransformPackageJson,
-      timeout: requestTransformTimeout,
-      warmConcurrency: requestTransformWarmConcurrency,
-      resources: requestTransformResources,
-      permissions: requestTransformPermissions,
-    });
+    for (const prefix of ['request-transform', 'response-transform'] as const) {
+      if (flags[`${prefix}-execution-role`]) {
+        if (!flags[`${prefix}-code`]) {
+          throw new Error(
+            `--${prefix}-execution-role requires --${prefix}-code`
+          );
+        }
 
-    const responseTransformRuntime = buildRuntime({
-      image: responseTransformImage,
-      packageJson: responseTransformPackageJson,
-      timeout: responseTransformTimeout,
-      warmConcurrency: responseTransformWarmConcurrency,
-      resources: responseTransformResources,
-      permissions: responseTransformPermissions,
-    });
+        if (flags[`${prefix}-image`] === LEGACY_RUNTIME_IMAGE) {
+          throw new Error(
+            `--${prefix}-execution-role requires --${prefix}-image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
+          );
+        }
+      }
+    }
+
+    const requestTransformRuntime = buildRuntime(
+      {
+        image: requestTransformImage,
+        packageJson: requestTransformPackageJson,
+        timeout: requestTransformTimeout,
+        warmConcurrency: requestTransformWarmConcurrency,
+        resources: requestTransformResources,
+        permissions: requestTransformPermissions,
+        executionRole: requestTransformExecutionRole,
+      },
+      true
+    );
+
+    const responseTransformRuntime = buildRuntime(
+      {
+        image: responseTransformImage,
+        packageJson: responseTransformPackageJson,
+        timeout: responseTransformTimeout,
+        warmConcurrency: responseTransformWarmConcurrency,
+        resources: responseTransformResources,
+        permissions: responseTransformPermissions,
+        executionRole: responseTransformExecutionRole,
+      },
+      true
+    );
 
     const model = createModelFromFlags({
       name,

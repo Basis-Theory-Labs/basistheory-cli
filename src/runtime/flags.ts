@@ -27,9 +27,14 @@ const RUNTIME_FLAGS = {
     description: `resource tier (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only, default: standard)`,
     options: ['standard', 'large', 'xlarge'],
   }),
+  'execution-role': Flags.file({
+    description: `path to JSON file containing an execution role object with permissions or rules (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
+    exclusive: ['permissions'],
+  }),
   permissions: Flags.string({
-    description: `permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
+    description: `permission to grant, repeatable; on update, removes any execution role (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     multiple: true,
+    exclusive: ['execution-role'],
   }),
   'no-wait': Flags.boolean({
     description: 'do not wait for resource provisioning to complete',
