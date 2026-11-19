@@ -1,3 +1,10 @@
+# [5.1.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v5.0.0...v5.1.0) (2026-11-19)
+
+
+### Features
+
+* configure execution roles for Reactors and Proxy code transforms ([#50](https://github.com/Basis-Theory-Labs/basistheory-cli/issues/50)) ([22f3055](https://github.com/Basis-Theory-Labs/basistheory-cli/commit/22f3055654c28e369f36b76f9c88d70ceab08c92))
+
 # [5.0.0](https://github.com/Basis-Theory-Labs/basistheory-cli/compare/v4.4.0...v5.0.0) (2026-10-19)
 
 

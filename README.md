@@ -19,7 +19,7 @@ $ npm install -g @basis-theory-labs/cli
 $ bt COMMAND
 running command...
 $ bt (--version)
-@basis-theory-labs/cli/5.0.0 linux-x64 node-v22.23.3
+@basis-theory-labs/cli/5.1.0 linux-x64 node-v22.23.5
 $ bt --help [COMMAND]
 USAGE
   $ bt COMMAND
@@ -66,7 +66,7 @@ EXAMPLES
   $ bt applications
 ```
 
-_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v5.0.0/dist/commands/applications/index.ts)_
+_See code: [dist/commands/applications/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v5.1.0/dist/commands/applications/index.ts)_
 
 ## `bt applications create`
 
@@ -155,7 +155,7 @@ EXAMPLES
   $ bt proxies
 ```
 
-_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v5.0.0/dist/commands/proxies/index.ts)_
+_See code: [dist/commands/proxies/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v5.1.0/dist/commands/proxies/index.ts)_
 
 ## `bt proxies create`
 
@@ -166,9 +166,10 @@ USAGE
   $ bt proxies create -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>] [-a]
     [--request-transform-image node-bt|node22|node24] [--request-transform-package-json <value>]
     [--request-transform-timeout <value>] [--request-transform-warm-concurrency <value>] [--request-transform-resources
-    standard|large|xlarge] [--request-transform-permissions <value>] [--response-transform-image node-bt|node22|node24]
-    [--response-transform-package-json <value>] [--response-transform-timeout <value>]
-    [--response-transform-warm-concurrency <value>] [--response-transform-resources standard|large|xlarge]
+    standard|large|xlarge] [--request-transform-execution-role <value>] [--request-transform-permissions <value>]
+    [--response-transform-image node-bt|node22|node24] [--response-transform-package-json <value>]
+    [--response-transform-timeout <value>] [--response-transform-warm-concurrency <value>]
+    [--response-transform-resources standard|large|xlarge] [--response-transform-execution-role <value>]
     [--response-transform-permissions <value>] [--no-wait]
 
 FLAGS
@@ -183,24 +184,30 @@ FLAGS
   -x, --management-key=<value>                   (required) management key used for connecting with the reactor / proxy
   --no-wait                                      do not wait for proxy to be ready (requires at least one transform with
                                                  node22 | node24)
+  --request-transform-execution-role=<value>     path to a JSON file containing the request-transform execution role
+                                                 (node22 | node24 only; update requires --request-transform-code)
   --request-transform-image=<option>             request-transform runtime image (node-bt|node22|node24)
                                                  <options: node-bt|node22|node24>
   --request-transform-package-json=<value>       path to runtime package.json JSON file (top-level dependencies
                                                  required; supports resolutions or overrides fallback; pinned versions
                                                  required) (node22 | node24 only)
   --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 | node24
-                                                 only)
+                                                 only); on update, requires --request-transform-code and clears the
+                                                 stored role unless --request-transform-execution-role is also supplied
   --request-transform-resources=<option>         request-transform resource tier (node22 | node24 only)
                                                  <options: standard|large|xlarge>
   --request-transform-timeout=<value>            request-transform timeout in seconds, 10-30 (node22 | node24 only)
   --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 | node24 only)
+  --response-transform-execution-role=<value>    path to a JSON file containing the response-transform execution role
+                                                 (node22 | node24 only; update requires --response-transform-code)
   --response-transform-image=<option>            response-transform runtime image (node-bt|node22|node24)
                                                  <options: node-bt|node22|node24>
   --response-transform-package-json=<value>      path to runtime package.json JSON file (top-level dependencies
                                                  required; supports resolutions or overrides fallback; pinned versions
                                                  required) (node22 | node24 only)
   --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 | node24
-                                                 only)
+                                                 only); on update, requires --response-transform-code and clears the
+                                                 stored role unless --response-transform-execution-role is also supplied
   --response-transform-resources=<option>        response-transform resource tier (node22 | node24 only)
                                                  <options: standard|large|xlarge>
   --response-transform-timeout=<value>           response-transform timeout in seconds, 10-30 (node22 | node24 only)
@@ -234,6 +241,11 @@ EXAMPLES
       --response-transform-code ./response.js --response-transform-image node22 --response-transform-timeout 10 \
       --response-transform-warm-concurrency 0 --response-transform-resources standard \
       --response-transform-package-json ./response/package.json --response-transform-permissions token:read
+
+  Create a node22 request transform with an execution role JSON file
+
+    $ bt proxies create --name "My Proxy" --destination-url https://api.example.com --request-transform-code \
+      ./request.js --request-transform-image node22 --request-transform-execution-role ./request-execution-role.json
 ```
 
 ## `bt proxies delete ID`
@@ -456,9 +468,10 @@ USAGE
   $ bt proxies update ID -x <value> [-n <value>] [-u <value>] [-q <value>] [-s <value>] [-i <value>] [-c <value>]
     [-a] [--request-transform-image node-bt|node22|node24] [--request-transform-package-json <value>]
     [--request-transform-timeout <value>] [--request-transform-warm-concurrency <value>] [--request-transform-resources
-    standard|large|xlarge] [--request-transform-permissions <value>] [--response-transform-image node-bt|node22|node24]
-    [--response-transform-package-json <value>] [--response-transform-timeout <value>]
-    [--response-transform-warm-concurrency <value>] [--response-transform-resources standard|large|xlarge]
+    standard|large|xlarge] [--request-transform-execution-role <value>] [--request-transform-permissions <value>]
+    [--response-transform-image node-bt|node22|node24] [--response-transform-package-json <value>]
+    [--response-transform-timeout <value>] [--response-transform-warm-concurrency <value>]
+    [--response-transform-resources standard|large|xlarge] [--response-transform-execution-role <value>]
     [--response-transform-permissions <value>] [--no-wait] [-w] [-l]
 
 ARGUMENTS
@@ -478,24 +491,30 @@ FLAGS
   -x, --management-key=<value>                   (required) management key used for connecting with the reactor / proxy
   --no-wait                                      do not wait for proxy to be ready (requires at least one transform with
                                                  node22 | node24)
+  --request-transform-execution-role=<value>     path to a JSON file containing the request-transform execution role
+                                                 (node22 | node24 only; update requires --request-transform-code)
   --request-transform-image=<option>             request-transform runtime image (node-bt|node22|node24)
                                                  <options: node-bt|node22|node24>
   --request-transform-package-json=<value>       path to runtime package.json JSON file (top-level dependencies
                                                  required; supports resolutions or overrides fallback; pinned versions
                                                  required) (node22 | node24 only)
   --request-transform-permissions=<value>...     request-transform permission to grant, repeatable (node22 | node24
-                                                 only)
+                                                 only); on update, requires --request-transform-code and clears the
+                                                 stored role unless --request-transform-execution-role is also supplied
   --request-transform-resources=<option>         request-transform resource tier (node22 | node24 only)
                                                  <options: standard|large|xlarge>
   --request-transform-timeout=<value>            request-transform timeout in seconds, 10-30 (node22 | node24 only)
   --request-transform-warm-concurrency=<value>   request-transform warm concurrency, 0-1 (node22 | node24 only)
+  --response-transform-execution-role=<value>    path to a JSON file containing the response-transform execution role
+                                                 (node22 | node24 only; update requires --response-transform-code)
   --response-transform-image=<option>            response-transform runtime image (node-bt|node22|node24)
                                                  <options: node-bt|node22|node24>
   --response-transform-package-json=<value>      path to runtime package.json JSON file (top-level dependencies
                                                  required; supports resolutions or overrides fallback; pinned versions
                                                  required) (node22 | node24 only)
   --response-transform-permissions=<value>...    response-transform permission to grant, repeatable (node22 | node24
-                                                 only)
+                                                 only); on update, requires --response-transform-code and clears the
+                                                 stored role unless --response-transform-execution-role is also supplied
   --response-transform-resources=<option>        response-transform resource tier (node22 | node24 only)
                                                  <options: standard|large|xlarge>
   --response-transform-timeout=<value>           response-transform timeout in seconds, 10-30 (node22 | node24 only)
@@ -528,6 +547,11 @@ EXAMPLES
       --response-transform-code ./response.js --response-transform-image node22 --response-transform-timeout 10 \
       --response-transform-warm-concurrency 0 --response-transform-resources standard \
       --response-transform-package-json ./response/package.json --response-transform-permissions token:read
+
+  Set a response transform execution role from a JSON file, replacing runtime permissions
+
+    $ bt proxies update <proxy-id> --response-transform-code ./response.js --response-transform-execution-role \
+      ./response-execution-role.json
 ```
 
 ## `bt reactors`
@@ -549,7 +573,7 @@ EXAMPLES
   $ bt reactors
 ```
 
-_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v5.0.0/dist/commands/reactors/index.ts)_
+_See code: [dist/commands/reactors/index.ts](https://github.com/Basis-Theory-Labs/basistheory-cli/blob/v5.1.0/dist/commands/reactors/index.ts)_
 
 ## `bt reactors create`
 
@@ -559,7 +583,7 @@ Creates a new Reactor. Requires `reactor:create` Management Application permissi
 USAGE
   $ bt reactors create -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image node-bt|node22|node24]
     [--package-json <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources standard|large|xlarge]
-    [--permissions <value>] [--no-wait] [--async]
+    [--execution-role <value>] [--permissions <value>] [--no-wait] [--async]
 
 FLAGS
   -c, --configuration=<value>   path to configuration file (.env format) to use in the Reactor
@@ -568,12 +592,14 @@ FLAGS
   -r, --code=<value>            path to JavaScript file containing the Reactor code
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
   --[no-]async                  execute Reactor invocations asynchronously (node22 | node24 only)
+  --execution-role=<value>      path to a JSON file containing the runtime execution role (node22 | node24 only)
   --image=<option>              runtime image (node-bt|node22|node24)
                                 <options: node-bt|node22|node24>
   --no-wait                     do not wait for resource provisioning to complete
   --package-json=<value>        path to runtime package.json JSON file (top-level dependencies required; supports
                                 resolutions or overrides fallback; pinned versions required) (node22 | node24 only)
-  --permissions=<value>...      permission to grant, repeatable (node22 | node24 only)
+  --permissions=<value>...      permission to grant, repeatable; on update, clears the stored role unless
+                                --execution-role is also supplied (node22 | node24 only)
   --resources=<option>          resource tier (node22 | node24 only, default: standard)
                                 <options: standard|large|xlarge>
   --timeout=<value>             timeout in seconds, 10-900 (node22 | node24 only; maximum 30 when runtime async is
@@ -597,6 +623,11 @@ EXAMPLES
     $ bt reactors create --name "My Reactor" --code ./reactor.js --configuration ./config.env --image node22 --async \
       --timeout 10 --warm-concurrency 0 --resources standard --package-json ./package.json --permissions token:read \
       --permissions token:create
+
+  Create a node22 reactor with an execution role JSON file
+
+    $ bt reactors create --name "My Reactor" --code ./reactor.js --image node22 --execution-role \
+      ./execution-role.json
 ```
 
 ## `bt reactors delete ID`
@@ -808,7 +839,7 @@ Updates an existing Reactor. Requires `reactor:update` Management Application pe
 USAGE
   $ bt reactors update ID -x <value> [-n <value>] [-c <value>] [-i <value>] [-r <value>] [--image
     node-bt|node22|node24] [--package-json <value>] [--timeout <value>] [--warm-concurrency <value>] [--resources
-    standard|large|xlarge] [--permissions <value>] [--no-wait] [--async] [-w] [-l]
+    standard|large|xlarge] [--execution-role <value>] [--permissions <value>] [--no-wait] [--async] [-w] [-l]
 
 ARGUMENTS
   ID  Reactor id to update
@@ -822,12 +853,14 @@ FLAGS
   -w, --watch                   Watch for changes in supplied code, configuration, and runtime package files
   -x, --management-key=<value>  (required) management key used for connecting with the reactor / proxy
   --[no-]async                  execute Reactor invocations asynchronously (node22 | node24 only)
+  --execution-role=<value>      path to a JSON file containing the runtime execution role (node22 | node24 only)
   --image=<option>              runtime image (node-bt|node22|node24)
                                 <options: node-bt|node22|node24>
   --no-wait                     do not wait for resource provisioning to complete
   --package-json=<value>        path to runtime package.json JSON file (top-level dependencies required; supports
                                 resolutions or overrides fallback; pinned versions required) (node22 | node24 only)
-  --permissions=<value>...      permission to grant, repeatable (node22 | node24 only)
+  --permissions=<value>...      permission to grant, repeatable; on update, clears the stored role unless
+                                --execution-role is also supplied (node22 | node24 only)
   --resources=<option>          resource tier (node22 | node24 only, default: standard)
                                 <options: standard|large|xlarge>
   --timeout=<value>             timeout in seconds, 10-900 (node22 | node24 only; maximum 30 when runtime async is
@@ -856,5 +889,9 @@ EXAMPLES
     $ bt reactors update <reactor-id> --name "My Reactor" --code ./reactor.js --configuration ./config.env --image \
       node22 --async --timeout 10 --warm-concurrency 0 --resources standard --package-json ./package.json \
       --permissions token:read --permissions token:create
+
+  Set a reactor execution role from a JSON file, replacing runtime permissions
+
+    $ bt reactors update <reactor-id> --execution-role ./execution-role.json
 ```
 <!-- commandsstop -->
