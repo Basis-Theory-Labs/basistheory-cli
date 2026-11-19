@@ -202,24 +202,31 @@ describe('proxies create', () => {
         });
       });
 
-      it(`rejects conflicting ${direction} access flags before creating`, async () => {
+      it(`sends both explicit ${direction} access flags without prompting`, async () => {
+        const role = {
+          ...roles.permissions,
+          ...roles.rules,
+        };
+
+        readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+
         const result = await runCommand([
           ...args,
           ...transformArgs,
           `--${direction}-transform-execution-role`,
           rolePath,
           `--${direction}-transform-permissions`,
-          'token:read',
+          'token:create',
         ]);
 
-        expect(result.error).to.exist;
-        expect(result.error!.message).to.contain(
-          `--${direction}-transform-execution-role`
-        );
-        expect(result.error!.message).to.contain(
-          `--${direction}-transform-permissions`
-        );
-        expect(proxiesCreateStub.called).to.be.false;
+        expect(result.error).to.not.exist;
+        const model = proxiesCreateStub.firstCall.args[0];
+        const runtime = model[`${direction}Transforms`][0].options.runtime;
+
+        expect(runtime.executionRole).to.deep.equal(role);
+        expect(runtime.permissions).to.deep.equal(['token:create']);
+        expect(inputStub.stub.calledWith(rolePrompt)).to.be.false;
+        expect(inputStub.stub.calledWith(permissionsPrompt)).to.be.false;
       });
 
       it(`rejects an execution role on a node-bt ${direction} transform`, async () => {

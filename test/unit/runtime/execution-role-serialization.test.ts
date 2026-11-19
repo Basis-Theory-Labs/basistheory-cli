@@ -11,7 +11,16 @@ describe('execution role SDK serialization', () => {
   it('preserves explicit null and empty clearing fields in Reactor and Proxy PATCH bodies', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'bt-role-serialization-'));
     const rolePath = join(directory, 'execution-role.json');
-    const role = { permissions: ['token:read'] };
+    const role = {
+      permissions: ['token-intent:create'],
+      rules: [
+        {
+          priority: 1,
+          container: '/example/',
+          permissions: ['token:read'],
+        },
+      ],
+    };
     const requests: {
       method: string | undefined;
       path: string | undefined;

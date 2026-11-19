@@ -126,18 +126,21 @@ export default class Update extends BaseCommand {
     validateProxyApplicationId(applicationId, flags as Record<string, unknown>);
 
     for (const prefix of ['request-transform', 'response-transform'] as const) {
-      if (flags[`${prefix}-execution-role`]) {
-        if (!flags[`${prefix}-code`]) {
-          throw new Error(
-            `--${prefix}-execution-role requires --${prefix}-code`
-          );
+      if (!flags[`${prefix}-code`]) {
+        for (const access of ['execution-role', 'permissions'] as const) {
+          if (flags[`${prefix}-${access}`]?.length) {
+            throw new Error(`--${prefix}-${access} requires --${prefix}-code`);
+          }
         }
+      }
 
-        if (flags[`${prefix}-image`] === LEGACY_RUNTIME_IMAGE) {
-          throw new Error(
-            `--${prefix}-execution-role requires --${prefix}-image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
-          );
-        }
+      if (
+        flags[`${prefix}-execution-role`] &&
+        flags[`${prefix}-image`] === LEGACY_RUNTIME_IMAGE
+      ) {
+        throw new Error(
+          `--${prefix}-execution-role requires --${prefix}-image ${CONFIGURABLE_RUNTIME_IMAGES_LABEL}`
+        );
       }
     }
 

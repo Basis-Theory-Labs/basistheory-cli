@@ -123,22 +123,31 @@ describe('reactors update', () => {
       });
     });
 
-    it('rejects role and permissions flags together before updating', async () => {
+    it('sends both explicit access flags without clearing either field', async () => {
+      const role = {
+        ...roles.permissions,
+        ...roles.rules,
+      };
+
+      reactorsGetStub.resolves(reactorFixtures.withRuntime);
+      readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+
       const result = await runCommand([
         'reactors:update',
         'reactor-123',
-        '--image',
-        'node22',
         '--execution-role',
         rolePath,
         '--permissions',
-        'token:read',
+        'token:create',
+        '--no-wait',
       ]);
 
-      expect(result.error).to.exist;
-      expect(result.error!.message).to.contain('--execution-role');
-      expect(result.error!.message).to.contain('--permissions');
-      expect(reactorsPatchStub.called).to.be.false;
+      expect(reactorsPatchStub.calledOnce).to.be.true;
+      expect(reactorsPatchStub.firstCall.args[1].runtime).to.deep.equal({
+        permissions: ['token:create'],
+        executionRole: role,
+      });
+      expect(result.error).not.to.exist;
     });
 
     [true, false].forEach((explicitImage) => {

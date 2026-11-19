@@ -1,4 +1,4 @@
-import { BasisTheoryClient } from '@basis-theory/node-sdk';
+import { BasisTheoryClient, BasisTheoryError } from '@basis-theory/node-sdk';
 import * as confirm from '@inquirer/confirm';
 import * as input from '@inquirer/input';
 import * as select from '@inquirer/select';
@@ -139,19 +139,41 @@ describe('reactors create', () => {
       });
     });
 
-    it('rejects role and permissions flags together before creating', async () => {
+    it('propagates API validation errors when both access flags are supplied', async () => {
+      const role = {
+        ...roles.permissions,
+        ...roles.rules,
+      };
+
+      readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+      reactorsCreateStub.rejects(
+        new BasisTheoryError({
+          statusCode: 400,
+          body: {
+            errors: { 'runtime.execution_role': ['Unsupported combination'] },
+          },
+        })
+      );
+
       const result = await runCommand([
         ...args,
         '--execution-role',
         rolePath,
         '--permissions',
-        'token:read',
+        'token:create',
       ]);
 
+      expect(reactorsCreateStub.calledOnce).to.be.true;
+      const runtime = reactorsCreateStub.firstCall.args[0].runtime;
+
+      expect(runtime.permissions).to.deep.equal(['token:create']);
+      expect(runtime.executionRole).to.deep.equal(role);
+      expect(inputStub.stub.calledWith(rolePrompt)).to.be.false;
+      expect(inputStub.stub.calledWith(permissionsPrompt)).to.be.false;
       expect(result.error).to.exist;
-      expect(result.error!.message).to.contain('--execution-role');
-      expect(result.error!.message).to.contain('--permissions');
-      expect(reactorsCreateStub.called).to.be.false;
+      expect(result.error!.message).to.contain(
+        'runtime.execution_role: Unsupported combination'
+      );
     });
 
     it('rejects an execution role on node-bt', async () => {

@@ -109,24 +109,32 @@ describe('proxies update', () => {
         ).to.deep.equal({ timeout: 20 });
       });
 
-      it(`rejects conflicting ${direction} access flags before updating`, async () => {
+      it(`sends both explicit ${direction} access flags without clearing either field`, async () => {
+        const role = {
+          ...roles.permissions,
+          ...roles.rules,
+        };
+
+        readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+
         const result = await runCommand([
           ...args,
           ...transformArgs,
           `--${direction}-transform-execution-role`,
           rolePath,
           `--${direction}-transform-permissions`,
-          'token:read',
+          'token:create',
         ]);
 
-        expect(result.error).to.exist;
-        expect(result.error!.message).to.contain(
-          `--${direction}-transform-execution-role`
-        );
-        expect(result.error!.message).to.contain(
-          `--${direction}-transform-permissions`
-        );
-        expect(proxiesPatchStub.called).to.be.false;
+        expect(result.error).to.not.exist;
+        const model = proxiesPatchStub.firstCall.args[1];
+
+        expect(
+          model[`${direction}Transforms`][0].options.runtime
+        ).to.deep.equal({
+          executionRole: role,
+          permissions: ['token:create'],
+        });
       });
 
       it(`rejects an execution role on an explicitly node-bt ${direction} transform`, async () => {
@@ -146,21 +154,26 @@ describe('proxies update', () => {
         expect(proxiesPatchStub.called).to.be.false;
       });
 
-      it(`rejects a ${direction} role flag without the matching code flag`, async () => {
-        const other = direction === 'request' ? 'response' : 'request';
-        const result = await runCommand([
-          ...args,
-          `--${other}-transform-code`,
-          `./${other}.js`,
-          `--${direction}-transform-execution-role`,
-          rolePath,
-        ]);
+      Object.entries({
+        'execution-role': rolePath,
+        permissions: 'token:read',
+      }).forEach(([access, value]) => {
+        it(`rejects ${direction} ${access} without matching transform code`, async () => {
+          const other = direction === 'request' ? 'response' : 'request';
+          const flag = `--${direction}-transform-${access}`;
+          const result = await runCommand([
+            ...args,
+            `--${other}-transform-code`,
+            `./${other}.js`,
+            flag,
+            value,
+          ]);
 
-        expect(result.error).to.exist;
-        expect(result.error!.message).to.contain(
-          `--${direction}-transform-code`
-        );
-        expect(proxiesPatchStub.called).to.be.false;
+          expect(result.error?.message).to.contain(
+            `${flag} requires --${direction}-transform-code`
+          );
+          expect(proxiesPatchStub.called).to.be.false;
+        });
       });
 
       it(`allows a ${direction} role with permissions on the other direction`, async () => {

@@ -31,6 +31,15 @@ describe('parseExecutionRoleFile', () => {
   Object.entries({
     permissions: { permissions: ['token:read'] },
     rules: { rules: [rule] },
+    'permissions and rules': {
+      permissions: ['token-intent:create'],
+      rules: [rule],
+    },
+    'neither list': {},
+    'only empty lists': {
+      permissions: [],
+      rules: [],
+    },
     'permissions with empty rules': {
       permissions: ['token:read'],
       rules: [],
@@ -91,15 +100,6 @@ describe('parseExecutionRoleFile', () => {
           containers: ['/synthetic/'],
         },
       ],
-    }),
-    'both nonempty lists': JSON.stringify({
-      permissions: ['token:read'],
-      rules: [rule],
-    }),
-    'neither list': '{}',
-    'only empty lists': JSON.stringify({
-      permissions: [],
-      rules: [],
     }),
   };
 

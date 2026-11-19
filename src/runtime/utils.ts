@@ -243,16 +243,6 @@ const parseExecutionRoleFile = (
     }
   }
 
-  const hasPermissions =
-    Array.isArray(role.permissions) && role.permissions.length > 0;
-  const hasRules = Array.isArray(role.rules) && role.rules.length > 0;
-
-  if (hasPermissions === hasRules) {
-    throw new Error(
-      `Execution role file "${executionRolePath}" must contain exactly one non-empty "permissions" or "rules" array.`
-    );
-  }
-
   return role as BasisTheory.ExecutionRole;
 };
 
@@ -319,7 +309,7 @@ const buildRuntime = (
   if (permissions?.length) {
     runtime.permissions = permissions;
 
-    if (isUpdate) {
+    if (isUpdate && !executionRole) {
       // eslint-disable-next-line unicorn/no-null -- Undefined preserves the stored role.
       runtime.executionRole = null;
     }
@@ -328,7 +318,7 @@ const buildRuntime = (
   if (executionRole) {
     runtime.executionRole = parseExecutionRoleFile(executionRole);
 
-    if (isUpdate) {
+    if (isUpdate && !permissions?.length) {
       runtime.permissions = [];
     }
   }
@@ -424,12 +414,12 @@ const promptRuntimeOptions = async (
 
   if (!executionRole && !flags.permissions?.length) {
     executionRole = await promptStringIfUndefined(undefined, {
-      message: `${prefix}(Optional) Execution role file path (JSON role object with permissions or rules):`,
+      message: `${prefix}(Optional) Execution role file path (JSON):`,
     });
   }
 
   const permissions = executionRole
-    ? undefined
+    ? flags.permissions
     : await promptCommaSeparatedIfUndefined(flags.permissions, {
         message: `${prefix}(Optional) Permissions (comma-separated, e.g. token:read, token:create):`,
       });
