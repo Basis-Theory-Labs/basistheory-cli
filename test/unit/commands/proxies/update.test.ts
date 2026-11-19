@@ -30,6 +30,188 @@ describe('proxies update', () => {
     sinon.restore();
   });
 
+  describe('execution roles', () => {
+    const rolePath = './execution-role.json';
+    const roles = {
+      rules: {
+        rules: [
+          {
+            priority: 1,
+            container: '/synthetic/',
+            permissions: ['token:read'],
+          },
+        ],
+      },
+      permissions: { permissions: ['token:read'] },
+    };
+    const args = ['proxies:update', 'proxy-123', '--no-wait'];
+
+    (['request', 'response'] as const).forEach((direction) => {
+      const transformArgs = [
+        `--${direction}-transform-code`,
+        `./${direction}.js`,
+      ];
+
+      Object.entries(roles).forEach(([kind, role]) => {
+        it(`updates the ${direction} role with ${kind} and clears legacy permissions without requiring an image`, async () => {
+          readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+
+          const result = await runCommand([
+            ...args,
+            ...transformArgs,
+            `--${direction}-transform-execution-role`,
+            rolePath,
+          ]);
+
+          expect(result.error).to.not.exist;
+          expect(proxiesPatchStub.calledOnce).to.be.true;
+          expect(
+            proxiesPatchStub.firstCall.args[1][`${direction}Transforms`][0]
+              .options.runtime
+          ).to.deep.equal({
+            executionRole: role,
+            permissions: [],
+          });
+        });
+      });
+
+      it(`clears the ${direction} execution role when permissions are supplied`, async () => {
+        const result = await runCommand([
+          ...args,
+          ...transformArgs,
+          `--${direction}-transform-permissions`,
+          'token:read',
+        ]);
+
+        expect(result.error).to.not.exist;
+        const { executionRole, ...runtime } =
+          proxiesPatchStub.firstCall.args[1][`${direction}Transforms`][0]
+            .options.runtime;
+
+        expect(executionRole).to.be.null;
+        expect(runtime).to.deep.equal({
+          permissions: ['token:read'],
+        });
+      });
+
+      it(`omits both access fields for an unrelated ${direction} runtime update`, async () => {
+        const result = await runCommand([
+          ...args,
+          ...transformArgs,
+          `--${direction}-transform-timeout`,
+          '20',
+        ]);
+
+        expect(result.error).to.not.exist;
+        expect(
+          proxiesPatchStub.firstCall.args[1][`${direction}Transforms`][0]
+            .options.runtime
+        ).to.deep.equal({ timeout: 20 });
+      });
+
+      it(`sends both explicit ${direction} access flags without clearing either field`, async () => {
+        const role = {
+          ...roles.permissions,
+          ...roles.rules,
+        };
+
+        readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+
+        const result = await runCommand([
+          ...args,
+          ...transformArgs,
+          `--${direction}-transform-execution-role`,
+          rolePath,
+          `--${direction}-transform-permissions`,
+          'token:create',
+        ]);
+
+        expect(result.error).to.not.exist;
+        const model = proxiesPatchStub.firstCall.args[1];
+
+        expect(
+          model[`${direction}Transforms`][0].options.runtime
+        ).to.deep.equal({
+          executionRole: role,
+          permissions: ['token:create'],
+        });
+      });
+
+      it(`rejects an execution role on an explicitly node-bt ${direction} transform`, async () => {
+        const result = await runCommand([
+          ...args,
+          ...transformArgs,
+          `--${direction}-transform-image`,
+          'node-bt',
+          `--${direction}-transform-execution-role`,
+          rolePath,
+        ]);
+
+        expect(result.error).to.exist;
+        expect(result.error!.message).to.contain(
+          `--${direction}-transform-execution-role`
+        );
+        expect(proxiesPatchStub.called).to.be.false;
+      });
+
+      Object.entries({
+        'execution-role': rolePath,
+        permissions: 'token:read',
+      }).forEach(([access, value]) => {
+        it(`rejects ${direction} ${access} without matching transform code`, async () => {
+          const other = direction === 'request' ? 'response' : 'request';
+          const flag = `--${direction}-transform-${access}`;
+          const result = await runCommand([
+            ...args,
+            `--${other}-transform-code`,
+            `./${other}.js`,
+            flag,
+            value,
+          ]);
+
+          expect(result.error?.message).to.contain(
+            `${flag} requires --${direction}-transform-code`
+          );
+          expect(proxiesPatchStub.called).to.be.false;
+        });
+      });
+
+      it(`allows a ${direction} role with permissions on the other direction`, async () => {
+        const other = direction === 'request' ? 'response' : 'request';
+
+        readFileStub.withArgs(rolePath).returns(JSON.stringify(roles.rules));
+
+        const result = await runCommand([
+          ...args,
+          ...transformArgs,
+          `--${direction}-transform-execution-role`,
+          rolePath,
+          `--${other}-transform-code`,
+          `./${other}.js`,
+          `--${other}-transform-permissions`,
+          'token:create',
+        ]);
+
+        expect(result.error).to.not.exist;
+        const model = proxiesPatchStub.firstCall.args[1];
+
+        expect(
+          model[`${direction}Transforms`][0].options.runtime
+        ).to.deep.equal({
+          executionRole: roles.rules,
+          permissions: [],
+        });
+        const { executionRole, ...runtime } =
+          model[`${other}Transforms`][0].options.runtime;
+
+        expect(executionRole).to.be.null;
+        expect(runtime).to.deep.equal({
+          permissions: ['token:create'],
+        });
+      });
+    });
+  });
+
   describe('with inline flags', () => {
     it('updates proxy name', async () => {
       const result = await runCommand([
@@ -194,8 +376,11 @@ describe('proxies update', () => {
 
         expect(result.stdout).to.contain('Proxy updated successfully!');
         const [, patchArg] = proxiesPatchStub.firstCall.args;
+        const { executionRole, ...runtime } =
+          patchArg.requestTransforms[0].options.runtime;
 
-        expect(patchArg.requestTransforms[0].options.runtime).to.deep.equal({
+        expect(executionRole).to.be.null;
+        expect(runtime).to.deep.equal({
           image,
           timeout: 30,
           warmConcurrency: 1,
@@ -320,9 +505,8 @@ describe('proxies update', () => {
         ]);
 
         expect(result.error).to.exist;
-        expect(result.error!.message).to.contain(
-          '--application-id is only valid when at least one transform uses a legacy runtime (node-bt). Use --{request,response}-transform-permissions instead.'
-        );
+        expect(result.error!.message).to.contain('--application-id');
+        expect(proxiesPatchStub.called).to.be.false;
       });
     });
 

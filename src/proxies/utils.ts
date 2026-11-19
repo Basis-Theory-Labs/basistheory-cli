@@ -61,8 +61,11 @@ const PROXY_FLAGS = {
     description: `request-transform resource tier (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     options: ['standard', 'large', 'xlarge'],
   }),
+  'request-transform-execution-role': Flags.file({
+    description: `path to a JSON file containing the request-transform execution role (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only; update requires --request-transform-code)`,
+  }),
   'request-transform-permissions': Flags.string({
-    description: `request-transform permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
+    description: `request-transform permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only); on update, requires --request-transform-code and clears the stored role unless --request-transform-execution-role is also supplied`,
     multiple: true,
   }),
   'response-transform-image': Flags.string({
@@ -86,8 +89,11 @@ const PROXY_FLAGS = {
     description: `response-transform resource tier (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     options: ['standard', 'large', 'xlarge'],
   }),
+  'response-transform-execution-role': Flags.file({
+    description: `path to a JSON file containing the response-transform execution role (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only; update requires --response-transform-code)`,
+  }),
   'response-transform-permissions': Flags.string({
-    description: `response-transform permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
+    description: `response-transform permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only); on update, requires --response-transform-code and clears the stored role unless --response-transform-execution-role is also supplied`,
     multiple: true,
   }),
   'no-wait': Flags.boolean({

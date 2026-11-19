@@ -47,6 +47,11 @@ export default class Create extends BaseCommand {
         '--permissions token:read ' +
         '--permissions token:create',
     },
+    {
+      description: 'Create a node22 reactor with an execution role JSON file',
+      command:
+        '<%= config.bin %> <%= command.id %> --name "My Reactor" --code ./reactor.js --image node22 --execution-role ./execution-role.json',
+    },
   ];
 
   public static flags = {
@@ -62,6 +67,7 @@ export default class Create extends BaseCommand {
       resources,
       'package-json': packageJson,
       permissions,
+      'execution-role': executionRole,
       'application-id': applicationId,
       'no-wait': noWait,
       async: runtimeAsyncFlag,
@@ -111,6 +117,7 @@ export default class Create extends BaseCommand {
           resources,
           'package-json': packageJson,
           permissions,
+          'execution-role': executionRole,
         },
         undefined,
         getMaxRuntimeTimeout(runtimeAsync)

@@ -42,7 +42,7 @@ const validateReactorApplicationId = (
 ): void => {
   if (applicationId && !isLegacyRuntimeImage(image)) {
     throw new Error(
-      `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES_LABEL}). Use --permissions to grant specific access instead.`
+      `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES_LABEL}). Use --permissions or --execution-role to grant specific access instead.`
     );
   }
 };

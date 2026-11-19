@@ -36,6 +36,144 @@ describe('reactors update', () => {
     sinon.restore();
   });
 
+  describe('execution roles', () => {
+    const rolePath = './execution-role.json';
+    const roles = {
+      rules: {
+        rules: [
+          {
+            priority: 1,
+            container: '/synthetic/',
+            permissions: ['token:read'],
+          },
+        ],
+      },
+      permissions: { permissions: ['token:read'] },
+    };
+
+    Object.entries(roles).forEach(([kind, role]) => {
+      it(`updates to an execution role containing ${kind} and clears legacy permissions`, async () => {
+        reactorsGetStub.resolves(reactorFixtures.withRuntime);
+        readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+
+        const result = await runCommand([
+          'reactors:update',
+          'reactor-123',
+          '--execution-role',
+          rolePath,
+          '--no-wait',
+        ]);
+
+        expect(result.error).to.not.exist;
+        expect(reactorsPatchStub.calledOnce).to.be.true;
+        expect(reactorsPatchStub.firstCall.args[1].runtime).to.deep.equal({
+          executionRole: role,
+          permissions: [],
+        });
+      });
+    });
+
+    it('clears an existing execution role when permissions are supplied', async () => {
+      reactorsGetStub.resolves({
+        ...reactorFixtures.withRuntime,
+        runtime: {
+          image: 'node22',
+          executionRole: roles.rules,
+        },
+      });
+
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--permissions',
+        'token:read',
+        '--no-wait',
+      ]);
+
+      expect(result.error).to.not.exist;
+      const { executionRole, ...runtime } =
+        reactorsPatchStub.firstCall.args[1].runtime;
+
+      expect(executionRole).to.be.null;
+      expect(runtime).to.deep.equal({
+        permissions: ['token:read'],
+      });
+    });
+
+    it('omits both access fields for an unrelated runtime update', async () => {
+      reactorsGetStub.resolves({
+        ...reactorFixtures.withRuntime,
+        runtime: {
+          image: 'node22',
+          executionRole: roles.rules,
+        },
+      });
+
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--timeout',
+        '20',
+        '--no-wait',
+      ]);
+
+      expect(result.error).to.not.exist;
+      expect(reactorsPatchStub.firstCall.args[1].runtime).to.deep.equal({
+        timeout: 20,
+      });
+    });
+
+    it('sends both explicit access flags without clearing either field', async () => {
+      const role = {
+        ...roles.permissions,
+        ...roles.rules,
+      };
+
+      reactorsGetStub.resolves(reactorFixtures.withRuntime);
+      readFileStub.withArgs(rolePath).returns(JSON.stringify(role));
+
+      const result = await runCommand([
+        'reactors:update',
+        'reactor-123',
+        '--execution-role',
+        rolePath,
+        '--permissions',
+        'token:create',
+        '--no-wait',
+      ]);
+
+      expect(reactorsPatchStub.calledOnce).to.be.true;
+      expect(reactorsPatchStub.firstCall.args[1].runtime).to.deep.equal({
+        permissions: ['token:create'],
+        executionRole: role,
+      });
+      expect(result.error).not.to.exist;
+    });
+
+    [true, false].forEach((explicitImage) => {
+      it(`rejects an execution role on ${
+        explicitImage ? 'explicit' : 'stored'
+      } node-bt`, async () => {
+        reactorsGetStub.resolves({
+          ...reactorFixtures.active,
+          runtime: { image: 'node-bt' },
+        });
+
+        const result = await runCommand([
+          'reactors:update',
+          'reactor-123',
+          ...(explicitImage ? ['--image', 'node-bt'] : []),
+          '--execution-role',
+          rolePath,
+        ]);
+
+        expect(result.error).to.exist;
+        expect(result.error!.message).to.contain('--execution-role');
+        expect(reactorsPatchStub.called).to.be.false;
+      });
+    });
+  });
+
   describe('with watch', () => {
     it('coalesces node22 changes and pushes the latest file state', async () => {
       let codeContents = 'module.exports = async () => "initial";';
@@ -544,8 +682,10 @@ describe('reactors update', () => {
 
         expect(result.stdout).to.contain('Reactor updated successfully!');
         const [, patchArg] = reactorsPatchStub.firstCall.args;
+        const { executionRole, ...runtime } = patchArg.runtime;
 
-        expect(patchArg.runtime).to.deep.equal({
+        expect(executionRole).to.be.null;
+        expect(runtime).to.deep.equal({
           async: true,
           image,
           timeout: 900,
@@ -727,9 +867,7 @@ describe('reactors update', () => {
       ]);
 
       expect(result.error).to.exist;
-      expect(result.error!.message).to.contain(
-        `--application-id is not allowed with configurable runtimes (${CONFIGURABLE_RUNTIME_IMAGES_LABEL}). Use --permissions to grant specific access instead.`
-      );
+      expect(result.error!.message).to.contain('--application-id');
       expect(reactorsPatchStub.called).to.be.false;
     });
   });

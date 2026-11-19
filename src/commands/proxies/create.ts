@@ -61,6 +61,12 @@ export default class Create extends BaseCommand {
         '--response-transform-package-json ./response/package.json ' +
         '--response-transform-permissions token:read',
     },
+    {
+      description:
+        'Create a node22 request transform with an execution role JSON file',
+      command:
+        '<%= config.bin %> <%= command.id %> --name "My Proxy" --destination-url https://api.example.com --request-transform-code ./request.js --request-transform-image node22 --request-transform-execution-role ./request-execution-role.json',
+    },
   ];
 
   public static flags = {

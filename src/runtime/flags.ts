@@ -27,8 +27,11 @@ const RUNTIME_FLAGS = {
     description: `resource tier (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only, default: standard)`,
     options: ['standard', 'large', 'xlarge'],
   }),
+  'execution-role': Flags.file({
+    description: `path to a JSON file containing the runtime execution role (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
+  }),
   permissions: Flags.string({
-    description: `permission to grant, repeatable (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
+    description: `permission to grant, repeatable; on update, clears the stored role unless --execution-role is also supplied (${CONFIGURABLE_RUNTIME_IMAGES_LABEL} only)`,
     multiple: true,
   }),
   'no-wait': Flags.boolean({

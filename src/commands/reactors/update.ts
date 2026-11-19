@@ -59,6 +59,12 @@ export default class Update extends BaseCommand {
         '--permissions token:read ' +
         '--permissions token:create',
     },
+    {
+      description:
+        'Set a reactor execution role from a JSON file, replacing runtime permissions',
+      command:
+        '<%= config.bin %> <%= command.id %> <reactor-id> --execution-role ./execution-role.json',
+    },
   ];
 
   public static flags = {
@@ -103,6 +109,7 @@ export default class Update extends BaseCommand {
       'warm-concurrency': warmConcurrency,
       resources,
       permissions,
+      'execution-role': executionRole,
       'no-wait': noWait,
       async: runtimeAsync,
       watch,
@@ -132,15 +139,19 @@ export default class Update extends BaseCommand {
       validateRuntimeTimeout(effectiveTimeout, effectiveRuntimeAsync);
     }
 
-    const runtime = buildReactorRuntime({
-      image,
-      packageJson,
-      timeout,
-      warmConcurrency,
-      resources,
-      permissions,
-      async: runtimeAsync,
-    });
+    const runtime = buildReactorRuntime(
+      {
+        image,
+        packageJson,
+        timeout,
+        warmConcurrency,
+        resources,
+        permissions,
+        executionRole,
+        async: runtimeAsync,
+      },
+      true
+    );
 
     const model = createModelFromFlags({
       name,

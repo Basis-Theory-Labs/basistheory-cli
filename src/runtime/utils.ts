@@ -51,6 +51,7 @@ const CONFIGURABLE_RUNTIME_FLAGS = [
   'resources',
   'warm-concurrency',
   'permissions',
+  'execution-role',
   'package-json',
 ] as const;
 
@@ -66,6 +67,7 @@ interface RuntimeFlagProps {
   warmConcurrency?: number;
   resources?: string;
   permissions?: string[];
+  executionRole?: string;
 }
 
 interface ReactorRuntimeFlagProps extends RuntimeFlagProps {
@@ -79,6 +81,7 @@ interface RuntimeFlags {
   resources?: string;
   'package-json'?: string;
   permissions?: string[];
+  'execution-role'?: string;
 }
 
 interface ConfigurableRuntimeOptions {
@@ -87,6 +90,7 @@ interface ConfigurableRuntimeOptions {
   resources?: string;
   packageJson?: string;
   permissions?: string[];
+  executionRole?: string;
 }
 
 interface ParsedRuntimePackageFile {
@@ -162,8 +166,89 @@ const parseRuntimePackageJsonFile = (
   };
 };
 
+const parseExecutionRoleFile = (
+  executionRolePath: string
+): BasisTheory.ExecutionRole => {
+  let parsedFile: unknown;
+
+  try {
+    parsedFile = JSON.parse(readFileContents(executionRolePath));
+  } catch {
+    throw new Error(
+      `Failed to parse execution role file "${executionRolePath}": expected a readable JSON file.`
+    );
+  }
+
+  if (
+    !parsedFile ||
+    typeof parsedFile !== 'object' ||
+    Array.isArray(parsedFile)
+  ) {
+    throw new Error(
+      `Execution role file "${executionRolePath}" must contain a role object.`
+    );
+  }
+
+  const role = parsedFile as Record<string, unknown>;
+
+  if (
+    Object.keys(role).some((key) => !['permissions', 'rules'].includes(key))
+  ) {
+    throw new Error(
+      `Execution role file "${executionRolePath}" has unknown role keys; only "permissions" and "rules" are supported.`
+    );
+  }
+
+  if (
+    role.permissions !== undefined &&
+    (!Array.isArray(role.permissions) ||
+      !role.permissions.every((permission) => typeof permission === 'string'))
+  ) {
+    throw new Error(
+      `Execution role file "${executionRolePath}" has invalid "permissions": expected an array of strings.`
+    );
+  }
+
+  if (role.rules !== undefined) {
+    if (
+      !Array.isArray(role.rules) ||
+      !role.rules.every(
+        (rule) => rule && typeof rule === 'object' && !Array.isArray(rule)
+      )
+    ) {
+      throw new Error(
+        `Execution role file "${executionRolePath}" has invalid "rules": expected an array of objects.`
+      );
+    }
+
+    const ruleKeys = [
+      'description',
+      'priority',
+      'container',
+      'transform',
+      'conditions',
+      'permissions',
+    ];
+
+    if (
+      role.rules.some((rule) =>
+        Object.keys(rule).some((key) => !ruleKeys.includes(key))
+      )
+    ) {
+      throw new Error(
+        `Execution role file "${executionRolePath}" has unknown rule keys. Supported keys: ${ruleKeys.join(
+          ', '
+        )}.`
+      );
+    }
+  }
+
+  return role as BasisTheory.ExecutionRole;
+};
+
 const buildRuntime = (
-  props: RuntimeFlagProps
+  props: RuntimeFlagProps,
+  isUpdate = false
 ): BasisTheory.Runtime | undefined => {
   const {
     image,
@@ -172,6 +257,7 @@ const buildRuntime = (
     warmConcurrency,
     resources,
     permissions,
+    executionRole,
   } = props;
 
   if (
@@ -180,7 +266,8 @@ const buildRuntime = (
     !timeout &&
     warmConcurrency === undefined &&
     !resources &&
-    !permissions?.length
+    !permissions?.length &&
+    !executionRole
   ) {
     return undefined;
   }
@@ -191,7 +278,9 @@ const buildRuntime = (
     parsedPackageFile = parseRuntimePackageJsonFile(packageJson);
   }
 
-  const runtime: BasisTheory.Runtime = {};
+  const runtime: Omit<BasisTheory.Runtime, 'executionRole'> & {
+    executionRole?: BasisTheory.ExecutionRole | null;
+  } = {};
 
   if (image) {
     runtime.image = image;
@@ -219,16 +308,31 @@ const buildRuntime = (
 
   if (permissions?.length) {
     runtime.permissions = permissions;
+
+    if (isUpdate && !executionRole) {
+      // eslint-disable-next-line unicorn/no-null -- Undefined preserves the stored role.
+      runtime.executionRole = null;
+    }
   }
 
-  return runtime;
+  if (executionRole) {
+    runtime.executionRole = parseExecutionRoleFile(executionRole);
+
+    if (isUpdate && !permissions?.length) {
+      runtime.permissions = [];
+    }
+  }
+
+  // The SDK serializer preserves null to clear a role, but its type excludes it.
+  return runtime as BasisTheory.Runtime;
 };
 
 const buildReactorRuntime = (
-  props: ReactorRuntimeFlagProps
+  props: ReactorRuntimeFlagProps,
+  isUpdate = false
 ): BasisTheory.ReactorRuntime | undefined => {
   const { async: runtimeAsync, ...runtimeProps } = props;
-  const runtime = buildRuntime(runtimeProps);
+  const runtime = buildRuntime(runtimeProps, isUpdate);
 
   if (!runtime && runtimeAsync === undefined) {
     return undefined;
@@ -306,15 +410,26 @@ const promptRuntimeOptions = async (
     message: `${prefix}(Optional) Runtime package.json file path (JSON format):`,
   });
 
-  const permissions = await promptCommaSeparatedIfUndefined(flags.permissions, {
-    message: `${prefix}(Optional) Permissions (comma-separated, e.g. token:read, token:create):`,
-  });
+  let executionRole = flags['execution-role'];
+
+  if (!executionRole && !flags.permissions?.length) {
+    executionRole = await promptStringIfUndefined(undefined, {
+      message: `${prefix}(Optional) Execution role file path (JSON):`,
+    });
+  }
+
+  const permissions = executionRole
+    ? flags.permissions
+    : await promptCommaSeparatedIfUndefined(flags.permissions, {
+        message: `${prefix}(Optional) Permissions (comma-separated, e.g. token:read, token:create):`,
+      });
 
   return {
     timeout,
     warmConcurrency,
     resources,
     packageJson: packageJson || undefined,
+    executionRole: executionRole || undefined,
     permissions,
   };
 };
@@ -348,6 +463,7 @@ export {
   isLegacyRuntimeImage,
   validateRuntimeImage,
   parseRuntimePackageJsonFile,
+  parseExecutionRoleFile,
   buildRuntime,
   buildReactorRuntime,
   getMaxRuntimeTimeout,
